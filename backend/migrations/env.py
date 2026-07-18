@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config import settings
-from src.infrastructure.db.models.base import BaseInfrastructureModel
+from src.infrastructure.db.models import BaseInfrastructureModel
 
 config = context.config
 
