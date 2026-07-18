@@ -6,10 +6,12 @@ from src.application.use_cases.register_user import (
     RegisterUserRequest,
     RegisterUserUseCase,
 )
+from src.domain.entities.user import User
 from src.domain.exceptions import InvalidEmailError
 from src.infrastructure.crypto.hasher import PasswordHasherEngine
 from src.infrastructure.db.repositories.user import SqlAlchemyUserRepository
 from src.infrastructure.db.session import get_async_database_session
+from src.presentation.api.dependencies import get_current_active_user
 from src.presentation.schemas.user import UserRegisterRequestSchema, UserResponseSchema
 
 
@@ -73,3 +75,26 @@ async def register_user_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unexpected storage exception breakdown occurred during synchronization.",
         ) from exc
+
+
+@router.get(
+    "/me",
+    response_model=UserResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Retrieve active identity parameters from current validated token payload claims.",
+)
+async def get_authenticated_profile_endpoint(
+    current_user: User = Depends(get_current_active_user),
+) -> UserResponseSchema:
+    if current_user.created_at is None or current_user.updated_at is None:
+        msg = "Trace discrepancy: Missing timeline metrics on loaded core reference entity."
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
+
+    return UserResponseSchema(
+        id=current_user.id,
+        email=str(current_user.email),
+        is_active=current_user.is_active,
+        is_superuser=current_user.is_superuser,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+    )
