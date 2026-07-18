@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.presentation.api.v1 import user_router
+from src.presentation.api.v1 import auth_router, user_router
 
 
 app = FastAPI(
@@ -10,7 +10,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS and stuff
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:4200", "http://localhost:4200"],
@@ -20,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(user_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["System System Stability Checks"])
