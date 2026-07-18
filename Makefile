@@ -1,4 +1,4 @@
-.PHONY: install lint format run-backend run-frontend
+.PHONY: install lint format run-backend run-frontend db-up db-down db-logs db-clean
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -21,3 +21,18 @@ run-backend:
 
 run-frontend:
 	cd $(FRONTEND_DIR) && npx ng serve --host 127.0.0.1 --port 4200
+
+db-up:
+	@echo "Launching containerized PostgreSQL data persistence layer..."
+	docker compose up -d
+
+db-down:
+	@echo "Stopping containerized PostgreSQL data persistence layer..."
+	docker compose down
+
+db-logs:
+	docker compose logs -f db
+
+db-clean:
+	@echo "Executing destructive cleanup of container storage tracks..."
+	docker compose down -v
