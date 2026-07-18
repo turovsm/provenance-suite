@@ -4,8 +4,11 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 
 install:
-	@echo "Installing full-stack application workspace environments..."
-	cd $(BACKEND_DIR) && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e . ruff pytest httpx
+	@echo "Installing full-stack application workspace environments via uv..."
+	@command -v uv >/dev/null 2>&1 || (echo "Error: uv is not installed." && exit 1)
+	cd $(BACKEND_DIR) && uv venv .venv --python 3.11
+	cd $(BACKEND_DIR) && uv pip install -e . ruff pytest httpx
+	cd $(BACKEND_DIR) && uv pip compile pyproject.toml -o requirements.txt
 	cd $(FRONTEND_DIR) && npm install && npm install --save-dev prettier @angular-eslint/schematics
 
 lint:
