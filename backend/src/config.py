@@ -1,11 +1,11 @@
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Optional
+
 from pydantic import Field, PostgresDsn, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class EnvironmentType(str, Enum):
+class EnvironmentType(StrEnum):
     DEVELOPMENT = "development"
     PRODUCTION = "production"
     TESTING = "testing"
@@ -28,7 +28,7 @@ class AppSettings(BaseSettings):
     POSTGRES_HOST: str = Field(default="127.0.0.1")
     POSTGRES_PORT: int = Field(default=5432)
     POSTGRES_DB: str = Field(default="provenance_vault")
-    DATABASE_URL: Optional[PostgresDsn] = None
+    DATABASE_URL: PostgresDsn | None = None
 
     # Cryptographic & Identity Security Enclaves
     SECURITY_PEPPER: str = Field(min_length=32, description="System-wide static argon2 pepper.")
@@ -38,7 +38,7 @@ class AppSettings(BaseSettings):
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def assemble_async_database_dsn(cls, v: Optional[str], info: ValidationInfo) -> PostgresDsn:
+    def assemble_async_database_dsn(cls, v: str | None, info: ValidationInfo) -> PostgresDsn:
         if isinstance(v, str) and v:
             return PostgresDsn(v)
 

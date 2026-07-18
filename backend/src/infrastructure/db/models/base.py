@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Any
+
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
 
 POSTGRES_NAMING_CONVENTION: dict[str, str] = {
     "ix": "ix_%(column_0_label)s",
