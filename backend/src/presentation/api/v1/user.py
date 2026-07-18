@@ -52,7 +52,14 @@ async def register_user_endpoint(
                 detail=msg,
             )
 
-        return db_user
+        return UserResponseSchema(
+            id=db_user.id,
+            email=str(db_user.email),
+            is_active=db_user.is_active,
+            is_superuser=db_user.is_superuser,
+            created_at=db_user.created_at,
+            updated_at=db_user.updated_at,
+        )
 
     except (UserAlreadyExistsError, InvalidEmailError) as exc:
         # Rollback target records on transaction state exceptions conflicts

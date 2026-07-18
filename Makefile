@@ -24,15 +24,15 @@ run-frontend:
 
 db-up:
 	@echo "Launching containerized PostgreSQL data persistence layer..."
-	docker compose up -d
+	docker compose --env-file $(BACKEND_DIR)/.env up -d
 
 db-down:
 	@echo "Stopping containerized PostgreSQL data persistence layer..."
-	docker compose down
+	docker compose --env-file $(BACKEND_DIR)/.env down
 
 db-logs:
-	docker compose logs -f db
+	docker compose --env-file $(BACKEND_DIR)/.env logs -f db
 
 db-clean:
 	@echo "Executing destructive cleanup of container storage tracks..."
-	docker compose down -v
+	docker compose --env-file $(BACKEND_DIR)/.env down -v

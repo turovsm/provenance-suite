@@ -1,3 +1,6 @@
+from hashlib import sha256
+from hmac import new
+
 from argon2 import PasswordHasher
 from argon2.exceptions import Argon2Error, VerificationError
 
@@ -12,19 +15,28 @@ class PasswordHasherEngine:
             parallelism=4,
             hash_len=32,
             salt_len=16,
-            secret=settings.SECURITY_PEPPER.encode("utf-8"),
         )
+        self._pepper = settings.SECURITY_PEPPER.encode("utf-8")
+
+    def _pre_hash(self, password: str) -> str:
+        return new(
+            key=self._pepper,
+            msg=password.encode("utf-8"),
+            digestmod=sha256,
+        ).hexdigest()
 
     def hash_password(self, password: str) -> str:
         try:
-            return self._hasher.hash(password)
+            pre_hashed = self._pre_hash(password)
+            return self._hasher.hash(pre_hashed)
         except Argon2Error as e:
             msg = "Critical memory execution derivation failure inside hashing engine."
             raise RuntimeError(msg) from e
 
     def verify_password(self, hash_string: str, password: str) -> bool:
         try:
-            return self._hasher.verify(hash_string, password)
+            pre_hashed = self._pre_hash(password)
+            return self._hasher.verify(hash_string, pre_hashed)
         except VerificationError:
             return False
         except Argon2Error as e:

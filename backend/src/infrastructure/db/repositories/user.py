@@ -61,4 +61,6 @@ class SqlAlchemyUserRepository(UserRepository):
             hashed_password=model.hashed_password,
             is_active=model.is_active,
             is_superuser=model.is_superuser,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
         )

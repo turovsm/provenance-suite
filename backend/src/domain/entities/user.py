@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
 from src.domain.exceptions import DomainInvariantError
 from src.domain.value_objects.email import EmailAddress
@@ -12,6 +13,8 @@ class User:
     hashed_password: str
     is_active: bool = True
     is_superuser: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @classmethod
     def create_new(cls, email: EmailAddress, hashed_password: str) -> "User":
