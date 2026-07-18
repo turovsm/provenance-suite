@@ -1,0 +1,22 @@
+<main class="login-viewport-ring">
+  <div class="telemetry-grid-overlay"></div>
+
+  <div class="glass-isolation-card">
+    <header class="branding-header">
+      <div class="vault-node-badge">NODE // CORE</div>
+      <h1>PROVENANCE VAULT</h1>
+      <p>Systemic Digital Asset Ledger Encryption Pipeline</p>
+    </header>
+
+    <app-login-form
+      [isDisabled]="state.isProcessing()"
+      [errorMessage]="state.authenticationError()"
+      (submitted)="executeAuthenticationRequest($event)"
+    />
+
+    <footer class="systemic-footer-metadata">
+      <div>SECURE TRACE ACCELERATION SYSTEM ENGAGED</div>
+      <div class="mono-hash">ALGORITHM // ARGON2ID_HMAC_SHA256</div>
+    </footer>
+  </div>
+</main>

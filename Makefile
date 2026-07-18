@@ -20,10 +20,10 @@ format:
 	cd $(FRONTEND_DIR) && npx prettier --write "src/**/*.{ts,html,css,json}"
 
 run-backend:
-	cd $(BACKEND_DIR) && .venv/bin/uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+	cd $(BACKEND_DIR) && .venv/bin/uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
 run-frontend:
-	cd $(FRONTEND_DIR) && npx ng serve --host 127.0.0.1 --port 4200
+	cd $(FRONTEND_DIR) && npx ng serve --host 0.0.0.0 --port 4200
 
 db-up:
 	@echo "Launching containerized PostgreSQL data persistence layer..."

@@ -23,6 +23,7 @@ from src.domain.value_objects.music_types import (
     VideoCodec,
 )
 
+
 __all__ = [
     "User",
     "EmailAddress",

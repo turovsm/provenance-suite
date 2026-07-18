@@ -1,0 +1,43 @@
+<form (ngSubmit)="handleFormSubmit()" class="auth-form-layout">
+  <div class="input-control-cluster">
+    <label for="email-field">TRACKING IDENTIFIER</label>
+    <input
+      id="email-field"
+      type="email"
+      name="email"
+      [(ngModel)]="emailCredentials"
+      [disabled]="isDisabled()"
+      placeholder="identity@provenance.vault"
+      required
+      autocomplete="username"
+    />
+  </div>
+
+  <div class="input-control-cluster">
+    <label for="password-field">CRYPTOGRAPHIC KEY</label>
+    <input
+      id="password-field"
+      type="password"
+      name="password"
+      [(ngModel)]="passwordCredentials"
+      [disabled]="isDisabled()"
+      placeholder="••••••••••••"
+      required
+      autocomplete="current-password"
+    />
+  </div>
+
+  @if (errorMessage()) {
+    <div class="error-banner" role="alert">
+      <span class="warning-glyph">⚠️</span> {{ errorMessage() }}
+    </div>
+  }
+
+  <button type="submit" [disabled]="isDisabled() || !emailCredentials || !passwordCredentials">
+    @if (isDisabled()) {
+      <span class="pulse-indicator">INITIALIZING TRANSACTIONS...</span>
+    } @else {
+      <span>AUTHORIZE ACCESS</span>
+    }
+  </button>
+</form>
