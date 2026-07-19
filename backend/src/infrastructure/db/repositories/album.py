@@ -1,0 +1,207 @@
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
+
+from src.application.repositories.album import AlbumRepository
+from src.domain.entities.music import (
+    Album,
+    AlbumArchive,
+    AlbumCover,
+    ArchiveLink,
+    Artist,
+    Disc,
+    ExternalLink,
+    Track,
+)
+from src.domain.value_objects.music_types import LibraryCategory
+from src.infrastructure.db.models.music import (
+    AlbumArchiveModel,
+    AlbumArtistModel,
+    AlbumModel,
+    DiscModel,
+)
+
+
+class SqlAlchemyAlbumRepository(AlbumRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def save(self, album: Album) -> None:
+        stmt = select(AlbumModel).where(AlbumModel.id == album.id)
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+
+        if model is None:
+            model = AlbumModel(
+                id=album.id,
+                title_original=album.title_original,
+                title_translated=album.title_translated,
+                release_date=album.release_date,
+                event_id=album.event_id,
+                franchise_id=album.franchise_id,
+                library_category=album.library_category,
+                original_folder_name=album.original_folder_name,
+            )
+            self._session.add(model)
+        else:
+            model.title_original = album.title_original
+            model.title_translated = album.title_translated
+            model.release_date = album.release_date
+            model.event_id = album.event_id
+            model.franchise_id = album.franchise_id
+            model.library_category = album.library_category
+            model.original_folder_name = album.original_folder_name
+
+    async def find_by_id(self, album_id: uuid.UUID) -> Album | None:
+        stmt = (
+            select(AlbumModel)
+            .where(AlbumModel.id == album_id)
+            .options(
+                joinedload(AlbumModel.cover),
+                selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
+                selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
+                selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
+                selectinload(AlbumModel.external_links),
+            )
+        )
+
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            return None
+
+        return self._to_domain_entity(model)
+
+    async def find_by_category(
+        self, category: LibraryCategory, limit: int = 50, offset: int = 0
+    ) -> list[Album]:
+        stmt = (
+            select(AlbumModel)
+            .where(AlbumModel.library_category == category)
+            .order_by(AlbumModel.release_date.desc().nulls_last())
+            .offset(offset)
+            .limit(limit)
+            .options(
+                joinedload(AlbumModel.cover),
+                selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
+                selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
+                selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
+                selectinload(AlbumModel.external_links),
+            )
+        )
+
+        result = await self._session.execute(stmt)
+        models = result.scalars().all()
+        return [self._to_domain_entity(m) for m in models]
+
+    @staticmethod
+    def _to_domain_entity(model: AlbumModel) -> Album:
+        domain_discs = []
+        for d in model.discs:
+            domain_tracks = [
+                Track(
+                    id=t.id,
+                    disc_id=t.disc_id,
+                    track_number=t.track_number,
+                    title_original=t.title_original,
+                    title_translated=t.title_translated,
+                    duration_seconds=t.duration_seconds,
+                    audio_codec=t.audio_codec,
+                    video_codec=t.video_codec,
+                    bit_depth=t.bit_depth,
+                    sample_rate=t.sample_rate,
+                    bitrate_kbps=t.bitrate_kbps,
+                    bitrate_mode=t.bitrate_mode,
+                )
+                for t in d.tracks
+            ]
+            domain_tracks.sort(key=lambda x: x.track_number)
+            domain_discs.append(
+                Disc(
+                    id=d.id,
+                    album_id=d.album_id,
+                    disc_number=d.disc_number,
+                    catalog_number=d.catalog_number,
+                    media_type=d.media_type,
+                    container_format=d.container_format,
+                    log_type=d.log_type,
+                    log_score=d.log_score,
+                    tracks=domain_tracks,
+                )
+            )
+        domain_discs.sort(key=lambda x: x.disc_number)
+
+        domain_artists = [
+            Artist(
+                id=assoc.artist.id,
+                name_original=assoc.artist.name_original,
+                name_translated=assoc.artist.name_translated,
+                is_circle=assoc.artist.is_circle,
+            )
+            for assoc in model.artist_associations
+        ]
+
+        domain_archives = []
+        for arch in model.archives:
+            domain_links = [
+                ArchiveLink(
+                    id=lnk.id,
+                    archive_id=lnk.archive_id,
+                    provider_name=lnk.provider_name,
+                    download_url=lnk.download_url,
+                    is_active=lnk.is_active,
+                )
+                for lnk in arch.links
+            ]
+            domain_archives.append(
+                AlbumArchive(
+                    id=arch.id,
+                    album_id=arch.album_id,
+                    archive_name=arch.archive_name,
+                    encryption_password=arch.encryption_password,
+                    file_size_bytes=arch.file_size_bytes,
+                    links=domain_links,
+                )
+            )
+
+        domain_external_links = [
+            ExternalLink(
+                id=el.id,
+                album_id=el.album_id,
+                site_name=el.site_name,
+                url=el.url,
+                remote_item_id=el.remote_item_id,
+            )
+            for el in model.external_links
+        ]
+
+        domain_cover = None
+        if model.cover:
+            domain_cover = AlbumCover(
+                id=model.cover.id,
+                album_id=model.cover.album_id,
+                image_data=model.cover.image_data,
+                mime_type=model.cover.mime_type,
+                width=model.cover.width,
+                height=model.cover.height,
+            )
+
+        return Album(
+            id=model.id,
+            title_original=model.title_original,
+            title_translated=model.title_translated,
+            release_date=model.release_date,
+            event_id=model.event_id,
+            franchise_id=model.franchise_id,
+            library_category=model.library_category,
+            original_folder_name=model.original_folder_name,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            discs=domain_discs,
+            artists=domain_artists,
+            archives=domain_archives,
+            external_links=domain_external_links,
+            cover=domain_cover,
+        )
