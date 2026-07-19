@@ -19,8 +19,12 @@ from src.domain.value_objects.music_types import LibraryCategory
 from src.infrastructure.db.models.music import (
     AlbumArchiveModel,
     AlbumArtistModel,
+    AlbumCoverModel,
     AlbumModel,
+    ArchiveLinkModel,
     DiscModel,
+    ExternalLinkModel,
+    TrackModel,
 )
 
 
@@ -53,6 +57,83 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             model.franchise_id = album.franchise_id
             model.library_category = album.library_category
             model.original_folder_name = album.original_folder_name
+
+        model.discs.clear()
+        for d in album.discs:
+            disc_model = DiscModel(
+                id=d.id,
+                album_id=album.id,
+                disc_number=d.disc_number,
+                catalog_number=d.catalog_number,
+                media_type=d.media_type,
+                container_format=d.container_format,
+                log_type=d.log_type,
+                log_score=d.log_score,
+            )
+            for t in d.tracks:
+                disc_model.tracks.append(
+                    TrackModel(
+                        id=t.id,
+                        disc_id=d.id,
+                        track_number=t.track_number,
+                        title_original=t.title_original,
+                        title_translated=t.title_translated,
+                        duration_seconds=t.duration_seconds,
+                        audio_codec=t.audio_codec,
+                        video_codec=t.video_codec,
+                        bit_depth=t.bit_depth,
+                        sample_rate=t.sample_rate,
+                        bitrate_kbps=t.bitrate_kbps,
+                        bitrate_mode=t.bitrate_mode,
+                    )
+                )
+            model.discs.append(disc_model)
+
+        # Map encrypted split archives chunks
+        model.archives.clear()
+        for arch in album.archives:
+            arch_model = AlbumArchiveModel(
+                id=arch.id,
+                album_id=album.id,
+                archive_name=arch.archive_name,
+                encryption_password=arch.encryption_password,
+                file_size_bytes=arch.file_size_bytes,
+            )
+            for lnk in arch.links:
+                arch_model.links.append(
+                    ArchiveLinkModel(
+                        id=lnk.id,
+                        archive_id=arch.id,
+                        provider_name=lnk.provider_name,
+                        download_url=lnk.download_url,
+                        is_active=lnk.is_active,
+                    )
+                )
+            model.archives.append(arch_model)
+
+        model.external_links.clear()
+        for el in album.external_links:
+            model.external_links.append(
+                ExternalLinkModel(
+                    id=el.id,
+                    album_id=album.id,
+                    site_name=el.site_name,
+                    url=el.url,
+                    remote_item_id=el.remote_item_id,
+                )
+            )
+
+        if album.cover:
+            model.cover = AlbumCoverModel(
+                id=album.cover.id,
+                album_id=album.id,
+                image_data=album.cover.image_data,
+                mime_type=album.cover.mime_type,
+                width=album.cover.width,
+                height=album.cover.height,
+            )
+        else:
+            model.cover = None
 
     async def find_by_id(self, album_id: uuid.UUID) -> Album | None:
         stmt = (
