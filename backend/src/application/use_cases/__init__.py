@@ -3,6 +3,17 @@ from src.application.use_cases.authenticate_user import (
     AuthenticateUserResponse,
     AuthenticateUserUseCase,
 )
+from src.application.use_cases.ingest_album import (
+    ArchiveIngestDTO,
+    ArchiveLinkIngestDTO,
+    CoverIngestDTO,
+    DiscIngestDTO,
+    ExternalLinkIngestDTO,
+    IngestAlbumRequest,
+    IngestAlbumResponse,
+    IngestAlbumUseCase,
+    TrackIngestDTO,
+)
 from src.application.use_cases.register_user import (
     RegisterUserRequest,
     RegisterUserResponse,
@@ -17,4 +28,13 @@ __all__ = [
     "AuthenticateUserUseCase",
     "AuthenticateUserRequest",
     "AuthenticateUserResponse",
+    "IngestAlbumUseCase",
+    "IngestAlbumRequest",
+    "IngestAlbumResponse",
+    "TrackIngestDTO",
+    "DiscIngestDTO",
+    "ArchiveLinkIngestDTO",
+    "ArchiveIngestDTO",
+    "ExternalLinkIngestDTO",
+    "CoverIngestDTO",
 ]
