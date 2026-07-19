@@ -32,7 +32,7 @@ class TrackIngestSchema(BaseModel):
 class DiscIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    disc_number: int = Field(..., gt=0, default=1)
+    disc_number: int = Field(default=1, gt=0, description="Physical position index.")
     media_type: MediaType
     container_format: ContainerFormat
     catalog_number: str | None = Field(default=None, max_length=64)

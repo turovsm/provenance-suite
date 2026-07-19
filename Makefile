@@ -1,4 +1,4 @@
-.PHONY: install lint format run-backend run-frontend db-up db-down db-logs db-clean
+.PHONY: install lint format run-backend run-frontend db-up db-down db-logs db-clean db-migrate
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -7,7 +7,7 @@ install:
 	@echo "Installing full-stack application workspace environments via uv..."
 	@command -v uv >/dev/null 2>&1 || (echo "Error: uv is not installed." && exit 1)
 	cd $(BACKEND_DIR) && uv venv .venv --python 3.11
-	cd $(BACKEND_DIR) && uv pip install -e . ruff pytest httpx
+	cd $(BACKEND_DIR) && uv pip install -e . ruff pytest pytest-asyncio engineering-notation httpx
 	cd $(BACKEND_DIR) && uv pip compile pyproject.toml -o requirements.txt
 	cd $(FRONTEND_DIR) && npm install && npm install --save-dev prettier @angular-eslint/schematics
 
@@ -35,6 +35,10 @@ db-down:
 
 db-logs:
 	docker compose --env-file $(BACKEND_DIR)/.env logs -f db
+
+db-migrate:
+	@echo "Executing migration scripts against the container..."
+	cd $(BACKEND_DIR) && .venv/bin/alembic upgrade head
 
 db-clean:
 	@echo "Executing destructive cleanup of container storage tracks..."
