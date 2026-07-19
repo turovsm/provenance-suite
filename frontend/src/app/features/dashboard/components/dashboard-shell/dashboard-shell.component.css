@@ -1,0 +1,207 @@
+.workspace-viewport-container {
+  position: relative;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-oled-black);
+  overflow: hidden;
+}
+
+.telemetry-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.005) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.workspace-sidebar {
+  position: relative;
+  z-index: 10;
+  width: 260px;
+  height: 100%;
+  background-color: var(--bg-surface-glass);
+  border-right: 1px solid var(--border-fine-glass);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-branding {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.branding-glyph {
+  color: var(--accent-blue);
+  font-size: 1.1rem;
+}
+
+.branding-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.navigation-matrix {
+  flex: 1;
+  padding: 2rem 1.25rem;
+}
+
+.matrix-section-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.nav-links-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.partition-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.partition-link:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.link-bullet {
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.1);
+  transition: color 0.15s ease;
+}
+
+.partition-link:hover .link-bullet {
+  color: var(--accent-blue);
+}
+
+.active-partition-link {
+  color: var(--text-primary) !important;
+  background-color: rgba(56, 189, 248, 0.06) !important;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+.active-partition-link .link-bullet {
+  color: var(--accent-blue) !important;
+}
+
+.sidebar-system-status {
+  padding: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+}
+
+.status-node {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pulse-dot {
+  width: 5px;
+  height: 5px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: statusGlow 2s infinite ease-in-out;
+}
+
+@keyframes statusGlow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Canvas & Top Metrics Ribbon Panel Layout */
+.workspace-content-canvas {
+  position: relative;
+  z-index: 5;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.workspace-top-bar {
+  height: 60px;
+  padding: 0 2rem;
+  background-color: rgba(5, 5, 7, 0.8);
+  border-bottom: 1px solid var(--border-fine-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.system-metrics-ticker {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  color: var(--accent-blue);
+}
+
+.session-identity-widget {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.active-user-handle {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.signout-trigger-btn {
+  cursor: pointer;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 0.35rem 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  transition: all 0.15s ease;
+}
+
+.signout-trigger-btn:hover {
+  color: var(--accent-error);
+  border-color: rgba(248, 113, 113, 0.3);
+  background-color: rgba(248, 113, 113, 0.02);
+}
+
+.canvas-routing-outlet {
+  flex: 1;
+  padding: 2.5rem;
+  overflow-y: auto;
+  z-index: 2;
+}
