@@ -37,7 +37,12 @@ combine-as-imports = true
 lines-after-imports = 2
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.Query",
+    "fastapi.params.Query",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

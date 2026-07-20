@@ -98,3 +98,95 @@ class AlbumIngestResponseSchema(BaseModel):
     title_original: str
     total_discs: int
     total_tracks: int
+
+
+# --- Read/Query Schemas ---
+
+
+class TrackResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    track_number: int
+    title_original: str
+    title_translated: str | None
+    duration_seconds: int | None
+    audio_codec: AudioCodec | None
+    bit_depth: int | None
+    sample_rate: int | None
+
+
+class DiscResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    disc_number: int
+    catalog_number: str | None
+    media_type: MediaType
+    container_format: ContainerFormat
+    tracks: list[TrackResponseSchema]
+
+
+class ArchiveLinkResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    provider_name: str
+    download_url: str
+    is_active: bool
+
+
+class ArchiveResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    archive_name: str
+    encryption_password: str
+    file_size_bytes: int | None
+    links: list[ArchiveLinkResponseSchema]
+
+
+class ExternalLinkResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    site_name: str
+    url: str
+    remote_item_id: str | None
+
+
+class AlbumSummaryResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    title_original: str
+    title_translated: str | None
+    release_date: date | None
+    library_category: LibraryCategory
+    original_folder_name: str
+    total_discs: int
+    has_cover: bool
+
+
+class AlbumDetailResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    title_original: str
+    title_translated: str | None
+    release_date: date | None
+    library_category: LibraryCategory
+    original_folder_name: str
+    discs: list[DiscResponseSchema]
+    archives: list[ArchiveResponseSchema]
+    external_links: list[ExternalLinkResponseSchema]
+    has_cover: bool
+
+
+class PaginatedAlbumsResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: list[AlbumSummaryResponseSchema]
+    total_count: int
+    limit: int
+    offset: int

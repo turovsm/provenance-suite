@@ -19,3 +19,17 @@ class AlbumRepository(ABC):
         self, category: LibraryCategory, limit: int = 50, offset: int = 0
     ) -> list[Album]:
         pass
+
+    @abstractmethod
+    async def search(
+        self,
+        category: LibraryCategory | None = None,
+        query: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Album], int]:
+        pass
+
+    @abstractmethod
+    async def delete(self, album_id: uuid.UUID) -> bool:
+        pass

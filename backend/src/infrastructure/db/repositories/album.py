@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -158,10 +158,37 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
     async def find_by_category(
         self, category: LibraryCategory, limit: int = 50, offset: int = 0
     ) -> list[Album]:
-        stmt = (
-            select(AlbumModel)
-            .where(AlbumModel.library_category == category)
-            .order_by(AlbumModel.release_date.desc().nulls_last())
+        albums, _ = await self.search(category=category, limit=limit, offset=offset)
+        return albums
+
+    async def search(
+        self,
+        category: LibraryCategory | None = None,
+        query: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Album], int]:
+        base_stmt = select(AlbumModel)
+
+        if category is not None:
+            base_stmt = base_stmt.where(AlbumModel.library_category == category)
+
+        if query and query.strip():
+            search_pattern = f"%{query.strip()}%"
+            base_stmt = base_stmt.where(
+                AlbumModel.title_original.ilike(search_pattern)
+                | AlbumModel.title_translated.ilike(search_pattern)
+                | AlbumModel.original_folder_name.ilike(search_pattern)
+            )
+
+        # Count total matching rows
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total_count_result = await self._session.execute(count_stmt)
+        total_count = total_count_result.scalar_one()
+
+        # Fetch paginated items
+        fetch_stmt = (
+            base_stmt.order_by(AlbumModel.release_date.desc().nulls_last())
             .offset(offset)
             .limit(limit)
             .options(
@@ -173,9 +200,20 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             )
         )
 
-        result = await self._session.execute(stmt)
+        result = await self._session.execute(fetch_stmt)
         models = result.scalars().all()
-        return [self._to_domain_entity(m) for m in models]
+        return [self._to_domain_entity(m) for m in models], total_count
+
+    async def delete(self, album_id: uuid.UUID) -> bool:
+        stmt = select(AlbumModel).where(AlbumModel.id == album_id)
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+
+        if model is None:
+            return False
+
+        await self._session.delete(model)
+        return True
 
     @staticmethod
     def _to_domain_entity(model: AlbumModel) -> Album:
