@@ -1,32 +1,31 @@
 .auth-form-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .input-control-cluster {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .input-control-cluster label {
   font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
 .input-control-cluster input {
   width: 100%;
-  padding: 0.85rem 1rem;
+  padding: 0.8rem 0.9rem;
   background-color: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-fine-glass);
   border-radius: 4px;
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
 }
 
 .input-control-cluster input:focus {
@@ -40,26 +39,31 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background-color: rgba(248, 113, 113, 0.06);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  padding: 0.65rem 0.85rem;
+  background-color: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
   border-radius: 4px;
   color: var(--accent-error);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.icon-alert {
+  font-size: 18px;
+  color: var(--accent-error);
 }
 
 button {
   cursor: pointer;
   width: 100%;
-  padding: 1rem;
+  padding: 0.85rem;
   background-color: var(--text-primary);
   border: none;
   border-radius: 4px;
   color: var(--bg-oled-black);
   font-weight: 600;
   font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: 0.03em;
+  transition: all 0.2s ease;
 }
 
 button:hover:not(:disabled) {

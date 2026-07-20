@@ -13,12 +13,18 @@ export class DashboardShellComponent implements OnInit {
   protected readonly authState = inject(AuthStateEngine);
 
   protected readonly archiveCategories = [
-    { label: 'Commercial Pop/Rock', query: 'Pop' },
-    { label: 'Electronic Streams', query: 'Electronic' },
-    { label: 'Soundtrack Archives', query: 'Soundtrack' },
-    { label: 'Independent Circles', query: 'Doujin' },
-    { label: 'Vocaloid Synthesis', query: 'Vocaloid' },
-    { label: 'Visual Novel Media', query: 'VNs' },
+    { label: 'All Albums', query: 'all', isAll: true, icon: 'apps' },
+    { label: 'Rock', query: 'Rock', isAll: false, icon: 'graphic_eq' },
+    { label: 'Pop', query: 'Pop', isAll: false, icon: 'music_note' },
+    { label: 'J-Pop', query: 'JPop', isAll: false, icon: 'headphones' },
+    { label: 'Electronic', query: 'Electronic', isAll: false, icon: 'equalizer' },
+    { label: 'Classical', query: 'Classical', isAll: false, icon: 'piano' },
+    { label: 'Game OST', query: 'GameOST', isAll: false, icon: 'sports_esports' },
+    { label: 'Anime', query: 'Anime', isAll: false, icon: 'tv' },
+    { label: 'Soundtrack', query: 'Soundtrack', isAll: false, icon: 'movie' },
+    { label: 'Doujin', query: 'Doujin', isAll: false, icon: 'groups' },
+    { label: 'Vocaloid', query: 'Vocaloid', isAll: false, icon: 'mic' },
+    { label: 'Visual Novels', query: 'VNs', isAll: false, icon: 'menu_book' },
   ];
 
   ngOnInit(): void {

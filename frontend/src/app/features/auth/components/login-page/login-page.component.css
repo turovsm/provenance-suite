@@ -22,8 +22,8 @@
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 440px;
-  padding: 3rem 2.5rem;
+  max-width: 420px;
+  padding: 2.5rem;
   background-color: var(--bg-surface-glass);
   border: 1px solid var(--border-fine-glass);
   border-radius: 8px;
@@ -33,30 +33,35 @@
 }
 
 .branding-header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
   text-align: center;
 }
 
 .vault-node-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   margin-bottom: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.6rem;
   background-color: rgba(56, 189, 248, 0.08);
   border: 1px solid rgba(56, 189, 248, 0.2);
-  border-radius: 2px;
+  border-radius: 4px;
   color: var(--accent-blue);
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
+}
+
+.header-icon {
+  font-size: 16px;
 }
 
 .branding-header h1 {
   font-size: 1.5rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .branding-header p {
@@ -64,19 +69,31 @@
   color: var(--text-muted);
 }
 
-.systemic-footer-metadata {
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.03);
+.auth-switch-link {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: rgba(255, 255, 255, 0.25);
-  letter-spacing: 0.05em;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
-.mono-hash {
-  color: rgba(56, 189, 248, 0.3);
+.link-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+
+.link-highlight:hover {
+  opacity: 0.8;
+}
+
+.arrow-icon {
+  font-size: 16px;
 }

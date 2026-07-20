@@ -3,9 +3,12 @@
 
   <div class="glass-isolation-card">
     <header class="branding-header">
-      <div class="vault-node-badge">NODE // CORE</div>
-      <h1>PROVENANCE VAULT</h1>
-      <p>Systemic Digital Asset Ledger Encryption Pipeline</p>
+      <div class="vault-node-badge">
+        <span class="material-symbols-outlined header-icon">library_music</span>
+        <span>PROVENANCE</span>
+      </div>
+      <h1>Sign In</h1>
+      <p>Access your music collection archive</p>
     </header>
 
     <app-login-form
@@ -14,9 +17,12 @@
       (submitted)="executeAuthenticationRequest($event)"
     />
 
-    <footer class="systemic-footer-metadata">
-      <div>SECURE TRACE ACCELERATION SYSTEM ENGAGED</div>
-      <div class="mono-hash">ALGORITHM // ARGON2ID_HMAC_SHA256</div>
-    </footer>
+    <div class="auth-switch-link">
+      <span>Don't have an account?</span>
+      <a routerLink="/register" class="link-highlight">
+        <span>Create Account</span>
+        <span class="material-symbols-outlined arrow-icon">arrow_forward</span>
+      </a>
+    </div>
   </div>
 </main>

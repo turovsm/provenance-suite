@@ -44,6 +44,26 @@ export class AuthStateEngine {
       });
   }
 
+  executeRegistrationSequence(email: string, password: string): void {
+    this.processingSignal.set(true);
+    this.activeErrorSignal.set(null);
+
+    this.repo
+      .register(email, password)
+      .pipe(
+        catchError((err) => {
+          const message = err.error?.detail || 'Account registration sequence failed.';
+          this.activeErrorSignal.set(message);
+          this.processingSignal.set(false);
+          return of(null);
+        }),
+      )
+      .subscribe((profile) => {
+        if (!profile) return;
+        this.executeLoginSequence(email, password);
+      });
+  }
+
   synchronizeProfileState(): void {
     this.repo
       .fetchIdentityProfile()

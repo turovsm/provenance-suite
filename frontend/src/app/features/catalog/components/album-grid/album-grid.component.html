@@ -1,0 +1,80 @@
+<div class="catalog-grid-layout">
+  <!-- Top Search & Filtering Header -->
+  <header class="grid-control-bar">
+    <div class="search-input-wrapper">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        [value]="state.searchQuery()"
+        (input)="handleSearchInput($event)"
+        placeholder="Search by title, circle, or folder..."
+        class="telemetry-search-input"
+      />
+    </div>
+
+    <div class="partition-indicator-badge">
+      {{ state.activeCategory() || 'All Categories' }}
+    </div>
+  </header>
+
+  <!-- Error Alert Banner -->
+  @if (state.error()) {
+    <div class="error-banner" role="alert">
+      <span class="material-symbols-outlined icon-alert">error</span>
+      <span>{{ state.error() }}</span>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (state.isLoading()) {
+    <div class="loading-state-overlay">
+      <span class="pulse-indicator">Loading albums...</span>
+    </div>
+  } @else {
+    <!-- Empty Catalog State -->
+    @if (!state.hasAlbums()) {
+      <div class="empty-state-card">
+        <span class="material-symbols-outlined empty-icon">library_music</span>
+        <h3>No Albums Found</h3>
+        <p>No albums match your search query or selected category.</p>
+      </div>
+    } @else {
+      <!-- Primary Responsive Album Grid -->
+      <div class="albums-responsive-grid">
+        @for (album of state.albums(); track album.id) {
+          <app-album-card
+            [album]="album"
+            [isSuperuser]="authState.identity()?.is_superuser ?? false"
+            (deleteRequested)="handleDeleteAlbum($event)"
+          />
+        }
+      </div>
+
+      <!-- Pagination Bar -->
+      <footer class="pagination-control-bar">
+        <button
+          (click)="handlePageChange(state.currentPage() - 1)"
+          [disabled]="state.currentPage() <= 1"
+          class="page-nav-btn"
+        >
+          <span class="material-symbols-outlined nav-arrow-icon">arrow_back</span>
+          <span>Previous</span>
+        </button>
+
+        <span class="page-telemetry-status">
+          Page {{ state.currentPage() }} of {{ state.totalPages() }} ({{ state.totalCount() }}
+          {{ state.totalCount() === 1 ? 'album' : 'albums' }})
+        </span>
+
+        <button
+          (click)="handlePageChange(state.currentPage() + 1)"
+          [disabled]="state.currentPage() >= state.totalPages()"
+          class="page-nav-btn"
+        >
+          <span>Next</span>
+          <span class="material-symbols-outlined nav-arrow-icon">arrow_forward</span>
+        </button>
+      </footer>
+    }
+  }
+</div>

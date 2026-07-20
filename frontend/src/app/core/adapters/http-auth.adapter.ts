@@ -15,6 +15,10 @@ export class HttpAuthAdapter implements AuthRepositoryPort {
     return this.http.post<TokenResponse>(`${this.endpoint}/auth/login`, { email, password });
   }
 
+  register(email: string, password: string): Observable<UserProfile> {
+    return this.http.post<UserProfile>(`${this.endpoint}/users`, { email, password });
+  }
+
   fetchIdentityProfile(): Observable<UserProfile> {
     return this.http.get<UserProfile>(`${this.endpoint}/users/me`);
   }
