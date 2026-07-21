@@ -11,13 +11,17 @@ anyio==4.14.2
     #   starlette
     #   watchfiles
 argon2-cffi==25.1.0
-    # via provenance-core-backend (pyproject.toml)
+    # via
+    #   provenance-core-backend (pyproject.toml)
+    #   minio
 argon2-cffi-bindings==25.1.0
     # via argon2-cffi
 async-timeout==5.0.1
     # via asyncpg
 asyncpg==0.29.0
     # via provenance-core-backend (pyproject.toml)
+certifi==2026.6.17
+    # via minio
 cffi==2.1.0
     # via
     #   argon2-cffi-bindings
@@ -40,8 +44,12 @@ mako==1.3.12
     # via alembic
 markupsafe==3.0.3
     # via mako
+minio==7.2.20
+    # via provenance-core-backend (pyproject.toml)
 pycparser==3.0
     # via cffi
+pycryptodome==3.23.0
+    # via minio
 pydantic==2.10.6
     # via
     #   provenance-core-backend (pyproject.toml)
@@ -70,6 +78,7 @@ typing-extensions==4.16.0
     #   alembic
     #   anyio
     #   fastapi
+    #   minio
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
@@ -79,6 +88,8 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic-settings
+urllib3==2.7.0
+    # via minio
 uvicorn==0.51.0
     # via provenance-core-backend (pyproject.toml)
 uvloop==0.22.1

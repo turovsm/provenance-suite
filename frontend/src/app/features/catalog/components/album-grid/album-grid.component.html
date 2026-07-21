@@ -12,8 +12,17 @@
       />
     </div>
 
-    <div class="partition-indicator-badge">
-      {{ state.activeCategory() || 'All Categories' }}
+    <div class="header-right-cluster">
+      <div class="partition-indicator-badge">
+        {{ state.activeCategory() || 'All Categories' }}
+      </div>
+
+      @if (authState.identity()?.is_superuser) {
+        <button (click)="openAddModal()" class="admin-add-btn" title="Add New Album">
+          <span class="material-symbols-outlined btn-icon">add</span>
+          <span>Add Album</span>
+        </button>
+      }
     </div>
   </header>
 
@@ -76,5 +85,10 @@
         </button>
       </footer>
     }
+  }
+
+  <!-- Admin Ingestion Form Modal -->
+  @if (isAddModalOpen) {
+    <app-album-form-modal (closed)="closeAddModal()" />
   }
 </div>

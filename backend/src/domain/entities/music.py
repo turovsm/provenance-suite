@@ -45,6 +45,13 @@ class AlbumArtist:
 
 
 @dataclass(slots=True)
+class TrackArtist:
+    track_id: uuid.UUID
+    artist_id: uuid.UUID
+    role: str
+
+
+@dataclass(slots=True)
 class Track:
     id: uuid.UUID
     disc_id: uuid.UUID
@@ -58,6 +65,7 @@ class Track:
     sample_rate: int | None
     bitrate_kbps: int | None
     bitrate_mode: BitrateMode | None
+    artists: list[Artist] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -77,7 +85,7 @@ class Disc:
 class AlbumCover:
     id: uuid.UUID
     album_id: uuid.UUID
-    image_data: bytes
+    storage_path: str
     mime_type: str
     width: int
     height: int
@@ -99,6 +107,7 @@ class AlbumArchive:
     archive_name: str
     encryption_password: str
     file_size_bytes: int | None
+    hash_sha256: str | None = None
     links: list[ArchiveLink] = field(default_factory=list)
 
 
@@ -117,10 +126,14 @@ class Album:
     title_original: str
     title_translated: str | None
     release_date: date | None
-    event_id: uuid.UUID | None
-    franchise_id: uuid.UUID | None
-    library_category: LibraryCategory
-    original_folder_name: str
+    label: str | None = None
+    publisher: str | None = None
+    event_id: uuid.UUID | None = None
+    franchise_id: uuid.UUID | None = None
+    categories: list[LibraryCategory] = field(default_factory=list)
+    storage_drive: str | None = None
+    relative_path: str | None = None
+    original_folder_name: str = ""
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

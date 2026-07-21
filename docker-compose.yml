@@ -17,6 +17,27 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    container_name: provenance_minio_dev
+    restart: unless-stopped
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+    volumes:
+      - minio_dev_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_dev_data:
+    driver: local
+  minio_dev_data:
     driver: local

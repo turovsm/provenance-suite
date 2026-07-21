@@ -5,12 +5,13 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumStateEngine } from '../../state/album.state';
 import { AlbumCardComponent } from '../album-card/album-card.component';
+import { AlbumFormModalComponent } from '../album-form-modal/album-form-modal.component';
 import { LibraryCategory } from '../../../../domain/models/music.model';
 
 @Component({
   selector: 'app-album-grid',
   standalone: true,
-  imports: [AlbumCardComponent],
+  imports: [AlbumCardComponent, AlbumFormModalComponent],
   styleUrls: ['./album-grid.component.css'],
   templateUrl: './album-grid.component.html',
 })
@@ -19,19 +20,18 @@ export class AlbumGridComponent implements OnInit, OnDestroy {
   protected readonly authState = inject(AuthStateEngine);
   private readonly route = inject(ActivatedRoute);
 
-  // RxJS pipeline for 300ms search input debouncing
+  protected isAddModalOpen = false;
+
   private readonly searchInput$ = new Subject<string>();
   private searchSubscription?: Subscription;
 
   ngOnInit(): void {
-    // 300ms Debounce pipeline prevents excessive API queries during rapid typing
     this.searchSubscription = this.searchInput$
       .pipe(debounceTime(300), distinctUntilChanged())
       .subscribe((term) => {
         this.state.setSearchQuery(term);
       });
 
-    // React to route parameter changes
     this.route.params.subscribe((params) => {
       const categoryParam = params['category'] as string | undefined;
 
@@ -58,5 +58,13 @@ export class AlbumGridComponent implements OnInit, OnDestroy {
 
   protected handleDeleteAlbum(albumId: string): void {
     this.state.deleteAlbum(albumId);
+  }
+
+  protected openAddModal(): void {
+    this.isAddModalOpen = true;
+  }
+
+  protected closeAddModal(): void {
+    this.isAddModalOpen = false;
   }
 }

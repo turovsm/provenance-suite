@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.use_cases.delete_album import (
@@ -27,6 +27,7 @@ from src.application.use_cases.list_albums import (
 from src.domain.value_objects.music_types import LibraryCategory
 from src.infrastructure.db.repositories.album import SqlAlchemyAlbumRepository
 from src.infrastructure.db.session import get_async_database_session
+from src.infrastructure.storage.object_storage import MinioObjectStorageService
 from src.presentation.api.dependencies import get_current_active_user, get_current_superuser
 from src.presentation.schemas.music import (
     AlbumDetailResponseSchema,
@@ -45,14 +46,11 @@ from src.presentation.schemas.music import (
 router = APIRouter(prefix="/albums", tags=["Preservation Metadata Engine"])
 
 
-# --- Admin-Only Mutative Endpoints (RBAC: get_current_superuser) ---
-
-
 @router.post(
     "",
     response_model=AlbumIngestResponseSchema,
     status_code=status.HTTP_201_CREATED,
-    summary="[Admin] Ingest a fully formed high-fidelity multi-disc metadata aggregate graph node.",
+    summary="[Admin] Ingest album aggregate root with MinIO cover upload.",
 )
 async def ingest_album_endpoint(
     payload: AlbumIngestRequestSchema,
@@ -60,7 +58,8 @@ async def ingest_album_endpoint(
     _superuser=Depends(get_current_superuser),
 ) -> AlbumIngestResponseSchema:
     album_repository = SqlAlchemyAlbumRepository(session)
-    use_case = IngestAlbumUseCase(album_repository)
+    storage_service = MinioObjectStorageService()
+    use_case = IngestAlbumUseCase(album_repository, storage_service)
 
     use_case_discs = [
         DiscIngestDTO(
@@ -80,6 +79,7 @@ async def ingest_album_endpoint(
             archive_name=a.archive_name,
             encryption_password=a.encryption_password,
             file_size_bytes=a.file_size_bytes,
+            hash_sha256=a.hash_sha256,
             links=[ArchiveLinkIngestDTO(**lnk.model_dump()) for lnk in a.links],
         )
         for a in payload.archives
@@ -100,10 +100,14 @@ async def ingest_album_endpoint(
 
     use_case_request = IngestAlbumRequest(
         title_original=payload.title_original,
-        library_category=payload.library_category,
+        categories=payload.categories,
         original_folder_name=payload.original_folder_name,
+        storage_drive=payload.storage_drive,
+        relative_path=payload.relative_path,
         title_translated=payload.title_translated,
         release_date=payload.release_date,
+        label=payload.label,
+        publisher=payload.publisher,
         event_id=payload.event_id,
         franchise_id=payload.franchise_id,
         discs=use_case_discs,
@@ -130,6 +134,39 @@ async def ingest_album_endpoint(
         ) from exc
 
 
+@router.get(
+    "/{album_id}/cover",
+    status_code=status.HTTP_200_OK,
+    summary="[User/Admin] Stream raw cover image bytes from MinIO Object Storage.",
+)
+async def get_album_cover_endpoint(
+    album_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+) -> Response:
+    album_repository = SqlAlchemyAlbumRepository(session)
+    album = await album_repository.find_by_id(album_id)
+
+    if album is None or album.cover is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cover art image not found for the specified album.",
+        )
+
+    storage_service = MinioObjectStorageService()
+    try:
+        data, mime_type = await storage_service.get_cover(album.cover.storage_path)
+        return Response(
+            content=data,
+            media_type=mime_type,
+            headers={"Cache-Control": "public, max-age=31536000"},
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve image frame from object storage.",
+        ) from exc
+
+
 @router.delete(
     "/{album_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -141,8 +178,13 @@ async def delete_album_endpoint(
     _superuser=Depends(get_current_superuser),
 ) -> None:
     album_repository = SqlAlchemyAlbumRepository(session)
-    use_case = DeleteAlbumUseCase(album_repository)
+    album = await album_repository.find_by_id(album_id)
 
+    if album and album.cover:
+        storage_service = MinioObjectStorageService()
+        await storage_service.delete_cover(album.cover.storage_path)
+
+    use_case = DeleteAlbumUseCase(album_repository)
     try:
         await use_case.execute(DeleteAlbumRequest(album_id=album_id))
         await session.commit()
@@ -155,9 +197,6 @@ async def delete_album_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unexpected error occurred during album deletion.",
         ) from exc
-
-
-# --- User & Admin Read Endpoints (RBAC: get_current_active_user) ---
 
 
 @router.get(
@@ -188,7 +227,9 @@ async def list_albums_endpoint(
             title_original=album.title_original,
             title_translated=album.title_translated,
             release_date=album.release_date,
-            library_category=album.library_category,
+            label=album.label,
+            publisher=album.publisher,
+            categories=album.categories,
             original_folder_name=album.original_folder_name,
             total_discs=len(album.discs),
             has_cover=album.cover is not None,
@@ -255,6 +296,7 @@ async def get_album_detail_endpoint(
             archive_name=a.archive_name,
             encryption_password=a.encryption_password,
             file_size_bytes=a.file_size_bytes,
+            hash_sha256=a.hash_sha256,
             links=[
                 ArchiveLinkResponseSchema(
                     id=lnk.id,
@@ -283,7 +325,9 @@ async def get_album_detail_endpoint(
         title_original=album.title_original,
         title_translated=album.title_translated,
         release_date=album.release_date,
-        library_category=album.library_category,
+        label=album.label,
+        publisher=album.publisher,
+        categories=album.categories,
         original_folder_name=album.original_folder_name,
         discs=discs_dto,
         archives=archives_dto,

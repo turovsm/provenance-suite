@@ -10,7 +10,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    LargeBinary,
     String,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -67,6 +66,24 @@ class ArtistModel(BaseInfrastructureModel):
     album_associations: Mapped[list["AlbumArtistModel"]] = relationship(
         "AlbumArtistModel", back_populates="artist", cascade="all, delete-orphan"
     )
+    track_associations: Mapped[list["TrackArtistModel"]] = relationship(
+        "TrackArtistModel", back_populates="artist", cascade="all, delete-orphan"
+    )
+
+
+class AlbumCategoryModel(BaseInfrastructureModel):
+    """Many-to-Many junction mapping albums to multiple categories."""
+
+    __tablename__ = "album_categories"
+
+    album_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("albums.id", ondelete="CASCADE"), primary_key=True
+    )
+    category: Mapped[LibraryCategory] = mapped_column(
+        Enum(LibraryCategory, native_enum=True), primary_key=True
+    )
+
+    album: Mapped["AlbumModel"] = relationship("AlbumModel", back_populates="category_associations")
 
 
 class AlbumArtistModel(BaseInfrastructureModel):
@@ -86,6 +103,23 @@ class AlbumArtistModel(BaseInfrastructureModel):
     artist: Mapped["ArtistModel"] = relationship("ArtistModel", back_populates="album_associations")
 
 
+class TrackArtistModel(BaseInfrastructureModel):
+    """Per-track artist associations."""
+
+    __tablename__ = "track_artists"
+
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    artist_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("artists.id", ondelete="RESTRICT"), primary_key=True
+    )
+    role: Mapped[str] = mapped_column(String(64), default="Composer", primary_key=True)
+
+    track: Mapped["TrackModel"] = relationship("TrackModel", back_populates="artist_associations")
+    artist: Mapped["ArtistModel"] = relationship("ArtistModel", back_populates="track_associations")
+
+
 class AlbumModel(BaseInfrastructureModel):
     """Welp, albums ig."""
 
@@ -95,20 +129,25 @@ class AlbumModel(BaseInfrastructureModel):
     title_original: Mapped[str] = mapped_column(String(512), nullable=False)
     title_translated: Mapped[str | None] = mapped_column(String(512), nullable=True)
     release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    publisher: Mapped[str | None] = mapped_column(String(255), nullable=True)
     event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("events.id", ondelete="SET NULL"), nullable=True
     )
     franchise_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("franchises.id", ondelete="SET NULL"), nullable=True
     )
-    library_category: Mapped[LibraryCategory] = mapped_column(
-        Enum(LibraryCategory, native_enum=True), nullable=False
-    )
+
+    storage_drive: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    relative_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     original_folder_name: Mapped[str] = mapped_column(String(1024), nullable=False)
 
     event: Mapped["EventModel | None"] = relationship("EventModel", back_populates="albums")
     franchise: Mapped["FranchiseModel | None"] = relationship(
         "FranchiseModel", back_populates="albums"
+    )
+    category_associations: Mapped[list["AlbumCategoryModel"]] = relationship(
+        "AlbumCategoryModel", back_populates="album", cascade="all, delete-orphan"
     )
     artist_associations: Mapped[list["AlbumArtistModel"]] = relationship(
         "AlbumArtistModel", back_populates="album", cascade="all, delete-orphan"
@@ -128,7 +167,6 @@ class AlbumModel(BaseInfrastructureModel):
 
     __table_args__ = (
         Index("idx_albums_release_date_desc", release_date.desc()),
-        Index("idx_albums_library_category", library_category),
         Index("idx_albums_folder_name", original_folder_name),
     )
 
@@ -190,6 +228,9 @@ class TrackModel(BaseInfrastructureModel):
     )
 
     disc: Mapped["DiscModel"] = relationship("DiscModel", back_populates="tracks")
+    artist_associations: Mapped[list["TrackArtistModel"]] = relationship(
+        "TrackArtistModel", back_populates="track", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint("track_number > 0", name="chk_track_number_positive"),
@@ -206,7 +247,7 @@ class AlbumCoverModel(BaseInfrastructureModel):
     album_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("albums.id", ondelete="CASCADE"), unique=True, nullable=False
     )
-    image_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(64), default="image/jpeg", nullable=False)
     width: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     height: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
@@ -226,6 +267,7 @@ class AlbumArchiveModel(BaseInfrastructureModel):
     archive_name: Mapped[str] = mapped_column(String(512), nullable=False)
     encryption_password: Mapped[str] = mapped_column(String(512), nullable=False)
     file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    hash_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     album: Mapped["AlbumModel"] = relationship("AlbumModel", back_populates="archives")
     links: Mapped[list["ArchiveLinkModel"]] = relationship(

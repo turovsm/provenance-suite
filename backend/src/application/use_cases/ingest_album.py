@@ -21,6 +21,7 @@ from src.domain.value_objects.music_types import (
     MediaType,
     VideoCodec,
 )
+from src.infrastructure.storage.object_storage import MinioObjectStorageService
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +61,7 @@ class ArchiveIngestDTO:
     archive_name: str
     encryption_password: str
     file_size_bytes: int | None = None
+    hash_sha256: str | None = None
     links: list[ArchiveLinkIngestDTO] = field(default_factory=list)
 
 
@@ -81,10 +83,14 @@ class CoverIngestDTO:
 @dataclass(frozen=True, slots=True)
 class IngestAlbumRequest:
     title_original: str
-    library_category: LibraryCategory
+    categories: list[LibraryCategory]
     original_folder_name: str
     title_translated: str | None = None
     release_date: date | None = None
+    label: str | None = None
+    publisher: str | None = None
+    storage_drive: str | None = None
+    relative_path: str | None = None
     event_id: uuid.UUID | None = None
     franchise_id: uuid.UUID | None = None
     discs: list[DiscIngestDTO] = field(default_factory=list)
@@ -102,8 +108,13 @@ class IngestAlbumResponse:
 
 
 class IngestAlbumUseCase:
-    def __init__(self, album_repo: AlbumRepository) -> None:
+    def __init__(
+        self,
+        album_repo: AlbumRepository,
+        storage_service: MinioObjectStorageService | None = None,
+    ) -> None:
         self._album_repo = album_repo
+        self._storage_service = storage_service or MinioObjectStorageService()
 
     async def execute(self, request: IngestAlbumRequest) -> IngestAlbumResponse:
         album_id = uuid.uuid4()
@@ -169,6 +180,7 @@ class IngestAlbumUseCase:
                     archive_name=archive_dto.archive_name,
                     encryption_password=archive_dto.encryption_password,
                     file_size_bytes=archive_dto.file_size_bytes,
+                    hash_sha256=archive_dto.hash_sha256,
                     links=domain_links,
                 )
             )
@@ -188,10 +200,16 @@ class IngestAlbumUseCase:
         # 4. Map binary cover art preview frames
         domain_cover = None
         if request.cover:
+            object_key = f"covers/{album_id}.jpg"
+            storage_path = await self._storage_service.upload_cover(
+                object_key=object_key,
+                data=request.cover.image_data,
+                mime_type=request.cover.mime_type,
+            )
             domain_cover = AlbumCover(
                 id=uuid.uuid4(),
                 album_id=album_id,
-                image_data=request.cover.image_data,
+                storage_path=storage_path,
                 mime_type=request.cover.mime_type,
                 width=request.cover.width,
                 height=request.cover.height,
@@ -205,7 +223,9 @@ class IngestAlbumUseCase:
             release_date=request.release_date,
             event_id=request.event_id,
             franchise_id=request.franchise_id,
-            library_category=request.library_category,
+            categories=request.categories,
+            storage_drive=request.storage_drive,
+            relative_path=request.relative_path,
             original_folder_name=request.original_folder_name,
             discs=domain_discs,
             archives=domain_archives,

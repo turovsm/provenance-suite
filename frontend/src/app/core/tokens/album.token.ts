@@ -1,6 +1,11 @@
 import { InjectionToken } from '@angular/core';
 import { Observable } from 'rxjs';
-import { LibraryCategory, PaginatedAlbumsResponse } from '../../domain/models/music.model';
+import {
+  AlbumIngestRequest,
+  AlbumIngestResponse,
+  LibraryCategory,
+  PaginatedAlbumsResponse,
+} from '../../domain/models/music.model';
 
 export interface AlbumRepositoryPort {
   fetchAlbums(
@@ -9,6 +14,7 @@ export interface AlbumRepositoryPort {
     limit?: number,
     offset?: number,
   ): Observable<PaginatedAlbumsResponse>;
+  ingestAlbum(payload: AlbumIngestRequest): Observable<AlbumIngestResponse>;
   deleteAlbum(albumId: string): Observable<void>;
 }
 

@@ -1,0 +1,648 @@
+<div
+  class="modal-backdrop"
+  role="button"
+  tabindex="0"
+  (click)="handleBackdropClick($event)"
+  (keydown.escape)="closeModal()"
+>
+  <div class="glass-modal-panel">
+    <header class="modal-header">
+      <div class="modal-title-group">
+        <span class="material-symbols-outlined header-icon">add_circle</span>
+        <h2>Add New Album</h2>
+      </div>
+      <button type="button" (click)="closeModal()" class="close-btn" title="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
+      <div class="form-scroll-area">
+        <!-- Section: Basic Information -->
+        <section class="form-section">
+          <h3 class="section-heading">Basic Metadata</h3>
+
+          <div class="field-group">
+            <label for="title_original">ORIGINAL TITLE *</label>
+            <input
+              id="title_original"
+              type="text"
+              formControlName="title_original"
+              placeholder="e.g. Alternative Works Vol.1"
+            />
+          </div>
+
+          <div class="field-group" role="group" aria-labelledby="categories-matrix-legend">
+            <span id="categories-matrix-legend" class="field-label"
+              >CATEGORIES * (Select all that apply)</span
+            >
+            <div class="categories-chip-grid">
+              @for (cat of categoriesList; track cat) {
+                <button
+                  type="button"
+                  (click)="toggleCategory(cat)"
+                  class="category-chip"
+                  [class.chip-active]="isCategorySelected(cat)"
+                >
+                  {{ cat }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field-group flex-2">
+              <label for="title_translated">TRANSLATED TITLE</label>
+              <input
+                id="title_translated"
+                type="text"
+                formControlName="title_translated"
+                placeholder="Optional English Title"
+              />
+            </div>
+
+            <div class="field-group flex-1">
+              <label for="release_date">RELEASE DATE</label>
+              <input id="release_date" type="date" formControlName="release_date" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field-group flex-1">
+              <label for="label_input">RECORD LABEL</label>
+              <input
+                id="label_input"
+                type="text"
+                formControlName="label"
+                placeholder="e.g. Lantis / Sacra Music"
+              />
+            </div>
+
+            <div class="field-group flex-1">
+              <label for="publisher_input">PUBLISHER / DISTRIBUTOR</label>
+              <input
+                id="publisher_input"
+                type="text"
+                formControlName="publisher"
+                placeholder="e.g. Bandai Namco Music Live"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field-group flex-1">
+              <label for="storage_drive">STORAGE MOUNT DISK / DRIVE</label>
+              <input
+                id="storage_drive"
+                type="text"
+                formControlName="storage_drive"
+                placeholder="e.g. NAS-01 / Cold-Drive-E"
+              />
+            </div>
+
+            <div class="field-group flex-2">
+              <label for="relative_path">RELATIVE STORAGE PATH</label>
+              <input
+                id="relative_path"
+                type="text"
+                formControlName="relative_path"
+                placeholder="e.g. Music/Archived/Rock/[2026] Release/"
+              />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="original_folder_name">ORIGINAL FOLDER NAME *</label>
+            <input
+              id="original_folder_name"
+              type="text"
+              formControlName="original_folder_name"
+              placeholder="e.g. [Circle] Album Title [FLAC]"
+            />
+          </div>
+
+          <div class="field-group">
+            <label for="cover-file-input">COVER ART IMAGE</label>
+            <div class="file-upload-box">
+              <input
+                type="file"
+                (change)="handleCoverSelected($event)"
+                accept="image/jpeg,image/png"
+                id="cover-file-input"
+              />
+              <label for="cover-file-input" class="file-upload-label">
+                <span class="material-symbols-outlined">image</span>
+                <span>{{ coverBase64 ? 'Cover image selected' : 'Upload Jpeg/Png Image' }}</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Discs and Tracks -->
+        <section class="form-section" formArrayName="discs">
+          <div class="section-header-row">
+            <h3 class="section-heading">Discs & Tracklists</h3>
+            <button type="button" (click)="addDisc()" class="add-sub-btn">
+              <span class="material-symbols-outlined">add</span>
+              <span>Add Disc</span>
+            </button>
+          </div>
+
+          @for (disc of discs.controls; track $index; let dIdx = $index) {
+            <div [formGroupName]="dIdx" class="sub-card">
+              <div class="sub-card-header">
+                <span class="sub-card-title">Disc {{ dIdx + 1 }} Configuration</span>
+                @if (discs.length > 1) {
+                  <button
+                    type="button"
+                    (click)="removeDisc(dIdx)"
+                    class="remove-btn"
+                    title="Remove Disc"
+                  >
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                }
+              </div>
+
+              <div class="form-row-grid">
+                <!-- Field: Media Type -->
+                <div class="field-group">
+                  <label>MEDIA TYPE</label>
+                  <div class="custom-dropdown-container">
+                    <div
+                      class="custom-dropdown-trigger"
+                      (click)="toggleDropdown('d-media-' + dIdx, $event)"
+                    >
+                      <span>{{ disc.get('media_type')?.value }}</span>
+                      <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
+                    </div>
+                    @if (activeDropdownId() === 'd-media-' + dIdx) {
+                      <div class="custom-dropdown-overlay">
+                        @for (type of mediaTypes; track type) {
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="disc.get('media_type')?.value === type"
+                            (click)="selectControlValue(disc.get('media_type'), type)"
+                          >
+                            {{ type }}
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Field: Container Format -->
+                <div class="field-group">
+                  <label>CONTAINER FORMAT</label>
+                  <div class="custom-dropdown-container">
+                    <div
+                      class="custom-dropdown-trigger"
+                      (click)="toggleDropdown('d-container-' + dIdx, $event)"
+                    >
+                      <span>{{ disc.get('container_format')?.value }}</span>
+                      <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
+                    </div>
+                    @if (activeDropdownId() === 'd-container-' + dIdx) {
+                      <div class="custom-dropdown-overlay">
+                        @for (fmt of containerFormats; track fmt) {
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="disc.get('container_format')?.value === fmt"
+                            (click)="selectControlValue(disc.get('container_format'), fmt)"
+                          >
+                            {{ fmt }}
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label [for]="'catalog_number_' + dIdx">CATALOG NO.</label>
+                  <input
+                    [id]="'catalog_number_' + dIdx"
+                    type="text"
+                    formControlName="catalog_number"
+                    placeholder="e.g. ABCD-0001"
+                  />
+                </div>
+
+                <!-- Field: Ripper Log Type -->
+                <div class="field-group">
+                  <label>RIPPER LOG TYPE</label>
+                  <div class="custom-dropdown-container">
+                    <div
+                      class="custom-dropdown-trigger"
+                      (click)="toggleDropdown('d-logtype-' + dIdx, $event)"
+                    >
+                      <span>{{ disc.get('log_type')?.value || 'None / Unlogged' }}</span>
+                      <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
+                    </div>
+                    @if (activeDropdownId() === 'd-logtype-' + dIdx) {
+                      <div class="custom-dropdown-overlay">
+                        <div
+                          class="custom-dropdown-option"
+                          [class.option-selected]="!disc.get('log_type')?.value"
+                          (click)="selectControlValue(disc.get('log_type'), '')"
+                        >
+                          None / Unlogged
+                        </div>
+                        @for (lt of logTypes; track lt) {
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="disc.get('log_type')?.value === lt"
+                            (click)="selectControlValue(disc.get('log_type'), lt)"
+                          >
+                            {{ lt }}
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Field: Log Score (Unbound minimum values) -->
+                <div class="field-group">
+                  <label [for]="'log_score_' + dIdx">LOG SCORE</label>
+                  <input
+                    [id]="'log_score_' + dIdx"
+                    type="number"
+                    formControlName="log_score"
+                    placeholder="100"
+                    max="100"
+                  />
+                </div>
+              </div>
+
+              <!-- Tracks Core Matrix Layout Sub-Array -->
+              <div class="tracks-container" formArrayName="tracks">
+                <div class="tracks-header">
+                  <span class="sub-section-subtitle">Track Matrix Entries</span>
+                  <button type="button" (click)="addTrack(dIdx)" class="add-text-btn">
+                    + Add Track
+                  </button>
+                </div>
+
+                @for (track of getTracks(dIdx).controls; track $index; let tIdx = $index) {
+                  <div [formGroupName]="tIdx" class="track-matrix-row">
+                    <span class="track-index">{{ tIdx + 1 }}</span>
+
+                    <input
+                      type="text"
+                      formControlName="title_original"
+                      placeholder="Original Title *"
+                      class="flex-expand"
+                      aria-label="Track Original Title"
+                    />
+
+                    <input
+                      type="text"
+                      formControlName="title_translated"
+                      placeholder="Translated Title"
+                      class="flex-expand"
+                      aria-label="Track Translated Title"
+                    />
+
+                    <input
+                      type="number"
+                      formControlName="duration_seconds"
+                      placeholder="Duration (s)"
+                      class="w-80"
+                      aria-label="Duration in seconds"
+                    />
+
+                    <!-- Field: Audio Codec -->
+                    <div class="custom-dropdown-container w-100">
+                      <div
+                        class="custom-dropdown-trigger input-dense"
+                        (click)="toggleDropdown('t-audio-' + dIdx + '-' + tIdx, $event)"
+                      >
+                        <span>{{ track.get('audio_codec')?.value }}</span>
+                      </div>
+                      @if (activeDropdownId() === 't-audio-' + dIdx + '-' + tIdx) {
+                        <div class="custom-dropdown-overlay list-dense">
+                          @for (codec of audioCodecs; track codec) {
+                            <div
+                              class="custom-dropdown-option"
+                              [class.option-selected]="track.get('audio_codec')?.value === codec"
+                              (click)="selectControlValue(track.get('audio_codec'), codec)"
+                            >
+                              {{ codec }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Field: Video Codec -->
+                    <div class="custom-dropdown-container w-100">
+                      <div
+                        class="custom-dropdown-trigger input-dense"
+                        (click)="toggleDropdown('t-video-' + dIdx + '-' + tIdx, $event)"
+                      >
+                        <span>{{ track.get('video_codec')?.value || 'No Video' }}</span>
+                      </div>
+                      @if (activeDropdownId() === 't-video-' + dIdx + '-' + tIdx) {
+                        <div class="custom-dropdown-overlay list-dense">
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="!track.get('video_codec')?.value"
+                            (click)="selectControlValue(track.get('video_codec'), '')"
+                          >
+                            No Video
+                          </div>
+                          @for (vcodec of videoCodecs; track vcodec) {
+                            <div
+                              class="custom-dropdown-option"
+                              [class.option-selected]="track.get('video_codec')?.value === vcodec"
+                              (click)="selectControlValue(track.get('video_codec'), vcodec)"
+                            >
+                              {{ vcodec }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <input
+                      type="number"
+                      formControlName="bit_depth"
+                      placeholder="Bits"
+                      class="w-60"
+                      aria-label="Bit depth"
+                    />
+
+                    <input
+                      type="number"
+                      formControlName="sample_rate"
+                      placeholder="Hz"
+                      class="w-70"
+                      aria-label="Sample rate"
+                    />
+
+                    <input
+                      type="number"
+                      formControlName="bitrate_kbps"
+                      placeholder="Kbps"
+                      class="w-70"
+                      aria-label="Bitrate"
+                    />
+
+                    <!-- Field: Bitrate Mode -->
+                    <div class="custom-dropdown-container w-80">
+                      <div
+                        class="custom-dropdown-trigger input-dense"
+                        (click)="toggleDropdown('t-brmode-' + dIdx + '-' + tIdx, $event)"
+                      >
+                        <span>{{ track.get('bitrate_mode')?.value || 'N/A' }}</span>
+                      </div>
+                      @if (activeDropdownId() === 't-brmode-' + dIdx + '-' + tIdx) {
+                        <div class="custom-dropdown-overlay list-dense">
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="!track.get('bitrate_mode')?.value"
+                            (click)="selectControlValue(track.get('bitrate_mode'), '')"
+                          >
+                            N/A
+                          </div>
+                          @for (mode of bitrateModes; track mode) {
+                            <div
+                              class="custom-dropdown-option"
+                              [class.option-selected]="track.get('bitrate_mode')?.value === mode"
+                              (click)="selectControlValue(track.get('bitrate_mode'), mode)"
+                            >
+                              {{ mode }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    @if (getTracks(dIdx).length > 1) {
+                      <button
+                        type="button"
+                        (click)="removeTrack(dIdx, tIdx)"
+                        class="icon-only-btn"
+                        title="Remove Track"
+                      >
+                        <span class="material-symbols-outlined">remove_circle_outline</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Section: Cloud Archives -->
+        <section class="form-section" formArrayName="archives">
+          <div class="section-header-row">
+            <h3 class="section-heading">Cloud Distributed Mirrors</h3>
+            <button type="button" (click)="addArchive()" class="add-sub-btn">
+              <span class="material-symbols-outlined">add</span>
+              <span>Add Archive Split</span>
+            </button>
+          </div>
+
+          @for (archive of archives.controls; track $index; let aIdx = $index) {
+            <div [formGroupName]="aIdx" class="sub-card">
+              <div class="sub-card-header">
+                <span class="sub-card-title">Archive Split Volume #{{ aIdx + 1 }}</span>
+                <button
+                  type="button"
+                  (click)="removeArchive(aIdx)"
+                  class="remove-btn"
+                  title="Remove Volume Split"
+                >
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+
+              <div class="form-row-grid">
+                <div class="field-group flex-2">
+                  <label [for]="'archive_name_' + aIdx">FILENAME *</label>
+                  <input
+                    [id]="'archive_name_' + aIdx"
+                    type="text"
+                    formControlName="archive_name"
+                    placeholder="e.g. provenance_v1.7z.001"
+                  />
+                </div>
+                <div class="field-group">
+                  <label [for]="'encryption_password_' + aIdx">ARCHIVE PASSWORD</label>
+                  <input
+                    [id]="'encryption_password_' + aIdx"
+                    type="text"
+                    formControlName="encryption_password"
+                    placeholder="Extraction key"
+                  />
+                </div>
+                <div class="field-group">
+                  <label [for]="'file_size_bytes_' + aIdx">SIZE IN BYTES</label>
+                  <input
+                    [id]="'file_size_bytes_' + aIdx"
+                    type="number"
+                    formControlName="file_size_bytes"
+                    placeholder="Total bytes"
+                  />
+                </div>
+                <div class="field-group flex-2">
+                  <label [for]="'hash_sha256_' + aIdx">SHA-256 HASH VERIFICATION CHECKSUM</label>
+                  <input
+                    [id]="'hash_sha256_' + aIdx"
+                    type="text"
+                    formControlName="hash_sha256"
+                    placeholder="Hex string checksum"
+                    maxlength="64"
+                  />
+                </div>
+              </div>
+
+              <!-- Mirrors Link Providers Nested Form Sub-Matrix Array -->
+              <div class="tracks-container" formArrayName="links">
+                <div class="tracks-header">
+                  <span class="sub-section-subtitle">Mirror Fetch Pointers</span>
+                  <button type="button" (click)="addArchiveLink(aIdx)" class="add-text-btn">
+                    + Add Mirror Pointer
+                  </button>
+                </div>
+
+                @for (link of getArchiveLinks(aIdx).controls; track $index; let lIdx = $index) {
+                  <div [formGroupName]="lIdx" class="track-row">
+                    <input
+                      type="text"
+                      formControlName="provider_name"
+                      placeholder="Provider Name (e.g. Mega / GDrive)"
+                      class="flex-1"
+                      aria-label="Provider Name"
+                    />
+                    <input
+                      type="url"
+                      formControlName="download_url"
+                      placeholder="Mirror HTTPS Download Connection Pointer URL"
+                      class="flex-3"
+                      aria-label="Download URL"
+                    />
+
+                    <!-- Field: Mirror Active Node Status toggle -->
+                    <div class="custom-dropdown-container w-80">
+                      <div
+                        class="custom-dropdown-trigger input-dense"
+                        (click)="toggleDropdown('a-status-' + aIdx + '-' + lIdx, $event)"
+                      >
+                        <span>{{ link.get('is_active')?.value ? 'Active' : 'Dead' }}</span>
+                      </div>
+                      @if (activeDropdownId() === 'a-status-' + aIdx + '-' + lIdx) {
+                        <div class="custom-dropdown-overlay list-dense">
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="link.get('is_active')?.value === true"
+                            (click)="selectControlValue(link.get('is_active'), true)"
+                          >
+                            Active
+                          </div>
+                          <div
+                            class="custom-dropdown-option"
+                            [class.option-selected]="link.get('is_active')?.value === false"
+                            (click)="selectControlValue(link.get('is_active'), false)"
+                          >
+                            Dead
+                          </div>
+                        </div>
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      (click)="removeArchiveLink(aIdx, lIdx)"
+                      class="icon-only-btn"
+                      title="Remove Link"
+                    >
+                      <span class="material-symbols-outlined">remove_circle_outline</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Section: External Database Indexes Crosslinks -->
+        <section class="form-section" formArrayName="external_links">
+          <div class="section-header-row">
+            <h3 class="section-heading">External Index Cross-References</h3>
+            <button type="button" (click)="addExternalLink()" class="add-sub-btn">
+              <span class="material-symbols-outlined">add</span>
+              <span>Add Index Ref</span>
+            </button>
+          </div>
+
+          @if (externalLinks.length === 0) {
+            <div class="empty-sub-notice">
+              No external index cross-reference parameters declared.
+            </div>
+          }
+
+          @for (link of externalLinks.controls; track $index; let elIdx = $index) {
+            <div [formGroupName]="elIdx" class="track-row-standalone sub-card">
+              <div class="track-row">
+                <input
+                  type="text"
+                  formControlName="site_name"
+                  placeholder="Database Authority (e.g. VGMdb / MusicBrainz)"
+                  class="flex-1"
+                  aria-label="Site Authority Name"
+                />
+                <input
+                  type="url"
+                  formControlName="url"
+                  placeholder="HTTPS Index Core Tracking Resource URL"
+                  class="flex-3"
+                  aria-label="Resource Index URL"
+                />
+                <input
+                  type="text"
+                  formControlName="remote_item_id"
+                  placeholder="ID / Reference Pointer"
+                  class="flex-1"
+                  aria-label="Remote Item ID"
+                />
+                <button
+                  type="button"
+                  (click)="removeExternalLink(elIdx)"
+                  class="remove-btn"
+                  title="Remove External Reference"
+                >
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+      </div>
+
+      <footer class="modal-footer">
+        @if (state.error()) {
+          <div class="inline-error">{{ state.error() }}</div>
+        }
+        <div class="footer-btn-group">
+          <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
+          <button
+            type="submit"
+            [disabled]="state.isSubmitting() || form.invalid || selectedCategories.length === 0"
+            class="submit-btn"
+          >
+            @if (state.isSubmitting()) {
+              <span>Saving Assets...</span>
+            } @else {
+              <span>Save Album</span>
+            }
+          </button>
+        </div>
+      </footer>
+    </form>
+  </div>
+</div>

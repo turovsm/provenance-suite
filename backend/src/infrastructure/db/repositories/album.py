@@ -19,6 +19,7 @@ from src.domain.value_objects.music_types import LibraryCategory
 from src.infrastructure.db.models.music import (
     AlbumArchiveModel,
     AlbumArtistModel,
+    AlbumCategoryModel,
     AlbumCoverModel,
     AlbumModel,
     ArchiveLinkModel,
@@ -43,9 +44,12 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 title_original=album.title_original,
                 title_translated=album.title_translated,
                 release_date=album.release_date,
+                label=album.label,
+                publisher=album.publisher,
                 event_id=album.event_id,
                 franchise_id=album.franchise_id,
-                library_category=album.library_category,
+                storage_drive=album.storage_drive,
+                relative_path=album.relative_path,
                 original_folder_name=album.original_folder_name,
             )
             self._session.add(model)
@@ -53,10 +57,17 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             model.title_original = album.title_original
             model.title_translated = album.title_translated
             model.release_date = album.release_date
+            model.label = album.label
+            model.publisher = album.publisher
             model.event_id = album.event_id
             model.franchise_id = album.franchise_id
-            model.library_category = album.library_category
+            model.storage_drive = album.storage_drive
+            model.relative_path = album.relative_path
             model.original_folder_name = album.original_folder_name
+
+        model.category_associations.clear()
+        for cat in album.categories:
+            model.category_associations.append(AlbumCategoryModel(album_id=album.id, category=cat))
 
         model.discs.clear()
         for d in album.discs:
@@ -89,7 +100,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 )
             model.discs.append(disc_model)
 
-        # Map encrypted split archives chunks
         model.archives.clear()
         for arch in album.archives:
             arch_model = AlbumArchiveModel(
@@ -98,6 +108,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 archive_name=arch.archive_name,
                 encryption_password=arch.encryption_password,
                 file_size_bytes=arch.file_size_bytes,
+                hash_sha256=arch.hash_sha256,
             )
             for lnk in arch.links:
                 arch_model.links.append(
@@ -127,7 +138,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             model.cover = AlbumCoverModel(
                 id=album.cover.id,
                 album_id=album.id,
-                image_data=album.cover.image_data,
+                storage_path=album.cover.storage_path,
                 mime_type=album.cover.mime_type,
                 width=album.cover.width,
                 height=album.cover.height,
@@ -141,6 +152,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             .where(AlbumModel.id == album_id)
             .options(
                 joinedload(AlbumModel.cover),
+                selectinload(AlbumModel.category_associations),
                 selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
                 selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
                 selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
@@ -158,8 +170,27 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
     async def find_by_category(
         self, category: LibraryCategory, limit: int = 50, offset: int = 0
     ) -> list[Album]:
-        albums, _ = await self.search(category=category, limit=limit, offset=offset)
-        return albums
+        stmt = (
+            select(AlbumModel)
+            .join(AlbumModel.category_associations)
+            .where(AlbumCategoryModel.category == category)
+            .distinct()
+            .order_by(AlbumModel.release_date.desc().nulls_last())
+            .offset(offset)
+            .limit(limit)
+            .options(
+                joinedload(AlbumModel.cover),
+                selectinload(AlbumModel.category_associations),
+                selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
+                selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
+                selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
+                selectinload(AlbumModel.external_links),
+            )
+        )
+
+        result = await self._session.execute(stmt)
+        models = result.scalars().all()
+        return [self._to_domain_entity(m) for m in models]
 
     async def search(
         self,
@@ -171,7 +202,9 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         base_stmt = select(AlbumModel)
 
         if category is not None:
-            base_stmt = base_stmt.where(AlbumModel.library_category == category)
+            base_stmt = base_stmt.join(AlbumModel.category_associations).where(
+                AlbumCategoryModel.category == category
+            )
 
         if query and query.strip():
             search_pattern = f"%{query.strip()}%"
@@ -181,18 +214,21 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 | AlbumModel.original_folder_name.ilike(search_pattern)
             )
 
-        # Count total matching rows
-        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        count_stmt = select(func.count(func.distinct(AlbumModel.id))).select_from(
+            base_stmt.subquery()
+        )
         total_count_result = await self._session.execute(count_stmt)
         total_count = total_count_result.scalar_one()
 
         # Fetch paginated items
         fetch_stmt = (
-            base_stmt.order_by(AlbumModel.release_date.desc().nulls_last())
+            base_stmt.distinct()
+            .order_by(AlbumModel.release_date.desc().nulls_last())
             .offset(offset)
             .limit(limit)
             .options(
                 joinedload(AlbumModel.cover),
+                selectinload(AlbumModel.category_associations),
                 selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
                 selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
                 selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
@@ -217,6 +253,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
 
     @staticmethod
     def _to_domain_entity(model: AlbumModel) -> Album:
+        domain_categories = [assoc.category for assoc in model.category_associations]
+
         domain_discs = []
         for d in model.discs:
             domain_tracks = [
@@ -281,6 +319,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     archive_name=arch.archive_name,
                     encryption_password=arch.encryption_password,
                     file_size_bytes=arch.file_size_bytes,
+                    hash_sha256=arch.hash_sha256,
                     links=domain_links,
                 )
             )
@@ -301,7 +340,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             domain_cover = AlbumCover(
                 id=model.cover.id,
                 album_id=model.cover.album_id,
-                image_data=model.cover.image_data,
+                storage_path=model.cover.storage_path,
                 mime_type=model.cover.mime_type,
                 width=model.cover.width,
                 height=model.cover.height,
@@ -312,9 +351,13 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             title_original=model.title_original,
             title_translated=model.title_translated,
             release_date=model.release_date,
+            label=model.label,
+            publisher=model.publisher,
             event_id=model.event_id,
             franchise_id=model.franchise_id,
-            library_category=model.library_category,
+            categories=domain_categories,
+            storage_drive=model.storage_drive,
+            relative_path=model.relative_path,
             original_folder_name=model.original_folder_name,
             created_at=model.created_at,
             updated_at=model.updated_at,

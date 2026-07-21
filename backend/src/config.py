@@ -19,10 +19,8 @@ class AppSettings(BaseSettings):
         extra="ignore",
     )
 
-    # System Environment Definition
     ENVIRONMENT: EnvironmentType = Field(default=EnvironmentType.DEVELOPMENT)
 
-    # Asynchronous Core Data Persistence Routing
     POSTGRES_USER: str = Field(default="postgres")
     POSTGRES_PASSWORD: str = Field(default="postgres")
     POSTGRES_HOST: str = Field(default="127.0.0.1")
@@ -30,7 +28,12 @@ class AppSettings(BaseSettings):
     POSTGRES_DB: str = Field(default="provenance_vault")
     DATABASE_URL: PostgresDsn | None = None
 
-    # Cryptographic & Identity Security Enclaves
+    MINIO_ENDPOINT: str = Field(default="127.0.0.1:9000")
+    MINIO_ACCESS_KEY: str = Field(default="minioadmin")
+    MINIO_SECRET_KEY: str = Field(default="minioadminpassword")
+    MINIO_BUCKET_NAME: str = Field(default="provenance-covers")
+    MINIO_SECURE: bool = Field(default=False)
+
     SECURITY_PEPPER: str = Field(min_length=32, description="System-wide static argon2 pepper.")
     JWT_SECRET_KEY: str = Field(min_length=64, description="Symmetric payload authorization key.")
     JWT_ALGORITHM: str = Field(default="HS256")
