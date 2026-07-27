@@ -32,8 +32,6 @@ async def test_payload_within_limit_passes(client: AsyncClient) -> None:
 
 async def test_oversized_payload_rejected_with_413_not_500(client: AsyncClient) -> None:
     oversized = str(settings.MAX_UPLOAD_SIZE_BYTES + 1)
-    response = await client.post(
-        "/upload", content=b"", headers={"Content-Length": oversized}
-    )
+    response = await client.post("/upload", content=b"", headers={"Content-Length": oversized})
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"

@@ -89,9 +89,7 @@ async def test_regular_user_cannot_create_album(client: AsyncClient, user_tokens
 
 
 async def test_regular_user_cannot_delete_album(client: AsyncClient, user_tokens: dict) -> None:
-    response = await client.delete(
-        f"/api/v1/albums/{uuid.uuid4()}", headers=bearer(user_tokens)
-    )
+    response = await client.delete(f"/api/v1/albums/{uuid.uuid4()}", headers=bearer(user_tokens))
     assert response.status_code == 403
 
 
@@ -161,9 +159,7 @@ async def test_album_appears_in_listing_after_creation(
     assert listing.json()["items"][0]["title_original"] == "Listed Album"
 
 
-async def test_get_detail_unknown_id_returns_404(
-    client: AsyncClient, user_tokens: dict
-) -> None:
+async def test_get_detail_unknown_id_returns_404(client: AsyncClient, user_tokens: dict) -> None:
     response = await client.get(f"/api/v1/albums/{uuid.uuid4()}", headers=bearer(user_tokens))
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "ALBUM_NOT_FOUND"
@@ -252,12 +248,8 @@ async def test_admin_delete_lifecycle(client: AsyncClient, admin_tokens: dict) -
     assert gone.status_code == 404
 
 
-async def test_delete_unknown_album_returns_404(
-    client: AsyncClient, admin_tokens: dict
-) -> None:
-    response = await client.delete(
-        f"/api/v1/albums/{uuid.uuid4()}", headers=bearer(admin_tokens)
-    )
+async def test_delete_unknown_album_returns_404(client: AsyncClient, admin_tokens: dict) -> None:
+    response = await client.delete(f"/api/v1/albums/{uuid.uuid4()}", headers=bearer(admin_tokens))
     assert response.status_code == 404
 
 
@@ -287,12 +279,8 @@ async def test_pagination_limits_and_counts(client: AsyncClient, admin_tokens: d
     assert len(rest.json()["items"]) == 1
 
 
-async def test_pagination_rejects_invalid_bounds(
-    client: AsyncClient, user_tokens: dict
-) -> None:
-    response = await client.get(
-        "/api/v1/albums", params={"limit": 0}, headers=bearer(user_tokens)
-    )
+async def test_pagination_rejects_invalid_bounds(client: AsyncClient, user_tokens: dict) -> None:
+    response = await client.get("/api/v1/albums", params={"limit": 0}, headers=bearer(user_tokens))
     assert response.status_code == 422
     response = await client.get(
         "/api/v1/albums", params={"limit": 101}, headers=bearer(user_tokens)
@@ -516,9 +504,7 @@ async def test_changelog_captures_all_change_layers(
         "discs": [updated_disc],
         "external_links": [{"site_name": "VGMdb", "url": "https://vgmdb.example/x"}],
     }
-    updated = await client.post(
-        "/api/v1/albums", json=update_payload, headers=bearer(admin_tokens)
-    )
+    updated = await client.post("/api/v1/albums", json=update_payload, headers=bearer(admin_tokens))
     assert updated.status_code == 201, updated.text
 
     detail = await client.get(f"/api/v1/albums/{album_id}", headers=bearer(admin_tokens))

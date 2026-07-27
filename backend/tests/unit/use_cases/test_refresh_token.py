@@ -39,9 +39,7 @@ async def login(
 def build_refresh_use_case(
     repo: InMemoryUserRepository, store: InMemorySessionStore
 ) -> RefreshTokenUseCase:
-    return RefreshTokenUseCase(
-        token_manager=JwtTokenManager(), session_store=store, user_repo=repo
-    )
+    return RefreshTokenUseCase(token_manager=JwtTokenManager(), session_store=store, user_repo=repo)
 
 
 async def test_refresh_success_returns_new_pair() -> None:
@@ -90,9 +88,9 @@ async def test_refresh_keeps_family_id_across_rotations() -> None:
         RefreshTokenRequest(refresh_token=tokens.refresh_token)
     )
 
-    rotated_family = manager.decode_and_verify_token(
-        result.refresh_token, expected_type="refresh"
-    )["family_id"]
+    rotated_family = manager.decode_and_verify_token(result.refresh_token, expected_type="refresh")[
+        "family_id"
+    ]
     assert rotated_family == original_family
 
 

@@ -91,9 +91,7 @@ async def test_me_requires_authentication(client: AsyncClient) -> None:
 
 
 async def test_me_rejects_garbage_token(client: AsyncClient) -> None:
-    response = await client.get(
-        "/api/v1/users/me", headers={"Authorization": "Bearer not.a.token"}
-    )
+    response = await client.get("/api/v1/users/me", headers={"Authorization": "Bearer not.a.token"})
     assert response.status_code == 401
 
 
@@ -138,9 +136,7 @@ async def test_refresh_chain_works_when_used_correctly(client: AsyncClient) -> N
         current = response.json()["refresh_token"]
 
     final_access = response.json()["access_token"]
-    me = await client.get(
-        "/api/v1/users/me", headers={"Authorization": f"Bearer {final_access}"}
-    )
+    me = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {final_access}"})
     assert me.status_code == 200
 
 

@@ -37,9 +37,7 @@ async def test_list_albums_queries_repository_and_returns_paginated_response() -
     assert response.total_count == 1
     assert len(response.items) == 1
     assert response.items[0].title_original == "Touhou Project OST"
-    mock_album_repo.search.assert_awaited_once_with(
-        query="Touhou", limit=10, offset=0
-    )
+    mock_album_repo.search.assert_awaited_once_with(query="Touhou", limit=10, offset=0)
 
 
 @pytest.mark.asyncio

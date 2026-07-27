@@ -12,11 +12,11 @@ install:
 	cd $(FRONTEND_DIR) && npm install && npm install --save-dev prettier @angular-eslint/schematics
 
 lint:
-	cd $(BACKEND_DIR) && .venv/bin/ruff check src/
+	cd $(BACKEND_DIR) && .venv/bin/ruff check src/ tests/
 	cd $(FRONTEND_DIR) && npx ng lint
 
 format:
-	cd $(BACKEND_DIR) && .venv/bin/ruff check --fix src/ && .venv/bin/ruff format src/
+	cd $(BACKEND_DIR) && .venv/bin/ruff check --fix src/ && .venv/bin/ruff format src/ tests/
 	cd $(FRONTEND_DIR) && npx prettier --write "src/**/*.{ts,html,css,json}"
 
 test-backend:

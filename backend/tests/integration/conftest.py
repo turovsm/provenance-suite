@@ -31,9 +31,7 @@ async def _ensure_test_database_exists() -> None:
         ) from exc
 
     try:
-        exists = await conn.fetchval(
-            "SELECT 1 FROM pg_database WHERE datname = $1", db_name
-        )
+        exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", db_name)
         if not exists:
             await conn.execute(f'CREATE DATABASE "{db_name}"')
     except asyncpg.DuplicateDatabaseError:
@@ -41,7 +39,7 @@ async def _ensure_test_database_exists() -> None:
     except Exception as exc:
         raise RuntimeError(
             f"Could not create test database '{db_name}': {exc!r}. "
-            f"Create it manually with: CREATE DATABASE \"{db_name}\";"
+            f'Create it manually with: CREATE DATABASE "{db_name}";'
         ) from exc
     finally:
         await conn.close()
