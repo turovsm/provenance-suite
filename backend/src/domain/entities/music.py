@@ -1,12 +1,12 @@
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from typing import Any
 
 from src.domain.value_objects.music_types import (
     AudioCodec,
     BitrateMode,
     ContainerFormat,
-    LibraryCategory,
     LogType,
     MediaType,
     VideoCodec,
@@ -18,7 +18,9 @@ class Event:
     id: uuid.UUID
     short_name: str
     full_name: str | None
-    event_type: str
+    start_date: date | None = None
+    end_date: date | None = None
+    status: str = "HELD"
 
 
 @dataclass(slots=True)
@@ -34,21 +36,8 @@ class Artist:
     id: uuid.UUID
     name_original: str
     name_translated: str | None
-    is_circle: bool
-
-
-@dataclass(slots=True)
-class AlbumArtist:
-    album_id: uuid.UUID
-    artist_id: uuid.UUID
-    role: str
-
-
-@dataclass(slots=True)
-class TrackArtist:
-    track_id: uuid.UUID
-    artist_id: uuid.UUID
-    role: str
+    role: str = "Primary"
+    created_at: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -65,6 +54,7 @@ class Track:
     sample_rate: int | None
     bitrate_kbps: int | None
     bitrate_mode: BitrateMode | None
+    is_instrumental: bool = False
     artists: list[Artist] = field(default_factory=list)
 
 
@@ -78,6 +68,9 @@ class Disc:
     container_format: ContainerFormat
     log_type: LogType | None
     log_score: int | None
+    raw_log_text: str | None = None
+    raw_cue_text: str | None = None
+    accuraterip_summary: str | None = None
     tracks: list[Track] = field(default_factory=list)
 
 
@@ -86,9 +79,10 @@ class AlbumCover:
     id: uuid.UUID
     album_id: uuid.UUID
     storage_path: str
-    mime_type: str
-    width: int
-    height: int
+    thumbhash: str | None = None
+    url: str | None = None
+    cover_type: str = "Front"
+    created_at: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -97,7 +91,7 @@ class ArchiveLink:
     archive_id: uuid.UUID
     provider_name: str
     download_url: str
-    is_active: bool
+    is_active: bool = True
 
 
 @dataclass(slots=True)
@@ -117,7 +111,16 @@ class ExternalLink:
     album_id: uuid.UUID
     site_name: str
     url: str
-    remote_item_id: str | None
+
+
+@dataclass(slots=True)
+class AlbumChangelog:
+    id: uuid.UUID
+    album_id: uuid.UUID
+    user_id: uuid.UUID | None
+    action: str
+    changes: dict[str, Any]
+    created_at: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -125,12 +128,16 @@ class Album:
     id: uuid.UUID
     title_original: str
     title_translated: str | None
-    release_date: date | None
+    release_year: int | None = None
+    release_month: int | None = None
+    release_day: int | None = None
+    release_date_sort: date | None = None
     label: str | None = None
     publisher: str | None = None
     event_id: uuid.UUID | None = None
     franchise_id: uuid.UUID | None = None
-    categories: list[LibraryCategory] = field(default_factory=list)
+    album_artist_id: uuid.UUID | None = None
+    album_artist: Artist | None = None
     storage_drive: str | None = None
     relative_path: str | None = None
     original_folder_name: str = ""
@@ -138,7 +145,7 @@ class Album:
     updated_at: datetime | None = None
 
     discs: list[Disc] = field(default_factory=list)
-    artists: list[Artist] = field(default_factory=list)
+    covers: list[AlbumCover] = field(default_factory=list)
     archives: list[AlbumArchive] = field(default_factory=list)
     external_links: list[ExternalLink] = field(default_factory=list)
-    cover: AlbumCover | None = None
+    changelogs: list[AlbumChangelog] = field(default_factory=list)

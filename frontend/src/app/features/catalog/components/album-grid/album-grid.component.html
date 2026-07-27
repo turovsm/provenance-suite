@@ -1,5 +1,4 @@
 <div class="catalog-grid-layout">
-  <!-- Top Search & Filtering Header -->
   <header class="grid-control-bar">
     <div class="search-input-wrapper">
       <span class="material-symbols-outlined search-icon">search</span>
@@ -7,16 +6,12 @@
         type="text"
         [value]="state.searchQuery()"
         (input)="handleSearchInput($event)"
-        placeholder="Search by title, circle, or folder..."
+        placeholder="Search by title, artist, or folder..."
         class="telemetry-search-input"
       />
     </div>
 
     <div class="header-right-cluster">
-      <div class="partition-indicator-badge">
-        {{ state.activeCategory() || 'All Categories' }}
-      </div>
-
       @if (authState.identity()?.is_superuser) {
         <button (click)="openAddModal()" class="admin-add-btn" title="Add New Album">
           <span class="material-symbols-outlined btn-icon">add</span>
@@ -26,7 +21,6 @@
     </div>
   </header>
 
-  <!-- Error Alert Banner -->
   @if (state.error()) {
     <div class="error-banner" role="alert">
       <span class="material-symbols-outlined icon-alert">error</span>
@@ -34,32 +28,30 @@
     </div>
   }
 
-  <!-- Loading State -->
   @if (state.isLoading()) {
     <div class="loading-state-overlay">
       <span class="pulse-indicator">Loading albums...</span>
     </div>
   } @else {
-    <!-- Empty Catalog State -->
     @if (!state.hasAlbums()) {
       <div class="empty-state-card">
         <span class="material-symbols-outlined empty-icon">library_music</span>
         <h3>No Albums Found</h3>
-        <p>No albums match your search query or selected category.</p>
+        <p>No albums match your active search query.</p>
       </div>
     } @else {
-      <!-- Primary Responsive Album Grid -->
       <div class="albums-responsive-grid">
         @for (album of state.albums(); track album.id) {
           <app-album-card
             [album]="album"
             [isSuperuser]="authState.identity()?.is_superuser ?? false"
+            (cardClicked)="handleSelectAlbum($event)"
+            (editRequested)="handleEditAlbum($event)"
             (deleteRequested)="handleDeleteAlbum($event)"
           />
         }
       </div>
 
-      <!-- Pagination Bar -->
       <footer class="pagination-control-bar">
         <button
           (click)="handlePageChange(state.currentPage() - 1)"
@@ -87,8 +79,11 @@
     }
   }
 
-  <!-- Admin Ingestion Form Modal -->
   @if (isAddModalOpen) {
-    <app-album-form-modal (closed)="closeAddModal()" />
+    <app-album-form-modal [albumToEdit]="albumToEdit()" (closed)="closeAddModal()" />
+  }
+
+  @if (state.selectedAlbumDetail()) {
+    <app-album-detail-drawer />
   }
 </div>

@@ -16,6 +16,12 @@ class UserModel(BaseInfrastructureModel):
         default=uuid.uuid4,
         server_default=func.gen_random_uuid(),
     )
+    username: Mapped[str] = mapped_column(
+        String(128),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
     email: Mapped[str] = mapped_column(
         String(255),
         unique=True,
@@ -40,4 +46,4 @@ class UserModel(BaseInfrastructureModel):
     )
 
     def __repr__(self) -> str:
-        return f"<UserModel email={self.email!r} active={self.is_active}>"
+        return f"<UserModel username={self.username!r} email={self.email!r}>"

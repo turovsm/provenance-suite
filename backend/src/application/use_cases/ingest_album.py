@@ -1,6 +1,5 @@
 import uuid
 from dataclasses import dataclass, field
-from datetime import date
 
 from src.application.repositories.album import AlbumRepository
 from src.domain.entities.music import (
@@ -8,6 +7,7 @@ from src.domain.entities.music import (
     AlbumArchive,
     AlbumCover,
     ArchiveLink,
+    Artist,
     Disc,
     ExternalLink,
     Track,
@@ -16,12 +16,19 @@ from src.domain.value_objects.music_types import (
     AudioCodec,
     BitrateMode,
     ContainerFormat,
-    LibraryCategory,
     LogType,
     MediaType,
     VideoCodec,
 )
 from src.infrastructure.storage.object_storage import MinioObjectStorageService
+
+
+@dataclass(frozen=True, slots=True)
+class ArtistIngestDTO:
+    name_original: str
+    id: uuid.UUID | None = None
+    name_translated: str | None = None
+    role: str = "Primary"
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +43,8 @@ class TrackIngestDTO:
     sample_rate: int | None = None
     bitrate_kbps: int | None = None
     bitrate_mode: BitrateMode | None = None
+    is_instrumental: bool = False
+    artists: list[ArtistIngestDTO] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +55,16 @@ class DiscIngestDTO:
     catalog_number: str | None = None
     log_type: LogType | None = None
     log_score: int | None = None
+    raw_log_text: str | None = None
+    raw_cue_text: str | None = None
+    accuraterip_summary: str | None = None
     tracks: list[TrackIngestDTO] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class CoverIngestDTO:
+    image_data: bytes
+    cover_type: str = "Front"
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +77,7 @@ class ArchiveLinkIngestDTO:
 @dataclass(frozen=True, slots=True)
 class ArchiveIngestDTO:
     archive_name: str
-    encryption_password: str
+    encryption_password: str = ""
     file_size_bytes: int | None = None
     hash_sha256: str | None = None
     links: list[ArchiveLinkIngestDTO] = field(default_factory=list)
@@ -69,34 +87,30 @@ class ArchiveIngestDTO:
 class ExternalLinkIngestDTO:
     site_name: str
     url: str
-    remote_item_id: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CoverIngestDTO:
-    image_data: bytes
-    mime_type: str = "image/jpeg"
-    width: int = 500
-    height: int = 500
 
 
 @dataclass(frozen=True, slots=True)
 class IngestAlbumRequest:
     title_original: str
-    categories: list[LibraryCategory]
     original_folder_name: str
+    album_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
     title_translated: str | None = None
-    release_date: date | None = None
+    release_year: int | None = None
+    release_month: int | None = None
+    release_day: int | None = None
     label: str | None = None
     publisher: str | None = None
     storage_drive: str | None = None
     relative_path: str | None = None
     event_id: uuid.UUID | None = None
     franchise_id: uuid.UUID | None = None
+    album_artist_id: uuid.UUID | None = None
+    album_artist: ArtistIngestDTO | None = None
     discs: list[DiscIngestDTO] = field(default_factory=list)
+    covers: list[CoverIngestDTO] = field(default_factory=list)
     archives: list[ArchiveIngestDTO] = field(default_factory=list)
     external_links: list[ExternalLinkIngestDTO] = field(default_factory=list)
-    cover: CoverIngestDTO | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,22 +131,47 @@ class IngestAlbumUseCase:
         self._storage_service = storage_service or MinioObjectStorageService()
 
     async def execute(self, request: IngestAlbumRequest) -> IngestAlbumResponse:
-        album_id = uuid.uuid4()
+        album_id = request.album_id or uuid.uuid4()
         total_tracks_counter = 0
 
-        # 1. Reconstruct nested media disc sub-graphs
+        domain_album_artist = None
+        if request.album_artist:
+            domain_album_artist = Artist(
+                id=request.album_artist.id or uuid.uuid4(),
+                name_original=request.album_artist.name_original,
+                name_translated=request.album_artist.name_translated,
+            )
+
         domain_discs: list[Disc] = []
         for disc_dto in request.discs:
             disc_id = uuid.uuid4()
             domain_tracks: list[Track] = []
 
-            for track_dto in disc_dto.tracks:
+            seen_track_numbers: set[int] = set()
+            for t_idx, track_dto in enumerate(disc_dto.tracks, start=1):
                 total_tracks_counter += 1
+                track_id = uuid.uuid4()
+
+                assigned_track_number = track_dto.track_number
+                if assigned_track_number in seen_track_numbers or assigned_track_number <= 0:
+                    assigned_track_number = t_idx
+                seen_track_numbers.add(assigned_track_number)
+
+                track_artists = [
+                    Artist(
+                        id=a.id or uuid.uuid4(),
+                        name_original=a.name_original,
+                        name_translated=a.name_translated,
+                        role=a.role,
+                    )
+                    for a in track_dto.artists
+                ]
+
                 domain_tracks.append(
                     Track(
-                        id=uuid.uuid4(),
+                        id=track_id,
                         disc_id=disc_id,
-                        track_number=track_dto.track_number,
+                        track_number=assigned_track_number,
                         title_original=track_dto.title_original,
                         title_translated=track_dto.title_translated,
                         duration_seconds=track_dto.duration_seconds,
@@ -142,6 +181,8 @@ class IngestAlbumUseCase:
                         sample_rate=track_dto.sample_rate,
                         bitrate_kbps=track_dto.bitrate_kbps,
                         bitrate_mode=track_dto.bitrate_mode,
+                        is_instrumental=track_dto.is_instrumental,
+                        artists=track_artists,
                     )
                 )
 
@@ -155,11 +196,33 @@ class IngestAlbumUseCase:
                     container_format=disc_dto.container_format,
                     log_type=disc_dto.log_type,
                     log_score=disc_dto.log_score,
+                    raw_log_text=disc_dto.raw_log_text,
+                    raw_cue_text=disc_dto.raw_cue_text,
+                    accuraterip_summary=disc_dto.accuraterip_summary,
                     tracks=domain_tracks,
                 )
             )
 
-        # 2. Map distributed cloud mirror archives
+        domain_covers: list[AlbumCover] = []
+        for cover_dto in request.covers:
+            cover_id = uuid.uuid4()
+            object_key = f"covers/{album_id}/{cover_id}.jpg"
+            storage_path, thumb_hash_str = await self._storage_service.upload_cover(
+                object_key=object_key,
+                data=cover_dto.image_data,
+            )
+            public_url = MinioObjectStorageService.get_public_url(storage_path)
+            domain_covers.append(
+                AlbumCover(
+                    id=cover_id,
+                    album_id=album_id,
+                    storage_path=storage_path,
+                    thumbhash=thumb_hash_str,
+                    url=public_url,
+                    cover_type=cover_dto.cover_type,
+                )
+            )
+
         domain_archives: list[AlbumArchive] = []
         for archive_dto in request.archives:
             archive_id = uuid.uuid4()
@@ -185,55 +248,39 @@ class IngestAlbumUseCase:
                 )
             )
 
-        # 3. Map cross-referenced metadata pointers
         domain_external_links = [
             ExternalLink(
                 id=uuid.uuid4(),
                 album_id=album_id,
                 site_name=link_dto.site_name,
                 url=link_dto.url,
-                remote_item_id=link_dto.remote_item_id,
             )
             for link_dto in request.external_links
         ]
 
-        # 4. Map binary cover art preview frames
-        domain_cover = None
-        if request.cover:
-            object_key = f"covers/{album_id}.jpg"
-            storage_path = await self._storage_service.upload_cover(
-                object_key=object_key,
-                data=request.cover.image_data,
-                mime_type=request.cover.mime_type,
-            )
-            domain_cover = AlbumCover(
-                id=uuid.uuid4(),
-                album_id=album_id,
-                storage_path=storage_path,
-                mime_type=request.cover.mime_type,
-                width=request.cover.width,
-                height=request.cover.height,
-            )
-
-        # 5. Assemble and persist the unified Aggregate Root node
         album_aggregate = Album(
             id=album_id,
             title_original=request.title_original,
             title_translated=request.title_translated,
-            release_date=request.release_date,
+            release_year=request.release_year,
+            release_month=request.release_month,
+            release_day=request.release_day,
+            label=request.label,
+            publisher=request.publisher,
             event_id=request.event_id,
             franchise_id=request.franchise_id,
-            categories=request.categories,
+            album_artist_id=request.album_artist_id,
+            album_artist=domain_album_artist,
             storage_drive=request.storage_drive,
             relative_path=request.relative_path,
             original_folder_name=request.original_folder_name,
             discs=domain_discs,
+            covers=domain_covers,
             archives=domain_archives,
             external_links=domain_external_links,
-            cover=domain_cover,
         )
 
-        await self._album_repo.save(album_aggregate)
+        await self._album_repo.save(album_aggregate, user_id=request.user_id)
 
         return IngestAlbumResponse(
             album_id=album_id,

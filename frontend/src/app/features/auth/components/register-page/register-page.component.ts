@@ -13,6 +13,7 @@ import { AuthStateEngine } from '../../state/auth.state';
 export class RegisterPageComponent {
   protected readonly state = inject(AuthStateEngine);
 
+  protected username = '';
   protected email = '';
   protected password = '';
   protected confirmPassword = '';
@@ -20,6 +21,11 @@ export class RegisterPageComponent {
 
   protected handleRegisterSubmit(): void {
     this.localValidationError = null;
+
+    if (!this.username.trim()) {
+      this.localValidationError = 'Username is required.';
+      return;
+    }
 
     if (!this.email || !this.password) return;
 
@@ -33,6 +39,6 @@ export class RegisterPageComponent {
       return;
     }
 
-    this.state.executeRegistrationSequence(this.email, this.password);
+    this.state.executeRegistrationSequence(this.username, this.email, this.password);
   }
 }

@@ -1,224 +1,175 @@
-import { Component, EventEmitter, inject, Output, HostListener, signal } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  Component,
+  DestroyRef,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnChanges,
+  OnDestroy,
+  OnInit,
+  Output,
+  SimpleChanges,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { AlbumDetailResponse } from '../../../../domain/models/music.model';
+import { FormTab } from '../../models/album-form.model';
+import { AlbumDraftService } from '../../services/album-draft.service';
+import { AlbumFormBuilderService } from '../../services/album-form-builder.service';
+import { AlbumPayloadMapperService } from '../../services/album-payload-mapper.service';
+import { CoverListService } from '../../services/cover-list.service';
 import { AlbumStateEngine } from '../../state/album.state';
-import { AlbumIngestRequest, LibraryCategory } from '../../../../domain/models/music.model';
+import { ArchivesTabComponent } from './tabs/archives-tab.component';
+import { BasicInfoTabComponent } from './tabs/basic-info-tab.component';
+import { CoversTabComponent } from './tabs/covers-tab.component';
+import { DiscsTabComponent } from './tabs/discs-tab.component';
 
 @Component({
   selector: 'app-album-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [
+    ReactiveFormsModule,
+    BasicInfoTabComponent,
+    DiscsTabComponent,
+    CoversTabComponent,
+    ArchivesTabComponent,
+  ],
+  providers: [CoverListService],
   styleUrls: ['./album-form-modal.component.css'],
   templateUrl: './album-form-modal.component.html',
 })
-export class AlbumFormModalComponent {
+export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
+  @Input() albumToEdit?: AlbumDetailResponse | null = null;
   @Output() closed = new EventEmitter<void>();
 
   protected readonly state = inject(AlbumStateEngine);
-  private readonly fb = inject(FormBuilder);
+  protected readonly coverService = inject(CoverListService);
+  private readonly builder = inject(AlbumFormBuilderService);
+  private readonly draftService = inject(AlbumDraftService);
+  private readonly payloadMapper = inject(AlbumPayloadMapperService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  protected coverBase64: string | null = null;
-  protected coverMimeType = 'image/jpeg';
-
-  protected readonly categoriesList: LibraryCategory[] = [
-    'Doujin',
-    'Vocaloid',
-    'VNs',
-    'JPop',
-    'Anime',
-    'GameOST',
-    'Soundtrack',
-    'Electronic',
-    'Rock',
-    'Pop',
-    'Classical',
-  ];
-  protected readonly mediaTypes = ['CD', 'DVD', 'BD', 'Cassette', 'Vinyl', 'Web'];
-  protected readonly containerFormats = ['Tracks', 'ISO', 'MDF', 'BIN_CUE', 'CDI', 'IMG', 'VOB'];
-  protected readonly logTypes = ['EAC', 'XLD', 'EZCD', 'CUERipper', 'cyanrip', 'whipper'];
-  protected readonly audioCodecs = [
-    'FLAC',
-    'MP3',
-    'ALAC',
-    'AAC',
-    'PCM',
-    'AC3',
-    'DTS',
-    'WMA',
-    'WavPack',
-  ];
-  protected readonly videoCodecs = ['MPEG2', 'H264', 'HEVC', 'VC1'];
-  protected readonly bitrateModes = ['CBR', 'VBR', 'ABR'];
-
-  protected selectedCategories: LibraryCategory[] = ['Doujin'];
-
-  protected readonly activeDropdownId = signal<string | null>(null);
-
-  protected readonly form: FormGroup = this.fb.group({
-    title_original: ['', [Validators.required, Validators.maxLength(512)]],
-    title_translated: ['', [Validators.maxLength(512)]],
-    original_folder_name: ['', [Validators.required, Validators.maxLength(1024)]],
-    release_date: [''],
-    label: ['', [Validators.maxLength(255)]],
-    publisher: ['', [Validators.maxLength(255)]],
-    storage_drive: ['', [Validators.maxLength(64)]],
-    relative_path: ['', [Validators.maxLength(1024)]],
-    discs: this.fb.array([this.createDiscGroup(1)]),
-    archives: this.fb.array([]),
-    external_links: this.fb.array([]),
-  });
+  protected readonly currentTab = signal<FormTab>('basic');
+  protected readonly form: FormGroup = this.builder.buildAlbumForm();
 
   get discs(): FormArray {
-    return this.form.get('discs') as FormArray;
+    return this.builder.discsOf(this.form);
   }
   get archives(): FormArray {
-    return this.form.get('archives') as FormArray;
+    return this.builder.archivesOf(this.form);
   }
   get externalLinks(): FormArray {
-    return this.form.get('external_links') as FormArray;
+    return this.builder.externalLinksOf(this.form);
   }
 
-  getTracks(discIndex: number): FormArray {
-    return this.discs.at(discIndex).get('tracks') as FormArray;
+  @HostListener('window:dragover', ['$event'])
+  protected onWindowDragOver(event: DragEvent): void {
+    event.preventDefault();
   }
 
-  getArchiveLinks(archiveIndex: number): FormArray {
-    return this.archives.at(archiveIndex).get('links') as FormArray;
+  @HostListener('window:drop', ['$event'])
+  protected onWindowDrop(event: DragEvent): void {
+    event.preventDefault();
   }
 
-  protected toggleDropdown(id: string, event: MouseEvent): void {
-    event.stopPropagation();
-    this.activeDropdownId.set(this.activeDropdownId() === id ? null : id);
-  }
-
-  protected selectControlValue(control: any, value: any): void {
-    control.setValue(value);
-    control.markAsDirty();
-    this.activeDropdownId.set(null);
-  }
-
-  @HostListener('document:click')
-  protected closeAllDropdowns(): void {
-    this.activeDropdownId.set(null);
-  }
-
-  protected toggleCategory(cat: LibraryCategory): void {
-    if (this.selectedCategories.includes(cat)) {
-      if (this.selectedCategories.length > 1) {
-        this.selectedCategories = this.selectedCategories.filter((c) => c !== cat);
-      }
+  ngOnInit(): void {
+    if (this.albumToEdit) {
+      this.populateFormForEditing(this.albumToEdit);
     } else {
-      this.selectedCategories.push(cat);
+      this.initDefaultForm();
+      this.restoreDraft();
+    }
+
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.persistDraftIfCreating());
+    this.coverService.changed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.persistDraftIfCreating());
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['albumToEdit'] && !changes['albumToEdit'].firstChange) {
+      if (this.albumToEdit) {
+        this.populateFormForEditing(this.albumToEdit);
+      } else {
+        this.initDefaultForm();
+        this.restoreDraft();
+      }
     }
   }
 
-  protected isCategorySelected(cat: LibraryCategory): boolean {
-    return this.selectedCategories.includes(cat);
+  ngOnDestroy(): void {
+    this.coverService.revokeAll();
   }
 
-  private createDiscGroup(discNumber: number): FormGroup {
-    return this.fb.group({
-      disc_number: [discNumber, [Validators.required, Validators.min(1)]],
-      media_type: ['CD', Validators.required],
-      container_format: ['Tracks', Validators.required],
-      catalog_number: [''],
-      log_type: [''],
-      log_score: [null, [Validators.max(100)]],
-      tracks: this.fb.array([this.createTrackGroup(1)]),
+  protected switchTab(tab: FormTab): void {
+    this.currentTab.set(tab);
+  }
+
+  private initDefaultForm(): void {
+    this.builder.resetToDefaults(this.form);
+    this.coverService.reset();
+  }
+
+  private populateFormForEditing(album: AlbumDetailResponse): void {
+    this.builder.resetToDefaults(this.form);
+    this.builder.populateFromAlbum(this.form, album);
+    this.coverService.hydrateFromAlbum(album.covers ?? []);
+  }
+
+  private persistDraftIfCreating(): void {
+    if (this.albumToEdit) return;
+    this.draftService.persist({
+      formValue: this.form.value,
+      coversList: this.coverService.snapshotForDraft(),
     });
   }
 
-  private createTrackGroup(trackNumber: number): FormGroup {
-    return this.fb.group({
-      track_number: [trackNumber, [Validators.required, Validators.min(1)]],
-      title_original: ['', Validators.required],
-      title_translated: [''],
-      duration_seconds: [null, Validators.min(0)],
-      audio_codec: ['FLAC'],
-      video_codec: [''],
-      bit_depth: [null, Validators.min(0)],
-      sample_rate: [null, Validators.min(0)],
-      bitrate_kbps: [null, Validators.min(0)],
-      bitrate_mode: [''],
-    });
+  private restoreDraft(): void {
+    const draft = this.draftService.restore();
+    if (!draft) return;
+    this.builder.applyDraftFormValue(this.form, draft.formValue);
+    this.coverService.restoreFromDraft(draft.coversList);
   }
 
-  private createArchiveGroup(): FormGroup {
-    return this.fb.group({
-      archive_name: ['', Validators.required],
-      encryption_password: [''],
-      file_size_bytes: [null, Validators.min(0)],
-      hash_sha256: ['', Validators.maxLength(64)],
-      links: this.fb.array([this.createArchiveLinkGroup()]),
-    });
+  protected resetCurrentTab(): void {
+    const tab = this.currentTab();
+    if (tab === 'basic') {
+      this.form.patchValue({
+        title_original: '',
+        title_translated: '',
+        original_folder_name: '',
+        release_year: null,
+        release_month: null,
+        release_day: null,
+        label: '',
+        publisher: '',
+        storage_drive: '',
+        relative_path: '',
+        event_id: null,
+        franchise_id: null,
+        album_artist_id: null,
+      });
+    } else if (tab === 'discs') {
+      this.discs.clear();
+      this.discs.push(this.builder.createDiscGroup({ disc_number: 1 }));
+    } else if (tab === 'covers') {
+      this.coverService.reset();
+    } else if (tab === 'archives') {
+      this.archives.clear();
+      this.externalLinks.clear();
+    }
+    this.persistDraftIfCreating();
   }
 
-  private createArchiveLinkGroup(): FormGroup {
-    return this.fb.group({
-      provider_name: ['Mega', Validators.required],
-      download_url: ['', Validators.required],
-      is_active: [true],
-    });
-  }
-
-  private createExternalLinkGroup(): FormGroup {
-    return this.fb.group({
-      site_name: ['VGMdb', Validators.required],
-      url: ['', Validators.required],
-      remote_item_id: [''],
-    });
-  }
-
-  protected addDisc(): void {
-    this.discs.push(this.createDiscGroup(this.discs.length + 1));
-  }
-  protected removeDisc(index: number): void {
-    if (this.discs.length > 1) this.discs.removeAt(index);
-  }
-
-  protected addTrack(discIndex: number): void {
-    const tracksArray = this.getTracks(discIndex);
-    tracksArray.push(this.createTrackGroup(tracksArray.length + 1));
-  }
-  protected removeTrack(discIndex: number, trackIndex: number): void {
-    const tracksArray = this.getTracks(discIndex);
-    if (tracksArray.length > 1) tracksArray.removeAt(trackIndex);
-  }
-
-  protected addArchive(): void {
-    this.archives.push(this.createArchiveGroup());
-  }
-  protected removeArchive(index: number): void {
-    this.archives.removeAt(index);
-  }
-
-  protected addArchiveLink(archiveIndex: number): void {
-    this.getArchiveLinks(archiveIndex).push(this.createArchiveLinkGroup());
-  }
-  protected removeArchiveLink(archiveIndex: number, linkIndex: number): void {
-    this.getArchiveLinks(archiveIndex).removeAt(linkIndex);
-  }
-
-  protected addExternalLink(): void {
-    this.externalLinks.push(this.createExternalLinkGroup());
-  }
-  protected removeExternalLink(index: number): void {
-    this.externalLinks.removeAt(index);
-  }
-
-  protected handleCoverSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.coverMimeType = file.type || 'image/jpeg';
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      this.coverBase64 = result.includes(',') ? result.split(',')[1] : result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  protected handleBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) this.closeModal();
+  protected resetEntireForm(): void {
+    if (confirm('Are you sure you want to reset all form sections and clear active draft?')) {
+      this.draftService.clear();
+      this.initDefaultForm();
+    }
   }
 
   protected closeModal(): void {
@@ -226,52 +177,16 @@ export class AlbumFormModalComponent {
   }
 
   protected handleSubmit(): void {
-    if (this.form.invalid || this.selectedCategories.length === 0) {
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
-    const formVal = this.form.value;
-    const payload: AlbumIngestRequest = {
-      title_original: formVal.title_original,
-      title_translated: formVal.title_translated || null,
-      categories: this.selectedCategories,
-      original_folder_name: formVal.original_folder_name,
-      release_date: formVal.release_date || null,
-      label: formVal.label || null,
-      publisher: formVal.publisher || null,
-      storage_drive: formVal.storage_drive || null,
-      relative_path: formVal.relative_path || null,
-      discs: formVal.discs.map((d: any) => ({
-        ...d,
-        log_type: d.log_type || null,
-        catalog_number: d.catalog_number || null,
-        tracks: d.tracks.map((t: any) => ({
-          ...t,
-          title_translated: t.title_translated || null,
-          video_codec: t.video_codec || null,
-          bitrate_mode: t.bitrate_mode || null,
-        })),
-      })),
-      archives: formVal.archives.map((a: any) => ({
-        ...a,
-        encryption_password: a.encryption_password || null,
-        hash_sha256: a.hash_sha256 || null,
-      })),
-      external_links: formVal.external_links.map((el: any) => ({
-        ...el,
-        remote_item_id: el.remote_item_id || null,
-      })),
-      cover: this.coverBase64
-        ? {
-            image_data: this.coverBase64,
-            mime_type: this.coverMimeType,
-            width: 500,
-            height: 500,
-          }
-        : null,
-    };
+    const payload = this.payloadMapper.toIngestRequest(this.form.value, this.coverService.covers());
 
-    this.state.ingestAlbum(payload, () => this.closeModal());
+    this.state.ingestAlbum(payload, () => {
+      this.draftService.clear();
+      this.closeModal();
+    });
   }
 }

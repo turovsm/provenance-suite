@@ -13,6 +13,20 @@
 
     <form (ngSubmit)="handleRegisterSubmit()" class="auth-form-layout">
       <div class="input-control-cluster">
+        <label for="reg-username-field">USERNAME</label>
+        <input
+          id="reg-username-field"
+          type="text"
+          name="username"
+          [(ngModel)]="username"
+          [disabled]="state.isProcessing()"
+          placeholder="archivist_handle"
+          required
+          autocomplete="username"
+        />
+      </div>
+
+      <div class="input-control-cluster">
         <label for="reg-email-field">EMAIL ADDRESS</label>
         <input
           id="reg-email-field"
@@ -22,7 +36,7 @@
           [disabled]="state.isProcessing()"
           placeholder="email@example.com"
           required
-          autocomplete="username"
+          autocomplete="email"
         />
       </div>
 
@@ -63,7 +77,7 @@
 
       <button
         type="submit"
-        [disabled]="state.isProcessing() || !email || !password || !confirmPassword"
+        [disabled]="state.isProcessing() || !username || !email || !password || !confirmPassword"
       >
         @if (state.isProcessing()) {
           <span class="pulse-indicator">Creating account...</span>

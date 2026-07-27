@@ -1,20 +1,6 @@
 import enum
 
 
-class LibraryCategory(enum.StrEnum):
-    ROCK = "Rock"
-    POP = "Pop"
-    ELECTRONIC = "Electronic"
-    CLASSICAL = "Classical"
-    SOUNDTRACK = "Soundtrack"
-    GAME_OST = "GameOST"
-    DOUJIN = "Doujin"
-    VOCALOID = "Vocaloid"
-    ANIME = "Anime"
-    JPOP = "JPop"
-    VNS = "VNs"
-
-
 class MediaType(enum.StrEnum):
     CD = "CD"
     DVD = "DVD"

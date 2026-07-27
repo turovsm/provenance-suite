@@ -4,23 +4,49 @@ from src.domain.exceptions import InvalidEmailError
 from src.domain.value_objects.email import EmailAddress
 
 
-def test_email_address_normalization_invariant() -> None:
-    """Confirms text values normalize down to lowercase and strip dangling spaces."""
-    raw_input = "  PRESERVATION@Vault.IO  "
-    email_vo = EmailAddress(raw_input)
-    assert str(email_vo) == "preservation@vault.io"
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "user@vault.io",
+        "first.last@vault.io",
+        "user+tag@vault.io",
+        "user_name%x@sub.domain.co.uk",
+        "1234@numbers.net",
+    ],
+)
+def test_valid_emails_accepted(raw: str) -> None:
+    assert str(EmailAddress(raw)) == raw.lower()
+
+
+def test_email_is_normalized_lowercase_and_trimmed() -> None:
+    assert str(EmailAddress("  MiXeD@Vault.IO  ")) == "mixed@vault.io"
+
+
+def test_equality_after_normalization() -> None:
+    assert EmailAddress("USER@vault.io") == EmailAddress("user@VAULT.IO")
 
 
 @pytest.mark.parametrize(
-    "malformed_sequence",
+    "raw",
     [
-        "missing_domain.com",
-        "email_at_domain_missing_tld@",
-        "@missing_recipient.org",
-        "spaces inside@domain.com",
+        "",
+        "   ",
+        "plainaddress",
+        "@missing-local.io",
+        "user@",
+        "user@domain",
+        "user@domain.i",
+        "user @vault.io",
+        "user@vault .io",
+        "user@@vault.io",
     ],
 )
-def test_email_validation_rejection_invariant(malformed_sequence: str) -> None:
-    """Guarantees structural address violations trigger an immediate InvalidEmailError block."""
+def test_invalid_emails_rejected(raw: str) -> None:
     with pytest.raises(InvalidEmailError):
-        EmailAddress(malformed_sequence)
+        EmailAddress(raw)
+
+
+def test_immutability() -> None:
+    email = EmailAddress("user@vault.io")
+    with pytest.raises(AttributeError):
+        email.value = "other@vault.io"

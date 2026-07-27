@@ -52,7 +52,7 @@
   color: var(--accent-error);
 }
 
-button {
+.auth-form-layout button[type='submit'] {
   cursor: pointer;
   width: 100%;
   padding: 0.85rem;

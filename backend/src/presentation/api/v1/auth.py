@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,12 +6,25 @@ from src.application.exceptions import InvalidCredentialsError, UserDeactivatedE
 from src.application.use_cases.authenticate_user import (
     AuthenticateUserRequest,
     AuthenticateUserUseCase,
+    LogoutUseCase,
+    RefreshTokenRequest,
+    RefreshTokenUseCase,
 )
 from src.infrastructure.crypto.hasher import PasswordHasherEngine
-from src.infrastructure.crypto.token_manager import JwtTokenManager
+from src.infrastructure.crypto.token_manager import (
+    JwtTokenManager,
+    RedisTokenSessionStore,
+    TokenRevokedError,
+    TokenVerificationError,
+)
 from src.infrastructure.db.repositories.user import SqlAlchemyUserRepository
 from src.infrastructure.db.session import get_async_database_session
-from src.presentation.schemas.auth import TokenResponseSchema, UserLoginRequestSchema
+from src.infrastructure.redis.client import get_redis
+from src.presentation.schemas.auth import (
+    RefreshTokenRequestSchema,
+    TokenResponseSchema,
+    UserLoginRequestSchema,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["Identity Session Authentication Plane"])
@@ -20,34 +34,91 @@ router = APIRouter(prefix="/auth", tags=["Identity Session Authentication Plane"
     "/login",
     response_model=TokenResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Authenticate user profile records to exchange a fresh token string payload.",
+    summary="Authenticate profile to receive access token + rotating refresh token.",
 )
 async def login_endpoint(
     payload: UserLoginRequestSchema,
-    session: AsyncSession = Depends(get_async_database_session),  # noqa: B008
+    session: AsyncSession = Depends(get_async_database_session),
+    redis: aioredis.Redis = Depends(get_redis),
 ) -> TokenResponseSchema:
-    # 1. Create engine/session instances
     user_repository = SqlAlchemyUserRepository(session)
     crypto_engine = PasswordHasherEngine()
-    token_engine = JwtTokenManager()
+    token_manager = JwtTokenManager()
+    session_store = RedisTokenSessionStore(redis)
 
-    # 2. Initiate use case
     use_case = AuthenticateUserUseCase(
-        user_repo=user_repository, hasher=crypto_engine, token_service=token_engine
+        user_repo=user_repository,
+        hasher=crypto_engine,
+        token_manager=token_manager,
+        session_store=session_store,
     )
-    use_case_request = AuthenticateUserRequest(email=payload.email, password=payload.password)
 
-    # 3. Attempt to run auth use case
     try:
-        use_case_response = await use_case.execute(use_case_request)
+        res = await use_case.execute(
+            AuthenticateUserRequest(email=payload.email, password=payload.password)
+        )
         return TokenResponseSchema(
-            access_token=use_case_response.access_token,
-            token_type=use_case_response.token_type,
+            access_token=res.access_token,
+            refresh_token=res.refresh_token,
+            token_type=res.token_type,
+            expires_in=res.expires_in,
         )
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     except UserDeactivatedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except Exception as exc:
-        msg = "Unexpected security system verification anomaly breakdown occurred."
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from exc
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Rotate refresh token and exchange for fresh token pair.",
+)
+async def refresh_endpoint(
+    payload: RefreshTokenRequestSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    redis: aioredis.Redis = Depends(get_redis),
+) -> TokenResponseSchema:
+    token_manager = JwtTokenManager()
+    session_store = RedisTokenSessionStore(redis)
+    user_repository = SqlAlchemyUserRepository(session)
+    use_case = RefreshTokenUseCase(
+        token_manager=token_manager,
+        session_store=session_store,
+        user_repo=user_repository,
+    )
+
+    try:
+        res = await use_case.execute(RefreshTokenRequest(refresh_token=payload.refresh_token))
+        return TokenResponseSchema(
+            access_token=res.access_token,
+            refresh_token=res.refresh_token,
+            token_type=res.token_type,
+            expires_in=res.expires_in,
+        )
+    except (TokenVerificationError, TokenRevokedError) as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Revoke active refresh token family session.",
+)
+async def logout_endpoint(
+    payload: RefreshTokenRequestSchema,
+    redis: aioredis.Redis = Depends(get_redis),
+) -> None:
+    token_manager = JwtTokenManager()
+    session_store = RedisTokenSessionStore(redis)
+
+    try:
+        claims = token_manager.decode_and_verify_token(
+            payload.refresh_token, expected_type="refresh"
+        )
+        family_id = claims["family_id"]
+        use_case = LogoutUseCase(session_store)
+        await use_case.execute(family_id)
+    except TokenVerificationError:
+        pass

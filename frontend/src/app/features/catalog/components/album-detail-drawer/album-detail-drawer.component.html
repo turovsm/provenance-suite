@@ -1,0 +1,381 @@
+@if (state.selectedAlbumDetail(); as album) {
+  <div
+    class="drawer-backdrop"
+    role="button"
+    tabindex="0"
+    (click)="handleBackdropClick($event)"
+    (keydown.escape)="close()"
+  >
+    <div class="glass-drawer-panel">
+      <header class="drawer-header">
+        <div class="drawer-header-meta">
+          @if (getFormattedReleaseDate(album); as relDate) {
+            <span class="date-tag">{{ relDate }}</span>
+          }
+        </div>
+        <button (click)="close()" class="close-btn" title="Close Drawer">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+
+      <div class="drawer-scroll-canvas">
+        <section class="hero-album-section">
+          <div class="hero-cover-frame">
+            @if (getCoverUrl(album); as coverUrl) {
+              <img [src]="coverUrl" [alt]="album.title_original" class="hero-cover-img" />
+            } @else {
+              <div class="hero-cover-placeholder">
+                <span class="material-symbols-outlined hero-fallback-icon">graphic_eq</span>
+              </div>
+            }
+          </div>
+
+          <div class="hero-details-cluster">
+            <h1 class="album-title-main">{{ album.title_original }}</h1>
+
+            @if (album.title_translated) {
+              <h2 class="album-title-sub">{{ album.title_translated }}</h2>
+            }
+
+            @if (album.album_artist; as heroArtist) {
+              <div class="hero-artist-line">
+                <span class="material-symbols-outlined hero-artist-icon">artist</span>
+                <span class="hero-artist-name">{{ heroArtist.name_original }}</span>
+                @if (heroArtist.name_translated) {
+                  <span class="hero-artist-translated">{{ heroArtist.name_translated }}</span>
+                }
+              </div>
+            }
+
+            <div class="metadata-grid">
+              @if (album.label) {
+                <div class="meta-item">
+                  <span class="meta-label">Label:</span>
+                  <span class="meta-value">{{ album.label }}</span>
+                </div>
+              }
+
+              @if (album.publisher) {
+                <div class="meta-item">
+                  <span class="meta-label">Publisher:</span>
+                  <span class="meta-value">{{ album.publisher }}</span>
+                </div>
+              }
+
+              <div class="meta-item">
+                <span class="meta-label">Folder:</span>
+                <span class="meta-value folder-code">{{ album.original_folder_name }}</span>
+              </div>
+            </div>
+
+            @if (album.external_links.length > 0) {
+              <div class="external-links-row">
+                @for (ext of album.external_links; track ext.id) {
+                  <a [href]="ext.url" target="_blank" rel="noopener" class="ext-link-chip">
+                    <span>{{ ext.site_name }}</span>
+                    <span class="material-symbols-outlined icon-external">open_in_new</span>
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <div class="section-title-bar">
+            <span class="material-symbols-outlined section-icon">album</span>
+            <h3>Discs & Tracklist</h3>
+          </div>
+
+          @if (album.discs.length > 0) {
+            @if (album.discs.length > 1) {
+              <nav class="disc-tabs-bar">
+                @for (disc of album.discs; track disc.id; let idx = $index) {
+                  <button
+                    type="button"
+                    (click)="selectDisc(idx)"
+                    class="disc-tab-btn"
+                    [class.tab-active]="activeDiscIndex() === idx"
+                  >
+                    <span>Disc {{ disc.disc_number }}</span>
+                    <span class="disc-media-tag">({{ disc.media_type }})</span>
+                  </button>
+                }
+              </nav>
+            }
+
+            @if (album.discs[activeDiscIndex()]; as activeDisc) {
+              <div class="disc-panel-card">
+                <div class="disc-panel-meta">
+                  <span class="disc-info-item">
+                    <strong>Format:</strong> {{ activeDisc.media_type }} /
+                    {{ activeDisc.container_format }}
+                  </span>
+                  @if (activeDisc.catalog_number) {
+                    <span class="disc-info-item">
+                      <strong>Catalog:</strong> {{ activeDisc.catalog_number }}
+                    </span>
+                  }
+                  @if (activeDisc.log_score !== null) {
+                    <span class="disc-info-item">
+                      <strong>Log Score:</strong>
+                      <span [class]="'log-score-badge ' + logScoreClass(activeDisc.log_score)">
+                        {{ activeDisc.log_score }}<span class="log-score-max">/ 100</span>
+                      </span>
+                    </span>
+                  }
+                </div>
+
+                @if (activeDisc.accuraterip_summary) {
+                  <div class="accuraterip-banner">
+                    <span class="material-symbols-outlined">verified</span>
+                    <span>AccurateRip Verification Report</span>
+                    <button
+                      type="button"
+                      class="inspector-btn-sm"
+                      (click)="toggleInspector('accuraterip')"
+                    >
+                      {{ activeInspectorTab() === 'accuraterip' ? 'Hide Report' : 'View Summary' }}
+                    </button>
+                  </div>
+                  @if (activeInspectorTab() === 'accuraterip') {
+                    <pre class="raw-code-box">{{ activeDisc.accuraterip_summary }}</pre>
+                  }
+                }
+
+                <table class="tracks-data-table">
+                  <thead>
+                    <tr>
+                      <th class="col-num">#</th>
+                      <th class="col-title">Title</th>
+                      <th class="col-specs">Specs</th>
+                      <th class="col-time">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (track of activeDisc.tracks; track track.id) {
+                      <tr>
+                        <td class="col-num">{{ track.track_number }}</td>
+                        <td class="col-title">
+                          <div class="track-title-block">
+                            <span class="track-main-title">
+                              {{ track.title_original }}
+                              @if (track.is_instrumental) {
+                                <span class="inst-badge">[Inst]</span>
+                              }
+                            </span>
+                            @if (track.title_translated) {
+                              <span class="track-sub-title">{{ track.title_translated }}</span>
+                            }
+                            @if (track.artists && track.artists.length > 0) {
+                              <div class="track-credits">
+                                @for (group of groupTrackCredits(track); track group.role) {
+                                  <span class="credit-group">
+                                    <span [class]="'credit-role ' + roleClass(group.role)">
+                                      {{ group.role }}
+                                    </span>
+                                    <span class="credit-names">
+                                      @for (art of group.artists; track art.id; let last = $last) {
+                                        <span
+                                          class="credit-name"
+                                          [title]="art.name_translated || art.name_original"
+                                          >{{ art.name_original }}</span
+                                        >
+                                        @if (!last) {
+                                          <span class="credit-sep">, </span>
+                                        }
+                                      }
+                                    </span>
+                                  </span>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </td>
+                        <td class="col-specs">
+                          <span class="tech-spec-badge">{{ getTrackSpecs(track) }}</span>
+                        </td>
+                        <td class="col-time">{{ formatDuration(track.duration_seconds) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+
+                <div class="disc-inspectors-bar">
+                  @if (activeDisc.raw_log_text) {
+                    <button type="button" class="inspector-btn" (click)="toggleInspector('log')">
+                      <span class="material-symbols-outlined">description</span>
+                      <span>{{
+                        activeInspectorTab() === 'log' ? 'Hide Log' : 'View Ripper Log'
+                      }}</span>
+                    </button>
+                  }
+                  @if (activeDisc.raw_cue_text) {
+                    <button type="button" class="inspector-btn" (click)="toggleInspector('cue')">
+                      <span class="material-symbols-outlined">list_alt</span>
+                      <span>{{
+                        activeInspectorTab() === 'cue' ? 'Hide CUE' : 'View CUE Sheet'
+                      }}</span>
+                    </button>
+                  }
+                </div>
+
+                @if (activeInspectorTab() === 'log' && activeDisc.raw_log_text) {
+                  <pre class="raw-code-box">{{ activeDisc.raw_log_text }}</pre>
+                }
+                @if (activeInspectorTab() === 'cue' && activeDisc.raw_cue_text) {
+                  <pre class="raw-code-box">{{ activeDisc.raw_cue_text }}</pre>
+                }
+              </div>
+            }
+          } @else {
+            <p class="empty-notice">No track details logged for this album.</p>
+          }
+        </section>
+
+        @if (album.archives.length > 0) {
+          <section class="drawer-section">
+            <div class="section-title-bar">
+              <span class="material-symbols-outlined section-icon">cloud_download</span>
+              <h3>Cloud Archive Mirrors</h3>
+            </div>
+
+            <div class="archives-stack">
+              @for (arch of album.archives; track arch.id; let aIdx = $index) {
+                <div class="archive-card">
+                  <div class="archive-header-row">
+                    <div class="archive-name-group">
+                      <span class="material-symbols-outlined archive-icon">folder_zip</span>
+                      <span class="archive-filename">{{ arch.archive_name }}</span>
+                      <span class="archive-size">({{ formatBytes(arch.file_size_bytes) }})</span>
+                    </div>
+
+                    @if (arch.encryption_password) {
+                      <div class="passphrase-box">
+                        <span class="material-symbols-outlined pass-icon">key</span>
+                        <code class="pass-text">{{ arch.encryption_password }}</code>
+                        <button
+                          type="button"
+                          (click)="copyToClipboard(arch.encryption_password, 'pass-' + aIdx)"
+                          class="copy-btn"
+                          title="Copy Password"
+                        >
+                          <span class="material-symbols-outlined copy-icon">content_copy</span>
+                          @if (copiedField() === 'pass-' + aIdx) {
+                            <span class="copied-tooltip">Copied</span>
+                          }
+                        </button>
+                      </div>
+                    }
+                  </div>
+
+                  @if (arch.hash_sha256) {
+                    <div class="hash-checksum-row">
+                      <span class="hash-label">SHA-256:</span>
+                      <code class="hash-code">{{ arch.hash_sha256 }}</code>
+                      <button
+                        type="button"
+                        (click)="copyToClipboard(arch.hash_sha256, 'hash-' + aIdx)"
+                        class="copy-btn"
+                        title="Copy Checksum"
+                      >
+                        <span class="material-symbols-outlined copy-icon">content_copy</span>
+                        @if (copiedField() === 'hash-' + aIdx) {
+                          <span class="copied-tooltip">Copied</span>
+                        }
+                      </button>
+                    </div>
+                  }
+
+                  @if (arch.links.length > 0) {
+                    <div class="mirrors-btn-grid">
+                      @for (lnk of arch.links; track lnk.id) {
+                        <a
+                          [href]="lnk.download_url"
+                          target="_blank"
+                          rel="noopener"
+                          class="mirror-download-link"
+                          [class.link-disabled]="!lnk.is_active"
+                        >
+                          <span class="material-symbols-outlined icon-dl">download</span>
+                          <span>{{ lnk.provider_name }}</span>
+                          @if (!lnk.is_active) {
+                            <span class="status-dead">(Offline)</span>
+                          }
+                        </a>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (album.changelogs && album.changelogs.length > 0) {
+          <section class="drawer-section">
+            <div class="section-title-bar">
+              <span class="material-symbols-outlined section-icon">history</span>
+              <h3>Revision Changelog History</h3>
+            </div>
+            <div class="changelog-stack">
+              @for (cl of album.changelogs; track cl.id) {
+                <div
+                  class="changelog-card"
+                  [class.expanded]="expandedChangelogId() === cl.id"
+                  (click)="toggleChangelog(cl.id)"
+                  role="button"
+                  tabindex="0"
+                >
+                  <div class="changelog-item-header">
+                    <div class="cl-meta-left">
+                      <span class="cl-action-tag">{{ cl.action }}</span>
+                      <span class="cl-date">{{ cl.created_at | date: 'short' }}</span>
+                    </div>
+                    <span class="material-symbols-outlined cl-expand-icon">
+                      {{ expandedChangelogId() === cl.id ? 'expand_less' : 'expand_more' }}
+                    </span>
+                  </div>
+
+                  @if (expandedChangelogId() === cl.id && cl.changes) {
+                    <div
+                      class="cl-changes-details"
+                      role="group"
+                      tabindex="0"
+                      (click)="$event.stopPropagation()"
+                      (keydown)="$event.stopPropagation()"
+                    >
+                      <div class="cl-changes-grid">
+                        @for (item of cl.changes | keyvalue; track item.key) {
+                          <div class="cl-change-row" [ngClass]="getChangeTypeClass(item.value)">
+                            <span class="cl-key">{{ item.key }}:</span>
+
+                            @if (isComplexChange(item.value)) {
+                              @if (item.value.type === 'added') {
+                                <span class="cl-val val-added">+ {{ item.value.new }}</span>
+                              } @else if (item.value.type === 'removed') {
+                                <span class="cl-val val-removed">- {{ item.value.old }}</span>
+                              } @else if (item.value.type === 'updated') {
+                                <span class="cl-val val-updated">
+                                  <span class="old-text">{{ item.value.old }}</span>
+                                  <span class="arrow-sep">➔</span>
+                                  <span class="new-text">{{ item.value.new }}</span>
+                                </span>
+                              }
+                            } @else {
+                              <span class="cl-val">{{ item.value }}</span>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    </div>
+  </div>
+}

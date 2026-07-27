@@ -1,0 +1,42 @@
+<div class="autocomplete-container">
+  <input
+    type="text"
+    [value]="inputQuery()"
+    [placeholder]="placeholder"
+    class="glass-input"
+    [class.dense]="dense"
+    [class.open]="isOpen()"
+    (input)="onInput($event)"
+    (focus)="openDropdown()"
+  />
+  <span class="material-symbols-outlined arrow-icon" [class.open]="isOpen()"> expand_more </span>
+
+  @if (isOpen() && (options().length > 0 || inputQuery().trim())) {
+    <div class="options-overlay">
+      @for (opt of options(); track opt.id || opt.display) {
+        <div
+          role="button"
+          tabindex="0"
+          class="option-item"
+          [class.selected]="isOptionSelected(opt)"
+          (mousedown)="$event.preventDefault(); selectOption(opt)"
+        >
+          <span>{{ opt.display }}</span>
+          @if (opt.subValue) {
+            <span class="sub-tag">{{ opt.subValue }}</span>
+          }
+        </div>
+      }
+      @if (canCreate && inputQuery().trim() && !hasExactMatch()) {
+        <div
+          role="button"
+          tabindex="0"
+          class="option-item create-option"
+          (mousedown)="$event.preventDefault(); createNewEntity()"
+        >
+          <span>+ Create "{{ inputQuery().trim() }}"</span>
+        </div>
+      }
+    </div>
+  }
+</div>

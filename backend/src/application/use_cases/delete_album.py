@@ -1,12 +1,11 @@
 import uuid
 from dataclasses import dataclass
 
-from src.application.exceptions import ApplicationError
+from src.application.exceptions import AlbumNotFoundError
 from src.application.repositories.album import AlbumRepository
 
 
-class AlbumNotFoundError(ApplicationError):
-    """Signaled when an execution attempts operations on a non-existent album record."""
+__all__ = ["AlbumNotFoundError", "DeleteAlbumRequest", "DeleteAlbumUseCase"]
 
 
 @dataclass(frozen=True, slots=True)

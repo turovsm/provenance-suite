@@ -3,11 +3,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.application.use_cases.delete_album import AlbumNotFoundError, DeleteAlbumRequest, DeleteAlbumUseCase
-from src.application.use_cases.list_albums import ListAlbumsRequest, ListAlbumsUseCase
 from src.application.repositories.album import AlbumRepository
+from src.application.use_cases.delete_album import (
+    AlbumNotFoundError,
+    DeleteAlbumRequest,
+    DeleteAlbumUseCase,
+)
+from src.application.use_cases.list_albums import ListAlbumsRequest, ListAlbumsUseCase
 from src.domain.entities.music import Album
-from src.domain.value_objects.music_types import LibraryCategory
 
 
 @pytest.mark.asyncio
@@ -17,25 +20,24 @@ async def test_list_albums_queries_repository_and_returns_paginated_response() -
         id=uuid.uuid4(),
         title_original="Touhou Project OST",
         title_translated=None,
-        release_date=None,
+        release_year=2004,
+        release_month=8,
+        release_day=15,
         event_id=None,
         franchise_id=None,
-        library_category=LibraryCategory.DOUJIN,
         original_folder_name="Touhou_OST",
     )
     mock_album_repo.search = AsyncMock(return_value=([fake_album], 1))
 
     use_case = ListAlbumsUseCase(mock_album_repo)
-    request = ListAlbumsRequest(category=LibraryCategory.DOUJIN, query="Touhou", limit=10, offset=0)
+    request = ListAlbumsRequest(query="Touhou", limit=10, offset=0)
 
     response = await use_case.execute(request)
 
     assert response.total_count == 1
     assert len(response.items) == 1
     assert response.items[0].title_original == "Touhou Project OST"
-    mock_album_repo.search.assert_awaited_once_with(
-        category=LibraryCategory.DOUJIN, query="Touhou", limit=10, offset=0
-    )
+    mock_album_repo.search.assert_awaited_once_with(query="Touhou", limit=10, offset=0)
 
 
 @pytest.mark.asyncio
