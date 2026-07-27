@@ -1,5 +1,6 @@
 from hashlib import sha256
 from hmac import new
+from typing import ClassVar
 
 from argon2 import PasswordHasher
 from argon2.exceptions import Argon2Error, VerificationError
@@ -45,3 +46,24 @@ class PasswordHasherEngine:
 
     def check_needs_rehash(self, hash_string: str) -> bool:
         return self._hasher.check_needs_rehash(hash_string)
+
+    _dummy_hash_cache: ClassVar[str | None] = None
+
+    def perform_dummy_verification(self) -> None:
+        """Runs a full-cost Argon2 verification against a throwaway hash.
+
+        Called when authentication targets a non-existent account, so that the
+        request consumes the same time as a genuine password check and login
+        timing cannot be used to enumerate registered email addresses.
+        """
+        if PasswordHasherEngine._dummy_hash_cache is None:
+            PasswordHasherEngine._dummy_hash_cache = self._hasher.hash(
+                self._pre_hash("dummy-timing-equalization-password")
+            )
+        try:
+            self._hasher.verify(
+                PasswordHasherEngine._dummy_hash_cache,
+                self._pre_hash("intentionally-mismatched-password"),
+            )
+        except VerificationError:
+            pass

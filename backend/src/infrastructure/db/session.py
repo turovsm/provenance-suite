@@ -30,7 +30,6 @@ async_session_factory = async_sessionmaker(
 
 
 async def get_async_database_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI Context Dependency Injector Iterator."""
     session: AsyncSession = async_session_factory()
     try:
         yield session

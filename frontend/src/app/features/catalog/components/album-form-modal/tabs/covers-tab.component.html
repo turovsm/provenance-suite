@@ -1,0 +1,84 @@
+<section class="form-section">
+  <div class="section-header-row">
+    <h3 class="section-heading">Artwork & Physical Scans Management</h3>
+  </div>
+
+  <div class="field-group">
+    <span class="field-label">DEFAULT UPLOAD TYPE FOR NEW SCAN</span>
+    <div class="categories-chip-grid">
+      @for (ct of coverTypes; track ct) {
+        <button
+          type="button"
+          class="category-chip"
+          [class.chip-active]="coverTypeSelected === ct"
+          (click)="coverTypeSelected = ct"
+        >
+          {{ ct }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div
+    class="file-upload-box"
+    [class.drag-active]="isDraggingOver"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <input
+      type="file"
+      multiple
+      (change)="handleCoverSelected($event)"
+      accept="image/jpeg,image/png,image/webp"
+      id="cover-file-input"
+    />
+    <label for="cover-file-input" class="file-upload-label">
+      <span class="material-symbols-outlined upload-icon">add_photo_alternate</span>
+      <span>Drag & Drop Cover Scans / Images Here, or Click to Browse</span>
+      <span class="upload-hint"
+        >Uploads as type: <strong>{{ coverTypeSelected }}</strong> (JPEG, PNG, WebP)</span
+      >
+    </label>
+  </div>
+
+  @if (coverService.covers().length > 0) {
+    <div class="covers-gallery-matrix">
+      @for (coverItem of coverService.covers(); track coverItem.id) {
+        <div class="gallery-cover-card">
+          <div class="gallery-cover-thumb-frame">
+            <img [src]="coverItem.previewUrl" alt="Scan Preview" class="gallery-cover-img" />
+            <span class="gallery-cover-type-tag">{{ coverItem.coverType }}</span>
+          </div>
+
+          <div class="gallery-cover-controls">
+            <span class="gallery-cover-name" [title]="coverItem.fileName">{{
+              coverItem.fileName
+            }}</span>
+            <span class="gallery-cover-size">{{ formatBytes(coverItem.fileSize) }}</span>
+
+            <div class="field-group style-compact">
+              <app-custom-select
+                [options]="coverTypes"
+                [dense]="true"
+                [ngModel]="coverItem.coverType"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="coverService.updateType(coverItem.id, $event)"
+              />
+            </div>
+
+            <button
+              type="button"
+              (click)="coverService.remove(coverItem.id)"
+              class="remove-cover-btn-sm"
+              title="Remove Scan"
+            >
+              <span class="material-symbols-outlined">delete</span>
+              <span>Remove</span>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</section>

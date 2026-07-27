@@ -12,8 +12,16 @@ class UserLoginRequestSchema(BaseModel):
     password: str = Field(..., min_length=12, max_length=128)
 
 
+class RefreshTokenRequestSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    refresh_token: str = Field(..., min_length=10)
+
+
 class TokenResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     access_token: str
-    token_type: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int = 900

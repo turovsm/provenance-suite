@@ -1,0 +1,119 @@
+<section class="form-section">
+  <div class="section-header-row">
+    <h3 class="section-heading">Cloud Distributed Volume Mirrors</h3>
+    <button type="button" (click)="addArchive()" class="add-sub-btn">
+      <span class="material-symbols-outlined">add</span>
+      <span>Add Archive Volume</span>
+    </button>
+  </div>
+
+  <div>
+    @for (archive of archives.controls; track $index; let aIdx = $index) {
+      <div [formGroup]="$any(archive)" class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-card-title">Archive Split #{{ aIdx + 1 }}</span>
+          <button type="button" (click)="removeArchive(aIdx)" class="remove-btn">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+
+        <div class="form-row-grid">
+          <div class="field-group flex-2">
+            <label [for]="'archive_name_' + aIdx">FILENAME *</label>
+            <input
+              [id]="'archive_name_' + aIdx"
+              type="text"
+              formControlName="archive_name"
+              placeholder="e.g. SPYS-0812.7z.001"
+            />
+          </div>
+          <div class="field-group">
+            <label [for]="'encryption_password_' + aIdx">PASSWORD</label>
+            <input
+              [id]="'encryption_password_' + aIdx"
+              type="text"
+              formControlName="encryption_password"
+              placeholder="Extraction key"
+            />
+          </div>
+          <div class="field-group">
+            <label [for]="'file_size_bytes_' + aIdx">SIZE (BYTES)</label>
+            <input
+              [id]="'file_size_bytes_' + aIdx"
+              type="number"
+              formControlName="file_size_bytes"
+              placeholder="Total bytes"
+            />
+          </div>
+          <div class="field-group flex-2">
+            <label [for]="'hash_sha256_' + aIdx">SHA-256 HASH</label>
+            <input
+              [id]="'hash_sha256_' + aIdx"
+              type="text"
+              formControlName="hash_sha256"
+              placeholder="64-character hex checksum"
+              maxlength="64"
+            />
+          </div>
+        </div>
+
+        <div class="tracks-container">
+          <div class="tracks-header">
+            <span class="sub-section-subtitle">Download Mirrors</span>
+            <button type="button" (click)="addArchiveLink(aIdx)" class="add-text-btn">
+              + Add Mirror
+            </button>
+          </div>
+
+          @for (link of getArchiveLinks(aIdx).controls; track $index; let lIdx = $index) {
+            <div [formGroup]="$any(link)" class="track-row">
+              <input
+                type="text"
+                formControlName="provider_name"
+                placeholder="Provider (e.g. Mega / GDrive)"
+                class="flex-1"
+              />
+              <input
+                type="url"
+                formControlName="download_url"
+                placeholder="HTTPS Download URL"
+                class="flex-3"
+              />
+
+              <button type="button" (click)="removeArchiveLink(aIdx, lIdx)" class="icon-only-btn">
+                <span class="material-symbols-outlined">remove_circle_outline</span>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="section-header-row" style="margin-top: 1rem">
+    <h3 class="section-heading">External Index Cross-References</h3>
+    <button type="button" (click)="addExternalLink()" class="add-sub-btn">
+      <span class="material-symbols-outlined">add</span>
+      <span>Add Index Link</span>
+    </button>
+  </div>
+
+  <div>
+    @for (link of externalLinks.controls; track $index; let elIdx = $index) {
+      <div [formGroup]="$any(link)" class="sub-card">
+        <div class="track-row">
+          <input
+            type="text"
+            formControlName="site_name"
+            placeholder="Authority (e.g. VGMdb / MusicBrainz)"
+            class="flex-1"
+          />
+          <input type="url" formControlName="url" placeholder="HTTPS Index URL" class="flex-3" />
+          <button type="button" (click)="removeExternalLink(elIdx)" class="remove-btn">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</section>

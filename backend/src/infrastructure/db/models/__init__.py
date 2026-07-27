@@ -1,7 +1,6 @@
 from src.infrastructure.db.models.base import BaseInfrastructureModel
 from src.infrastructure.db.models.music import (
     AlbumArchiveModel,
-    AlbumArtistModel,
     AlbumCoverModel,
     AlbumModel,
     ArchiveLinkModel,
@@ -9,6 +8,7 @@ from src.infrastructure.db.models.music import (
     EventModel,
     ExternalLinkModel,
     FranchiseModel,
+    TrackArtistModel,
     TrackModel,
 )
 from src.infrastructure.db.models.user import UserModel
@@ -20,9 +20,9 @@ __all__ = [
     "EventModel",
     "FranchiseModel",
     "ArtistModel",
-    "AlbumArtistModel",
     "AlbumModel",
     "TrackModel",
+    "TrackArtistModel",
     "AlbumCoverModel",
     "AlbumArchiveModel",
     "ArchiveLinkModel",

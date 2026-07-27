@@ -4,7 +4,9 @@ import { TokenResponse, UserProfile } from '../../domain/models/auth.model';
 
 export interface AuthRepositoryPort {
   authenticate(email: string, password: string): Observable<TokenResponse>;
-  register(email: string, password: string): Observable<UserProfile>;
+  refresh(refreshToken: string): Observable<TokenResponse>;
+  register(username: string, email: string, password: string): Observable<UserProfile>;
+  logout(refreshToken: string): Observable<void>;
   fetchIdentityProfile(): Observable<UserProfile>;
 }
 

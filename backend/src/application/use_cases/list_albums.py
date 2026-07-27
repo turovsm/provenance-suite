@@ -1,14 +1,13 @@
 import uuid
 from dataclasses import dataclass
 
+from src.application.exceptions import AlbumNotFoundError
 from src.application.repositories.album import AlbumRepository
 from src.domain.entities.music import Album
-from src.domain.value_objects.music_types import LibraryCategory
 
 
 @dataclass(frozen=True, slots=True)
 class ListAlbumsRequest:
-    category: LibraryCategory | None = None
     query: str | None = None
     limit: int = 50
     offset: int = 0
@@ -28,7 +27,6 @@ class ListAlbumsUseCase:
 
     async def execute(self, request: ListAlbumsRequest) -> ListAlbumsResponse:
         items, total_count = await self._album_repo.search(
-            category=request.category,
             query=request.query,
             limit=request.limit,
             offset=request.offset,
@@ -50,5 +48,8 @@ class GetAlbumDetailUseCase:
     def __init__(self, album_repo: AlbumRepository) -> None:
         self._album_repo = album_repo
 
-    async def execute(self, request: GetAlbumDetailRequest) -> Album | None:
-        return await self._album_repo.find_by_id(request.album_id)
+    async def execute(self, request: GetAlbumDetailRequest) -> Album:
+        album = await self._album_repo.find_by_id(request.album_id)
+        if album is None:
+            raise AlbumNotFoundError(f"Album record with ID '{request.album_id}' was not found.")
+        return album

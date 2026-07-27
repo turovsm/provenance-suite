@@ -21,6 +21,7 @@ class SqlAlchemyUserRepository(UserRepository):
         if model is None:
             model = UserModel(
                 id=user.id,
+                username=user.username,
                 email=str(user.email),
                 hashed_password=user.hashed_password,
                 is_active=user.is_active,
@@ -28,6 +29,7 @@ class SqlAlchemyUserRepository(UserRepository):
             )
             self._session.add(model)
         else:
+            model.username = user.username
             model.email = str(user.email)
             model.hashed_password = user.hashed_password
             model.is_active = user.is_active
@@ -37,26 +39,25 @@ class SqlAlchemyUserRepository(UserRepository):
         stmt = select(UserModel).where(UserModel.id == user_id)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
-
-        if model is None:
-            return None
-
-        return self._to_domain(model)
+        return self._to_domain(model) if model else None
 
     async def find_by_email(self, email: EmailAddress) -> User | None:
         stmt = select(UserModel).where(UserModel.email == str(email))
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
+        return self._to_domain(model) if model else None
 
-        if model is None:
-            return None
-
-        return self._to_domain(model)
+    async def find_by_username(self, username: str) -> User | None:
+        stmt = select(UserModel).where(UserModel.username == username)
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        return self._to_domain(model) if model else None
 
     @staticmethod
     def _to_domain(model: UserModel) -> User:
         return User(
             id=model.id,
+            username=model.username,
             email=EmailAddress(model.email),
             hashed_password=model.hashed_password,
             is_active=model.is_active,

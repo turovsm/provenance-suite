@@ -16,6 +16,8 @@ argon2-cffi==25.1.0
     #   minio
 argon2-cffi-bindings==25.1.0
     # via argon2-cffi
+arq==0.26.1
+    # via provenance-core-backend (pyproject.toml)
 async-timeout==5.0.1
     # via asyncpg
 asyncpg==0.29.0
@@ -27,7 +29,9 @@ cffi==2.1.0
     #   argon2-cffi-bindings
     #   cryptography
 click==8.4.2
-    # via uvicorn
+    # via
+    #   arq
+    #   uvicorn
 cryptography==49.0.0
     # via pyjwt
 fastapi==0.139.2
@@ -36,6 +40,8 @@ greenlet==3.5.3
     # via sqlalchemy
 h11==0.16.0
     # via uvicorn
+hiredis==3.4.0
+    # via redis
 httptools==0.8.0
     # via uvicorn
 idna==3.18
@@ -45,6 +51,8 @@ mako==1.3.12
 markupsafe==3.0.3
     # via mako
 minio==7.2.20
+    # via provenance-core-backend (pyproject.toml)
+pillow==10.4.0
     # via provenance-core-backend (pyproject.toml)
 pycparser==3.0
     # via cffi
@@ -67,12 +75,18 @@ python-dotenv==1.2.2
     #   uvicorn
 pyyaml==6.0.3
     # via uvicorn
+redis==5.0.8
+    # via
+    #   provenance-core-backend (pyproject.toml)
+    #   arq
 sqlalchemy==2.0.51
     # via
     #   provenance-core-backend (pyproject.toml)
     #   alembic
 starlette==1.3.1
     # via fastapi
+thumbhash==0.1.2
+    # via provenance-core-backend (pyproject.toml)
 typing-extensions==4.16.0
     # via
     #   alembic

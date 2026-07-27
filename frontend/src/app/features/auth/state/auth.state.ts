@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { AUTH_REPOSITORY_PORT } from '../../../core/tokens/auth.token';
 import { UserProfile } from '../../../domain/models/auth.model';
+import { extractErrorMessage } from '../../../shared/utils/error-extractor';
 
 @Injectable({
   providedIn: 'root',
@@ -11,12 +12,10 @@ export class AuthStateEngine {
   private readonly router = inject(Router);
   private readonly repo = inject(AUTH_REPOSITORY_PORT);
 
-  // Core write signals primitives
   private readonly currentProfileSignal = signal<UserProfile | null>(null);
   private readonly activeErrorSignal = signal<string | null>(null);
   private readonly processingSignal = signal<boolean>(false);
 
-  // Read-Only computed projections
   readonly identity = computed(() => this.currentProfileSignal());
   readonly authenticationError = computed(() => this.activeErrorSignal());
   readonly isProcessing = computed(() => this.processingSignal());
@@ -30,7 +29,7 @@ export class AuthStateEngine {
       .authenticate(email, password)
       .pipe(
         catchError((err) => {
-          const message = err.error?.detail || 'Identity validation connection failed.';
+          const message = extractErrorMessage(err, 'Identity validation connection failed.');
           this.activeErrorSignal.set(message);
           this.processingSignal.set(false);
           return of(null);
@@ -40,19 +39,20 @@ export class AuthStateEngine {
         if (!response) return;
 
         localStorage.setItem('access_token', response.access_token);
+        localStorage.setItem('refresh_token', response.refresh_token);
         this.synchronizeProfileState();
       });
   }
 
-  executeRegistrationSequence(email: string, password: string): void {
+  executeRegistrationSequence(username: string, email: string, password: string): void {
     this.processingSignal.set(true);
     this.activeErrorSignal.set(null);
 
     this.repo
-      .register(email, password)
+      .register(username, email, password)
       .pipe(
         catchError((err) => {
-          const message = err.error?.detail || 'Account registration sequence failed.';
+          const message = extractErrorMessage(err, 'Account registration sequence failed.');
           this.activeErrorSignal.set(message);
           this.processingSignal.set(false);
           return of(null);
@@ -77,14 +77,23 @@ export class AuthStateEngine {
         if (!profile) return;
         this.currentProfileSignal.set(profile);
         this.processingSignal.set(false);
-        this.router.navigate(['/']);
+        void this.router.navigate(['/']);
       });
   }
 
   clearActiveSession(): void {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      this.repo
+        .logout(refreshToken)
+        .pipe(catchError(() => of(null)))
+        .subscribe();
+    }
+
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     this.currentProfileSignal.set(null);
     this.processingSignal.set(false);
-    this.router.navigate(['/login']);
+    void this.router.navigate(['/login']);
   }
 }

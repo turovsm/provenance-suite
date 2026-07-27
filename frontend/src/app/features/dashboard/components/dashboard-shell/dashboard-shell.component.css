@@ -1,6 +1,7 @@
 .workspace-viewport-container {
   position: relative;
   display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   background-color: var(--bg-oled-black);
@@ -18,25 +19,32 @@
   z-index: 1;
 }
 
-.workspace-sidebar {
+.workspace-content-canvas {
   position: relative;
-  z-index: 10;
-  width: 250px;
-  height: 100%;
-  background-color: var(--bg-surface-glass);
-  border-right: 1px solid var(--border-fine-glass);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  z-index: 5;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
-.sidebar-branding {
+.workspace-top-bar {
+  height: 60px;
+  padding: 0 2.5rem;
+  background-color: rgba(5, 5, 7, 0.85);
+  border-bottom: 1px solid var(--border-fine-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-branding {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .branding-logo {
@@ -50,122 +58,13 @@
   letter-spacing: 0.12em;
 }
 
-.navigation-matrix {
-  flex: 1;
-  padding: 1.25rem 1rem;
-  overflow-y: auto;
-}
-
-.matrix-section-title {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  margin-bottom: 0.75rem;
-  padding-left: 0.5rem;
-}
-
-.nav-links-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.partition-link {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 4px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.82rem;
-  transition: all 0.15s ease;
-}
-
-.partition-link:hover {
-  color: var(--text-primary);
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
-.link-icon {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.3);
-  transition: color 0.15s ease;
-}
-
-.partition-link:hover .link-icon {
-  color: var(--accent-blue);
-}
-
-.active-partition-link {
-  color: var(--text-primary) !important;
-  background-color: rgba(56, 189, 248, 0.08) !important;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-}
-
-.active-partition-link .link-icon {
-  color: var(--accent-blue) !important;
-}
-
-.sidebar-system-status {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 0.7rem;
-}
-
-.status-node {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-muted);
-}
-
-.pulse-dot {
-  width: 6px;
-  height: 6px;
-  background-color: #10b981;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #10b981;
-  animation: statusGlow 2s infinite ease-in-out;
-}
-
-@keyframes statusGlow {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.workspace-content-canvas {
-  position: relative;
-  z-index: 5;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.workspace-top-bar {
-  height: 60px;
-  padding: 0 2rem;
-  background-color: rgba(5, 5, 7, 0.8);
-  border-bottom: 1px solid var(--border-fine-glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .system-metrics-ticker {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+  padding-left: 0.85rem;
+  border-left: 1px solid var(--border-fine-glass);
 }
 
 .session-identity-widget {
@@ -180,6 +79,7 @@
   gap: 0.35rem;
   font-size: 0.78rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .user-icon {

@@ -1,0 +1,28 @@
+<button
+  type="button"
+  class="select-trigger"
+  [class.dense]="dense"
+  [class.open]="isOpen()"
+  (click)="toggleOpen()"
+>
+  <span class="selected-text" [class.placeholder-text]="!selectedLabel()">
+    {{ selectedLabel() || placeholder }}
+  </span>
+  <span class="material-symbols-outlined arrow-icon" [class.open]="isOpen()"> expand_more </span>
+</button>
+
+@if (isOpen()) {
+  <div class="options-overlay">
+    @for (opt of normalizedOptions(); track opt.label + '_' + opt.value) {
+      <div
+        role="button"
+        tabindex="0"
+        class="option-item"
+        [class.selected]="opt.value === selectedValue()"
+        (mousedown)="$event.preventDefault(); selectOption(opt)"
+      >
+        {{ opt.label }}
+      </div>
+    }
+  </div>
+}

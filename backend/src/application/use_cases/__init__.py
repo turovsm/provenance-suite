@@ -1,7 +1,10 @@
 from src.application.use_cases.authenticate_user import (
     AuthenticateUserRequest,
-    AuthenticateUserResponse,
     AuthenticateUserUseCase,
+    LogoutUseCase,
+    RefreshTokenRequest,
+    RefreshTokenUseCase,
+    TokenPairResponse,
 )
 from src.application.use_cases.delete_album import (
     AlbumNotFoundError,
@@ -11,6 +14,7 @@ from src.application.use_cases.delete_album import (
 from src.application.use_cases.ingest_album import (
     ArchiveIngestDTO,
     ArchiveLinkIngestDTO,
+    ArtistIngestDTO,
     CoverIngestDTO,
     DiscIngestDTO,
     ExternalLinkIngestDTO,
@@ -39,10 +43,14 @@ __all__ = [
     "RegisterUserResponse",
     "AuthenticateUserUseCase",
     "AuthenticateUserRequest",
-    "AuthenticateUserResponse",
+    "TokenPairResponse",
+    "RefreshTokenRequest",
+    "RefreshTokenUseCase",
+    "LogoutUseCase",
     "IngestAlbumUseCase",
     "IngestAlbumRequest",
     "IngestAlbumResponse",
+    "ArtistIngestDTO",
     "TrackIngestDTO",
     "DiscIngestDTO",
     "ArchiveLinkIngestDTO",

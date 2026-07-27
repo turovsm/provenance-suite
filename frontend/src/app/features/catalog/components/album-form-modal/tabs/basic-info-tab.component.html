@@ -1,0 +1,141 @@
+<section class="form-section" [formGroup]="form">
+  <h3 class="section-heading">Basic Identification Parameters</h3>
+
+  <div class="field-group">
+    <label for="title_original">ORIGINAL TITLE *</label>
+    <input
+      id="title_original"
+      type="text"
+      formControlName="title_original"
+      placeholder="e.g. Alternative Works Vol.1"
+    />
+  </div>
+
+  <div class="field-group">
+    <label for="title_translated">TRANSLATED TITLE</label>
+    <input
+      id="title_translated"
+      type="text"
+      formControlName="title_translated"
+      placeholder="e.g. Alternative Works Volume 1"
+    />
+  </div>
+
+  <div class="form-row">
+    <div class="field-group flex-2">
+      <span class="field-label">ALBUM ARTIST / CIRCLE *</span>
+      <app-entity-autocomplete
+        entityType="artist"
+        formControlName="album_artist_id"
+        placeholder="Search master artist or circle (e.g. 上海アリス幻樂団)..."
+      />
+    </div>
+  </div>
+
+  <!-- Master Event & Franchise Selectors -->
+  <div class="form-row">
+    <div class="field-group flex-1">
+      <span class="field-label">CONVENTION / EVENT</span>
+      <app-entity-autocomplete
+        entityType="event"
+        formControlName="event_id"
+        placeholder="Search event (e.g. Comiket 100)..."
+      />
+    </div>
+    <div class="field-group flex-1">
+      <span class="field-label">MEDIA FRANCHISE</span>
+      <app-entity-autocomplete
+        entityType="franchise"
+        formControlName="franchise_id"
+        placeholder="Search franchise (e.g. Touhou Project)..."
+      />
+    </div>
+  </div>
+
+  <!-- Release Date Controls -->
+  <div class="form-row">
+    <div class="field-group flex-1">
+      <label for="release_year">RELEASE YEAR</label>
+      <input
+        id="release_year"
+        type="number"
+        formControlName="release_year"
+        placeholder="2008"
+        min="1800"
+        max="2100"
+      />
+    </div>
+    <div class="field-group flex-1">
+      <label for="release_month">MONTH (1–12)</label>
+      <input
+        id="release_month"
+        type="number"
+        formControlName="release_month"
+        placeholder="12"
+        min="1"
+        max="12"
+      />
+    </div>
+    <div class="field-group flex-1">
+      <label for="release_day">DAY (1–31)</label>
+      <input
+        id="release_day"
+        type="number"
+        formControlName="release_day"
+        placeholder="5"
+        min="1"
+        max="31"
+      />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field-group flex-1">
+      <span class="field-label">RECORD LABEL</span>
+      <app-entity-autocomplete
+        entityType="label"
+        formControlName="label"
+        placeholder="e.g. Lantis"
+      />
+    </div>
+    <div class="field-group flex-1">
+      <span class="field-label">PUBLISHER / DISTRIBUTOR</span>
+      <app-entity-autocomplete
+        entityType="publisher"
+        formControlName="publisher"
+        placeholder="e.g. Bandai Namco"
+      />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field-group flex-1">
+      <label for="storage_drive">STORAGE MOUNT / DRIVE</label>
+      <input
+        id="storage_drive"
+        type="text"
+        formControlName="storage_drive"
+        placeholder="e.g. NAS-01 / Disk E"
+      />
+    </div>
+    <div class="field-group flex-2">
+      <label for="relative_path">RELATIVE STORAGE PATH</label>
+      <input
+        id="relative_path"
+        type="text"
+        formControlName="relative_path"
+        placeholder="e.g. Music/Additional/Yosuga No Sora/"
+      />
+    </div>
+  </div>
+
+  <div class="field-group">
+    <label for="original_folder_name">ORIGINAL ARCHIVAL FOLDER NAME *</label>
+    <input
+      id="original_folder_name"
+      type="text"
+      formControlName="original_folder_name"
+      placeholder="e.g. [2008.12.05] [SPYS-0812] Sphere — Alternative Works Vol.1 [FLAC]"
+    />
+  </div>
+</section>

@@ -1,13 +1,18 @@
 import uuid
+from collections import Counter
+from datetime import date
+from typing import Any
 
+from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 
 from src.application.repositories.album import AlbumRepository
 from src.domain.entities.music import (
     Album,
     AlbumArchive,
+    AlbumChangelog,
     AlbumCover,
     ArchiveLink,
     Artist,
@@ -15,92 +20,459 @@ from src.domain.entities.music import (
     ExternalLink,
     Track,
 )
-from src.domain.value_objects.music_types import LibraryCategory
 from src.infrastructure.db.models.music import (
     AlbumArchiveModel,
-    AlbumArtistModel,
-    AlbumCategoryModel,
+    AlbumChangelogModel,
     AlbumCoverModel,
     AlbumModel,
     ArchiveLinkModel,
+    ArtistModel,
     DiscModel,
+    EventModel,
     ExternalLinkModel,
+    FranchiseModel,
+    TrackArtistModel,
     TrackModel,
 )
+from src.infrastructure.storage.object_storage import MinioObjectStorageService
 
 
 class SqlAlchemyAlbumRepository(AlbumRepository):
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, redis: Redis | None = None) -> None:
         self._session = session
+        self._redis = redis
 
-    async def save(self, album: Album) -> None:
-        stmt = select(AlbumModel).where(AlbumModel.id == album.id)
-        result = await self._session.execute(stmt)
-        model = result.scalar_one_or_none()
+    @staticmethod
+    def _format_date(year: int | None, month: int | None, day: int | None) -> str:
+        if not year:
+            return ""
+        m = f"{month:02d}" if month else "01"
+        d = f"{day:02d}" if day else "01"
+        return f"{year}.{m}.{d}"
 
-        if model is None:
-            model = AlbumModel(
-                id=album.id,
-                title_original=album.title_original,
-                title_translated=album.title_translated,
-                release_date=album.release_date,
-                label=album.label,
-                publisher=album.publisher,
-                event_id=album.event_id,
-                franchise_id=album.franchise_id,
-                storage_drive=album.storage_drive,
-                relative_path=album.relative_path,
-                original_folder_name=album.original_folder_name,
+    @staticmethod
+    def _change_entry(old_str: str, new_str: str) -> dict[str, Any]:
+        if not old_str and new_str:
+            return {"type": "added", "new": new_str}
+        if old_str and not new_str:
+            return {"type": "removed", "old": old_str}
+        return {"type": "updated", "old": old_str, "new": new_str}
+
+    @staticmethod
+    def _as_str(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "Yes" if value else "No"
+        return str(value).strip()
+
+    @classmethod
+    def _check_field(
+        cls, diff: dict[str, dict[str, Any]], label: str, old_val: Any, new_val: Any
+    ) -> None:
+        old_str, new_str = cls._as_str(old_val), cls._as_str(new_val)
+        if old_str != new_str:
+            diff[label] = cls._change_entry(old_str, new_str)
+
+    @staticmethod
+    def _fmt_duration(seconds: int | None) -> str:
+        if seconds is None:
+            return ""
+        return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+    @staticmethod
+    def _fmt_blob(text: str | None) -> str:
+        return f"{len(text):,} chars" if text else ""
+
+    @staticmethod
+    def _fmt_bitrate(kbps: int | None, mode: Any) -> str:
+        if kbps is None:
+            return ""
+        mode_str = f" {mode}" if mode else ""
+        return f"{kbps} kbps{mode_str}"
+
+    def _diff_scalar_fields(self, model: AlbumModel, new_album: Album) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+
+        self._check_field(diff, "Title (Original)", model.title_original, new_album.title_original)
+        self._check_field(
+            diff, "Title (Translated)", model.title_translated, new_album.title_translated
+        )
+        self._check_field(diff, "Label", model.label, new_album.label)
+        self._check_field(diff, "Publisher", model.publisher, new_album.publisher)
+        self._check_field(diff, "Storage Drive", model.storage_drive, new_album.storage_drive)
+        self._check_field(diff, "Relative Path", model.relative_path, new_album.relative_path)
+        self._check_field(
+            diff, "Folder Name", model.original_folder_name, new_album.original_folder_name
+        )
+
+        old_date = self._format_date(model.release_year, model.release_month, model.release_day)
+        new_date = self._format_date(
+            new_album.release_year, new_album.release_month, new_album.release_day
+        )
+        self._check_field(diff, "Release Date", old_date, new_date)
+
+        return diff
+
+    def _diff_album_artist(
+        self, model: AlbumModel, new_artist_id: uuid.UUID | None, new_artist_name: str | None
+    ) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+        if new_artist_id == model.album_artist_id:
+            return diff
+        old_name = model.album_artist.name_original if model.album_artist else ""
+        new_name = new_artist_name or (str(new_artist_id) if new_artist_id else "")
+        self._check_field(diff, "Album Artist", old_name, new_name)
+        return diff
+
+    def _diff_disc_fields(self, model: AlbumModel, new_album: Album) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+        old_discs = {d.disc_number: d for d in model.discs}
+        new_discs = {d.disc_number: d for d in new_album.discs}
+
+        for n in sorted(set(old_discs) | set(new_discs)):
+            if n not in old_discs:
+                d = new_discs[n]
+                diff[f"Disc {n}"] = self._change_entry(
+                    "", f"{d.media_type}/{d.container_format}, {len(d.tracks)} track(s)"
+                )
+                continue
+            if n not in new_discs:
+                d = old_discs[n]
+                diff[f"Disc {n}"] = self._change_entry(
+                    f"{d.media_type}/{d.container_format}, {len(d.tracks)} track(s)", ""
+                )
+                continue
+
+            old, new = old_discs[n], new_discs[n]
+            prefix = f"Disc {n} \u00b7 "
+            self._check_field(diff, prefix + "Media Type", old.media_type, new.media_type)
+            self._check_field(
+                diff, prefix + "Container", old.container_format, new.container_format
             )
-            self._session.add(model)
-        else:
-            model.title_original = album.title_original
-            model.title_translated = album.title_translated
-            model.release_date = album.release_date
-            model.label = album.label
-            model.publisher = album.publisher
-            model.event_id = album.event_id
-            model.franchise_id = album.franchise_id
-            model.storage_drive = album.storage_drive
-            model.relative_path = album.relative_path
-            model.original_folder_name = album.original_folder_name
+            self._check_field(
+                diff, prefix + "Catalog Number", old.catalog_number, new.catalog_number
+            )
+            self._check_field(diff, prefix + "Log Type", old.log_type, new.log_type)
+            self._check_field(diff, prefix + "Log Score", old.log_score, new.log_score)
+            self._check_field(
+                diff,
+                prefix + "Ripper Log",
+                self._fmt_blob(old.raw_log_text),
+                self._fmt_blob(new.raw_log_text),
+            )
+            self._check_field(
+                diff,
+                prefix + "CUE Sheet",
+                self._fmt_blob(old.raw_cue_text),
+                self._fmt_blob(new.raw_cue_text),
+            )
+            self._check_field(
+                diff,
+                prefix + "AccurateRip",
+                self._fmt_blob(old.accuraterip_summary),
+                self._fmt_blob(new.accuraterip_summary),
+            )
+        return diff
 
-        model.category_associations.clear()
-        for cat in album.categories:
-            model.category_associations.append(AlbumCategoryModel(album_id=album.id, category=cat))
+    @staticmethod
+    def _credits_summary_from_model(track: TrackModel) -> str:
+        parts = sorted(
+            f"{assoc.artist.name_original} ({assoc.role})" for assoc in track.artist_associations
+        )
+        return ", ".join(parts)
 
-        model.discs.clear()
-        for d in album.discs:
+    @staticmethod
+    def _credits_summary_from_entity(track: Track) -> str:
+        parts = sorted(f"{a.name_original} ({a.role})" for a in track.artists)
+        return ", ".join(parts)
+
+    def _diff_track_matrix(self, model: AlbumModel, new_album: Album) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+        old_tracks = {(d.disc_number, t.track_number): t for d in model.discs for t in d.tracks}
+        new_tracks = {(d.disc_number, t.track_number): t for d in new_album.discs for t in d.tracks}
+
+        for key in sorted(set(old_tracks) | set(new_tracks)):
+            disc_num, trk_num = key
+            tag = f"D{disc_num}T{trk_num}"
+
+            if key not in old_tracks:
+                diff[tag] = self._change_entry("", new_tracks[key].title_original)
+                continue
+            if key not in new_tracks:
+                diff[tag] = self._change_entry(old_tracks[key].title_original, "")
+                continue
+
+            old, new = old_tracks[key], new_tracks[key]
+            prefix = f"{tag} \u00b7 "
+            self._check_field(diff, prefix + "Title", old.title_original, new.title_original)
+            self._check_field(
+                diff, prefix + "Title (Translated)", old.title_translated, new.title_translated
+            )
+            self._check_field(
+                diff,
+                prefix + "Duration",
+                self._fmt_duration(old.duration_seconds),
+                self._fmt_duration(new.duration_seconds),
+            )
+            self._check_field(diff, prefix + "Audio Codec", old.audio_codec, new.audio_codec)
+            self._check_field(diff, prefix + "Video Codec", old.video_codec, new.video_codec)
+            self._check_field(diff, prefix + "Bit Depth", old.bit_depth, new.bit_depth)
+            self._check_field(diff, prefix + "Sample Rate", old.sample_rate, new.sample_rate)
+            self._check_field(
+                diff,
+                prefix + "Bitrate",
+                self._fmt_bitrate(old.bitrate_kbps, old.bitrate_mode),
+                self._fmt_bitrate(new.bitrate_kbps, new.bitrate_mode),
+            )
+            self._check_field(
+                diff, prefix + "Instrumental", old.is_instrumental, new.is_instrumental
+            )
+            self._check_field(
+                diff,
+                prefix + "Credits",
+                self._credits_summary_from_model(old),
+                self._credits_summary_from_entity(new),
+            )
+        return diff
+
+    @staticmethod
+    def _diff_external_links(model: AlbumModel, new_album: Album) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+        old_ext = {(el.site_name, el.url) for el in model.external_links}
+        new_ext = {(el.site_name, el.url) for el in new_album.external_links}
+        for site, url in new_ext - old_ext:
+            diff[f"External Link (+{site})"] = {"type": "added", "new": url}
+        for site, url in old_ext - new_ext:
+            diff[f"External Link (-{site})"] = {"type": "removed", "old": url}
+        return diff
+
+    def _diff_archives_and_mirrors(
+        self, model: AlbumModel, new_album: Album
+    ) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+        old_archives = {a.archive_name: a for a in model.archives}
+        new_archives = {a.archive_name: a for a in new_album.archives}
+
+        for name in sorted(set(old_archives) | set(new_archives)):
+            if name not in old_archives:
+                diff[f"Archive Volume (+{name})"] = {"type": "added", "new": name}
+                continue
+            if name not in new_archives:
+                diff[f"Archive Volume (-{name})"] = {"type": "removed", "old": name}
+                continue
+
+            old, new = old_archives[name], new_archives[name]
+            prefix = f"Archive {name} \u00b7 "
+            self._check_field(
+                diff, prefix + "Password", old.encryption_password, new.encryption_password
+            )
+            self._check_field(diff, prefix + "File Size", old.file_size_bytes, new.file_size_bytes)
+            self._check_field(diff, prefix + "SHA-256", old.hash_sha256, new.hash_sha256)
+
+        old_links = {
+            f"{a.archive_name} [{link.provider_name}]": link.download_url
+            for a in model.archives
+            for link in a.links
+        }
+        new_links = {
+            f"{a.archive_name} [{link.provider_name}]": link.download_url
+            for a in new_album.archives
+            for link in a.links
+        }
+        for key in sorted(set(old_links) | set(new_links)):
+            if key not in old_links:
+                diff[f"Archive Mirror (+{key})"] = {"type": "added", "new": new_links[key]}
+            elif key not in new_links:
+                diff[f"Archive Mirror (-{key})"] = {"type": "removed", "old": old_links[key]}
+            elif old_links[key] != new_links[key]:
+                diff[f"Archive Mirror ({key})"] = {
+                    "type": "updated",
+                    "old": old_links[key],
+                    "new": new_links[key],
+                }
+        return diff
+
+    def _diff_covers(self, model: AlbumModel, new_album: Album) -> dict[str, dict[str, Any]]:
+        diff: dict[str, dict[str, Any]] = {}
+
+        def summarize(types: list[str]) -> str:
+            counts = Counter(t or "Other" for t in types)
+            return ", ".join(f"{t} \u00d7{n}" for t, n in sorted(counts.items()))
+
+        old_summary = summarize([c.cover_type for c in model.covers])
+        new_summary = summarize([c.cover_type for c in new_album.covers])
+        self._check_field(diff, "Cover Scans", old_summary, new_summary)
+        return diff
+
+    def _compute_album_diff(
+        self,
+        model: AlbumModel,
+        new_album: Album,
+        new_artist_id: uuid.UUID | None = None,
+        new_artist_name: str | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        diff = self._diff_scalar_fields(model, new_album)
+        diff.update(self._diff_album_artist(model, new_artist_id, new_artist_name))
+        diff.update(self._diff_disc_fields(model, new_album))
+        diff.update(self._diff_track_matrix(model, new_album))
+        diff.update(self._diff_external_links(model, new_album))
+        diff.update(self._diff_archives_and_mirrors(model, new_album))
+        diff.update(self._diff_covers(model, new_album))
+
+        if not diff:
+            diff["Metadata Sync"] = {"type": "updated", "old": "Identical", "new": "Re-saved"}
+
+        return diff
+
+    @staticmethod
+    def _compute_sort_date(year: int | None, month: int | None, day: int | None) -> date | None:
+        if not year:
+            return None
+        m = month if (month and 1 <= month <= 12) else 1
+        d = day if (day and 1 <= day <= 31) else 1
+        try:
+            return date(year, m, d)
+        except ValueError:
+            return date(year, m, 1)
+
+    async def _invalidate_album_cache(self, album_id: uuid.UUID) -> None:
+        if not self._redis:
+            return
+        await self._redis.delete(f"album:cache:{album_id}")
+        keys = [k async for k in self._redis.scan_iter("album:search:*")]
+        if keys:
+            await self._redis.delete(*keys)
+
+    async def _resolve_album_artist_id(self, album: Album) -> uuid.UUID | None:
+        artist_id = album.album_artist_id
+        if artist_id:
+            check_stmt = select(ArtistModel.id).where(ArtistModel.id == artist_id)
+            res = await self._session.execute(check_stmt)
+            if not res.scalar_one_or_none():
+                artist_id = None
+
+        if not artist_id and album.album_artist and album.album_artist.name_original:
+            name_orig = album.album_artist.name_original.strip()
+            stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(name_orig)).limit(1)
+            res = await self._session.execute(stmt)
+            found = res.scalars().first()
+            if found:
+                artist_id = found.id
+                if album.album_artist.name_translated and not found.name_translated:
+                    found.name_translated = album.album_artist.name_translated
+            else:
+                new_a = ArtistModel(
+                    id=uuid.uuid4(),
+                    name_original=name_orig,
+                    name_translated=album.album_artist.name_translated,
+                )
+                self._session.add(new_a)
+                artist_id = new_a.id
+
+        return artist_id
+
+    async def _validate_fk_ids(
+        self, event_id: uuid.UUID | None, franchise_id: uuid.UUID | None
+    ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
+        valid_event_id = event_id
+        if valid_event_id:
+            res = await self._session.execute(
+                select(EventModel.id).where(EventModel.id == valid_event_id)
+            )
+            if not res.scalar_one_or_none():
+                valid_event_id = None
+
+        valid_franchise_id = franchise_id
+        if valid_franchise_id:
+            res = await self._session.execute(
+                select(FranchiseModel.id).where(FranchiseModel.id == valid_franchise_id)
+            )
+            if not res.scalar_one_or_none():
+                valid_franchise_id = None
+
+        return valid_event_id, valid_franchise_id
+
+    async def _process_track_artists(self, track_model: TrackModel, track: Track) -> None:
+        for track_artist in track.artists:
+            stmt = (
+                select(ArtistModel)
+                .where(ArtistModel.name_original.ilike(track_artist.name_original.strip()))
+                .limit(1)
+            )
+            res = await self._session.execute(stmt)
+            artist_m = res.scalars().first()
+
+            if artist_m is None:
+                artist_m = ArtistModel(
+                    id=track_artist.id or uuid.uuid4(),
+                    name_original=track_artist.name_original.strip(),
+                    name_translated=track_artist.name_translated,
+                )
+                self._session.add(artist_m)
+
+            t_role = getattr(track_artist, "role", "Composer") or "Composer"
+            track_model.artist_associations.append(
+                TrackArtistModel(track_id=track.id, artist_id=artist_m.id, role=t_role)
+            )
+
+    async def _sync_discs(
+        self, album_id: uuid.UUID, discs: list[Disc], album_model: AlbumModel
+    ) -> None:
+        for d in discs:
             disc_model = DiscModel(
                 id=d.id,
-                album_id=album.id,
+                album_id=album_id,
                 disc_number=d.disc_number,
                 catalog_number=d.catalog_number,
-                media_type=d.media_type,
-                container_format=d.container_format,
-                log_type=d.log_type,
+                media_type=str(d.media_type),
+                container_format=str(d.container_format),
+                log_type=str(d.log_type) if d.log_type else None,
                 log_score=d.log_score,
+                raw_log_text=d.raw_log_text,
+                raw_cue_text=d.raw_cue_text,
+                accuraterip_summary=d.accuraterip_summary,
             )
             for t in d.tracks:
-                disc_model.tracks.append(
-                    TrackModel(
-                        id=t.id,
-                        disc_id=d.id,
-                        track_number=t.track_number,
-                        title_original=t.title_original,
-                        title_translated=t.title_translated,
-                        duration_seconds=t.duration_seconds,
-                        audio_codec=t.audio_codec,
-                        video_codec=t.video_codec,
-                        bit_depth=t.bit_depth,
-                        sample_rate=t.sample_rate,
-                        bitrate_kbps=t.bitrate_kbps,
-                        bitrate_mode=t.bitrate_mode,
-                    )
+                track_model = TrackModel(
+                    id=t.id,
+                    disc_id=d.id,
+                    track_number=t.track_number,
+                    title_original=t.title_original,
+                    title_translated=t.title_translated,
+                    duration_seconds=t.duration_seconds,
+                    audio_codec=str(t.audio_codec) if t.audio_codec else None,
+                    video_codec=str(t.video_codec) if t.video_codec else None,
+                    bit_depth=t.bit_depth,
+                    sample_rate=t.sample_rate,
+                    bitrate_kbps=t.bitrate_kbps,
+                    bitrate_mode=str(t.bitrate_mode) if t.bitrate_mode else None,
+                    is_instrumental=t.is_instrumental,
                 )
-            model.discs.append(disc_model)
+                await self._process_track_artists(track_model, t)
+                disc_model.tracks.append(track_model)
 
-        model.archives.clear()
+            album_model.discs.append(disc_model)
+
+    @staticmethod
+    def _sync_auxiliary_data(
+        album: Album,
+        album_model: AlbumModel,
+        user_id: uuid.UUID | None,
+        action: str,
+        changes_payload: dict[str, Any],
+    ) -> None:
+        for c in album.covers:
+            album_model.covers.append(
+                AlbumCoverModel(
+                    id=c.id,
+                    album_id=album.id,
+                    storage_path=c.storage_path,
+                    thumbhash=c.thumbhash,
+                    cover_type=c.cover_type,
+                )
+            )
+
         for arch in album.archives:
             arch_model = AlbumArchiveModel(
                 id=arch.id,
@@ -120,125 +492,179 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                         is_active=lnk.is_active,
                     )
                 )
-            model.archives.append(arch_model)
+            album_model.archives.append(arch_model)
 
-        model.external_links.clear()
         for el in album.external_links:
-            model.external_links.append(
+            album_model.external_links.append(
                 ExternalLinkModel(
                     id=el.id,
-                    album_id=album.id,
+                    album_id=el.album_id,
                     site_name=el.site_name,
                     url=el.url,
-                    remote_item_id=el.remote_item_id,
                 )
             )
 
-        if album.cover:
-            model.cover = AlbumCoverModel(
-                id=album.cover.id,
+        album_model.changelogs.append(
+            AlbumChangelogModel(
+                id=uuid.uuid4(),
                 album_id=album.id,
-                storage_path=album.cover.storage_path,
-                mime_type=album.cover.mime_type,
-                width=album.cover.width,
-                height=album.cover.height,
+                user_id=user_id,
+                action=action,
+                changes=changes_payload,
             )
+        )
+
+    async def save(self, album: Album, user_id: uuid.UUID | None = None) -> None:
+        stmt = (
+            select(AlbumModel)
+            .where(AlbumModel.id == album.id)
+            .options(
+                selectinload(AlbumModel.covers),
+                selectinload(AlbumModel.album_artist),
+                selectinload(AlbumModel.discs)
+                .selectinload(DiscModel.tracks)
+                .selectinload(TrackModel.artist_associations)
+                .joinedload(TrackArtistModel.artist),
+                selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
+                selectinload(AlbumModel.external_links),
+                selectinload(AlbumModel.changelogs),
+            )
+        )
+        res = await self._session.execute(stmt)
+        model = res.scalar_one_or_none()
+
+        artist_id = await self._resolve_album_artist_id(album)
+        event_id, franchise_id = await self._validate_fk_ids(album.event_id, album.franchise_id)
+        sort_date = self._compute_sort_date(
+            album.release_year, album.release_month, album.release_day
+        )
+
+        if model is None:
+            action = "INSERT"
+            changes_payload = {
+                "Album Created": {
+                    "type": "added",
+                    "new": f"Ingested '{album.title_original}' with {len(album.discs)} disc(s)",
+                }
+            }
+            model = AlbumModel(
+                id=album.id,
+                title_original=album.title_original,
+                title_translated=album.title_translated,
+                release_year=album.release_year,
+                release_month=album.release_month,
+                release_day=album.release_day,
+                release_date_sort=sort_date,
+                label=album.label,
+                publisher=album.publisher,
+                event_id=event_id,
+                franchise_id=franchise_id,
+                album_artist_id=artist_id,
+                storage_drive=album.storage_drive,
+                relative_path=album.relative_path,
+                original_folder_name=album.original_folder_name,
+            )
+            self._session.add(model)
         else:
-            model.cover = None
+            action = "UPDATE"
+            new_artist_name: str | None = None
+            if artist_id and artist_id != model.album_artist_id:
+                name_res = await self._session.execute(
+                    select(ArtistModel.name_original).where(ArtistModel.id == artist_id)
+                )
+                new_artist_name = name_res.scalar_one_or_none()
+            changes_payload = self._compute_album_diff(
+                model, album, new_artist_id=artist_id, new_artist_name=new_artist_name
+            )
+
+            model.title_original = album.title_original
+            model.title_translated = album.title_translated
+            model.release_year = album.release_year
+            model.release_month = album.release_month
+            model.release_day = album.release_day
+            model.release_date_sort = sort_date
+            model.label = album.label
+            model.publisher = album.publisher
+            model.event_id = event_id
+            model.franchise_id = franchise_id
+            model.album_artist_id = artist_id
+            model.storage_drive = album.storage_drive
+            model.relative_path = album.relative_path
+            model.original_folder_name = album.original_folder_name
+
+            model.discs.clear()
+            model.covers.clear()
+            model.archives.clear()
+            model.external_links.clear()
+            await self._session.flush()
+
+        await self._sync_discs(album.id, album.discs, model)
+        self._sync_auxiliary_data(album, model, user_id, action, changes_payload)
+        await self._invalidate_album_cache(album.id)
 
     async def find_by_id(self, album_id: uuid.UUID) -> Album | None:
         stmt = (
             select(AlbumModel)
             .where(AlbumModel.id == album_id)
             .options(
-                joinedload(AlbumModel.cover),
-                selectinload(AlbumModel.category_associations),
-                selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
-                selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
+                selectinload(AlbumModel.covers),
+                selectinload(AlbumModel.album_artist),
+                selectinload(AlbumModel.discs)
+                .selectinload(DiscModel.tracks)
+                .selectinload(TrackModel.artist_associations)
+                .joinedload(TrackArtistModel.artist),
                 selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
                 selectinload(AlbumModel.external_links),
+                selectinload(AlbumModel.changelogs),
             )
         )
 
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
-        if model is None:
+        if not model:
             return None
 
         return self._to_domain_entity(model)
 
-    async def find_by_category(
-        self, category: LibraryCategory, limit: int = 50, offset: int = 0
-    ) -> list[Album]:
-        stmt = (
-            select(AlbumModel)
-            .join(AlbumModel.category_associations)
-            .where(AlbumCategoryModel.category == category)
-            .distinct()
-            .order_by(AlbumModel.release_date.desc().nulls_last())
-            .offset(offset)
-            .limit(limit)
-            .options(
-                joinedload(AlbumModel.cover),
-                selectinload(AlbumModel.category_associations),
-                selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
-                selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
-                selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
-                selectinload(AlbumModel.external_links),
-            )
-        )
-
-        result = await self._session.execute(stmt)
-        models = result.scalars().all()
-        return [self._to_domain_entity(m) for m in models]
-
     async def search(
         self,
-        category: LibraryCategory | None = None,
         query: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Album], int]:
         base_stmt = select(AlbumModel)
 
-        if category is not None:
-            base_stmt = base_stmt.join(AlbumModel.category_associations).where(
-                AlbumCategoryModel.category == category
-            )
-
         if query and query.strip():
-            search_pattern = f"%{query.strip()}%"
+            pattern = f"%{query.strip()}%"
             base_stmt = base_stmt.where(
-                AlbumModel.title_original.ilike(search_pattern)
-                | AlbumModel.title_translated.ilike(search_pattern)
-                | AlbumModel.original_folder_name.ilike(search_pattern)
+                AlbumModel.title_original.ilike(pattern)
+                | AlbumModel.title_translated.ilike(pattern)
+                | AlbumModel.original_folder_name.ilike(pattern)
             )
 
-        count_stmt = select(func.count(func.distinct(AlbumModel.id))).select_from(
-            base_stmt.subquery()
-        )
-        total_count_result = await self._session.execute(count_stmt)
-        total_count = total_count_result.scalar_one()
+        subq = base_stmt.subquery()
+        count_stmt = select(func.count()).select_from(subq)
+        total_count = (await self._session.execute(count_stmt)).scalar_one()
 
-        # Fetch paginated items
         fetch_stmt = (
-            base_stmt.distinct()
-            .order_by(AlbumModel.release_date.desc().nulls_last())
+            base_stmt.order_by(AlbumModel.release_date_sort.desc().nulls_last())
             .offset(offset)
             .limit(limit)
             .options(
-                joinedload(AlbumModel.cover),
-                selectinload(AlbumModel.category_associations),
-                selectinload(AlbumModel.discs).selectinload(DiscModel.tracks),
-                selectinload(AlbumModel.artist_associations).joinedload(AlbumArtistModel.artist),
+                selectinload(AlbumModel.covers),
+                selectinload(AlbumModel.album_artist),
+                selectinload(AlbumModel.discs)
+                .selectinload(DiscModel.tracks)
+                .selectinload(TrackModel.artist_associations)
+                .joinedload(TrackArtistModel.artist),
                 selectinload(AlbumModel.archives).selectinload(AlbumArchiveModel.links),
                 selectinload(AlbumModel.external_links),
+                selectinload(AlbumModel.changelogs),
             )
         )
 
         result = await self._session.execute(fetch_stmt)
-        models = result.scalars().all()
-        return [self._to_domain_entity(m) for m in models], total_count
+        return [self._to_domain_entity(m) for m in result.scalars().all()], total_count
 
     async def delete(self, album_id: uuid.UUID) -> bool:
         stmt = select(AlbumModel).where(AlbumModel.id == album_id)
@@ -249,15 +675,14 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             return False
 
         await self._session.delete(model)
+        await self._invalidate_album_cache(album_id)
         return True
 
     @staticmethod
     def _to_domain_entity(model: AlbumModel) -> Album:
-        domain_categories = [assoc.category for assoc in model.category_associations]
-
-        domain_discs = []
+        discs = []
         for d in model.discs:
-            domain_tracks = [
+            tracks = [
                 Track(
                     id=t.id,
                     disc_id=t.disc_id,
@@ -271,11 +696,22 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     sample_rate=t.sample_rate,
                     bitrate_kbps=t.bitrate_kbps,
                     bitrate_mode=t.bitrate_mode,
+                    is_instrumental=t.is_instrumental,
+                    artists=[
+                        Artist(
+                            id=assoc.artist.id,
+                            name_original=assoc.artist.name_original,
+                            name_translated=assoc.artist.name_translated,
+                            role=assoc.role,
+                            created_at=assoc.artist.created_at,
+                        )
+                        for assoc in t.artist_associations
+                    ],
                 )
                 for t in d.tracks
             ]
-            domain_tracks.sort(key=lambda x: x.track_number)
-            domain_discs.append(
+            tracks.sort(key=lambda x: x.track_number)
+            discs.append(
                 Disc(
                     id=d.id,
                     album_id=d.album_id,
@@ -285,24 +721,39 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     container_format=d.container_format,
                     log_type=d.log_type,
                     log_score=d.log_score,
-                    tracks=domain_tracks,
+                    raw_log_text=d.raw_log_text,
+                    raw_cue_text=d.raw_cue_text,
+                    accuraterip_summary=d.accuraterip_summary,
+                    tracks=tracks,
                 )
             )
-        domain_discs.sort(key=lambda x: x.disc_number)
+        discs.sort(key=lambda x: x.disc_number)
 
-        domain_artists = [
-            Artist(
-                id=assoc.artist.id,
-                name_original=assoc.artist.name_original,
-                name_translated=assoc.artist.name_translated,
-                is_circle=assoc.artist.is_circle,
+        album_artist = None
+        if model.album_artist:
+            album_artist = Artist(
+                id=model.album_artist.id,
+                name_original=model.album_artist.name_original,
+                name_translated=model.album_artist.name_translated,
+                created_at=model.album_artist.created_at,
             )
-            for assoc in model.artist_associations
+
+        covers = [
+            AlbumCover(
+                id=c.id,
+                album_id=c.album_id,
+                storage_path=c.storage_path,
+                thumbhash=c.thumbhash,
+                url=MinioObjectStorageService.get_public_url(c.storage_path),
+                cover_type=c.cover_type,
+                created_at=c.created_at,
+            )
+            for c in model.covers
         ]
 
-        domain_archives = []
+        archives = []
         for arch in model.archives:
-            domain_links = [
+            links = [
                 ArchiveLink(
                     id=lnk.id,
                     archive_id=lnk.archive_id,
@@ -312,7 +763,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 )
                 for lnk in arch.links
             ]
-            domain_archives.append(
+            archives.append(
                 AlbumArchive(
                     id=arch.id,
                     album_id=arch.album_id,
@@ -320,50 +771,54 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     encryption_password=arch.encryption_password,
                     file_size_bytes=arch.file_size_bytes,
                     hash_sha256=arch.hash_sha256,
-                    links=domain_links,
+                    links=links,
                 )
             )
 
-        domain_external_links = [
+        external_links = [
             ExternalLink(
                 id=el.id,
                 album_id=el.album_id,
                 site_name=el.site_name,
                 url=el.url,
-                remote_item_id=el.remote_item_id,
             )
             for el in model.external_links
         ]
 
-        domain_cover = None
-        if model.cover:
-            domain_cover = AlbumCover(
-                id=model.cover.id,
-                album_id=model.cover.album_id,
-                storage_path=model.cover.storage_path,
-                mime_type=model.cover.mime_type,
-                width=model.cover.width,
-                height=model.cover.height,
+        changelogs = [
+            AlbumChangelog(
+                id=cl.id,
+                album_id=cl.album_id,
+                user_id=cl.user_id,
+                action=cl.action,
+                changes=cl.changes,
+                created_at=cl.created_at,
             )
+            for cl in model.changelogs
+        ]
 
         return Album(
             id=model.id,
             title_original=model.title_original,
             title_translated=model.title_translated,
-            release_date=model.release_date,
+            release_year=model.release_year,
+            release_month=model.release_month,
+            release_day=model.release_day,
+            release_date_sort=model.release_date_sort,
             label=model.label,
             publisher=model.publisher,
             event_id=model.event_id,
             franchise_id=model.franchise_id,
-            categories=domain_categories,
+            album_artist_id=model.album_artist_id,
+            album_artist=album_artist,
             storage_drive=model.storage_drive,
             relative_path=model.relative_path,
             original_folder_name=model.original_folder_name,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            discs=domain_discs,
-            artists=domain_artists,
-            archives=domain_archives,
-            external_links=domain_external_links,
-            cover=domain_cover,
+            discs=discs,
+            covers=covers,
+            archives=archives,
+            external_links=external_links,
+            changelogs=changelogs,
         )

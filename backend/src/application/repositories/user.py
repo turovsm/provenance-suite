@@ -17,3 +17,7 @@ class UserRepository(ABC):
     @abstractmethod
     async def find_by_email(self, email: EmailAddress) -> User | None:
         pass
+
+    @abstractmethod
+    async def find_by_username(self, username: str) -> User | None:
+        pass
