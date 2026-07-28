@@ -52,7 +52,7 @@ async def lifespan(_app_instance: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="Provenance Suite API",
-    description="Media tracking and archival core engine.",
+    description="Digital asset tracking and music archival engine.",
     version="0.1.0",
     openapi_tags=OPENAPI_TAGS,
     lifespan=lifespan,

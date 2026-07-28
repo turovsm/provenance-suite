@@ -21,6 +21,10 @@ class AppSettings(BaseSettings):
 
     ENVIRONMENT: EnvironmentType = Field(default=EnvironmentType.DEVELOPMENT)
 
+    APP_PORT: int = Field(default=8088, description="Main gateway public port")
+    BACKEND_PORT: int = Field(default=8000, description="API server port")
+    FRONTEND_PORT: int = Field(default=4200, description="Dev frontend SPA port")
+
     POSTGRES_USER: str = Field(default="postgres")
     POSTGRES_PASSWORD: str = Field(default="postgres")
     POSTGRES_HOST: str = Field(default="127.0.0.1")
@@ -39,7 +43,7 @@ class AppSettings(BaseSettings):
     MINIO_BUCKET_NAME: str = Field(default="provenance-covers")
     MINIO_SECURE: bool = Field(default=False)
     MINIO_PUBLIC_BASE_URL: str = Field(
-        default="http://127.0.0.1:9000/provenance-covers",
+        default="http://localhost:8088/provenance-covers",
         description="Public S3 CDN endpoint for direct cover downloads.",
     )
 
