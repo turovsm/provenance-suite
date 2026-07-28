@@ -85,7 +85,7 @@
             [id]="'catalog_number_' + dIdx"
             type="text"
             formControlName="catalog_number"
-            placeholder="e.g. SPYS-0812"
+            placeholder="e.g. HBMS-008"
           />
         </div>
 
@@ -99,12 +99,12 @@
         </div>
 
         <div class="field-group">
-          <label [for]="'log_score_' + dIdx">LOG SCORE (&#8804; 100, negatives allowed)</label>
+          <label [for]="'log_score_' + dIdx">LOG SCORE</label>
           <input
             [id]="'log_score_' + dIdx"
             type="number"
             formControlName="log_score"
-            placeholder="100"
+            placeholder="-5"
             max="100"
           />
         </div>
