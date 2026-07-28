@@ -93,6 +93,15 @@ export class AlbumFormBuilderService {
     return discGroup;
   }
 
+  populateDiscsFromSeeds(discsArray: FormArray, seeds: DiscSeed[]): void {
+    discsArray.clear();
+    if (Array.isArray(seeds) && seeds.length > 0) {
+      seeds.forEach((d) => discsArray.push(this.createDiscGroup(d)));
+    } else {
+      discsArray.push(this.createDiscGroup({ disc_number: 1 }));
+    }
+  }
+
   createArchiveLinkGroup(lnk?: ArchiveLinkSeed): FormGroup {
     return this.fb.group({
       provider_name: [lnk?.provider_name || 'Mega', Validators.required],
@@ -125,10 +134,6 @@ export class AlbumFormBuilderService {
       url: [el?.url || '', Validators.required],
     });
   }
-
-  // ------------------------------------------------------------------
-  // Projections onto an existing form instance
-  // ------------------------------------------------------------------
 
   resetToDefaults(form: FormGroup): void {
     form.reset();

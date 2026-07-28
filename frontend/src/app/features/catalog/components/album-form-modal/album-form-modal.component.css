@@ -388,12 +388,17 @@
 }
 
 .gallery-cover-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background-color: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-fine-glass);
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.gallery-cover-card:has(.open-select) {
+  z-index: 100;
 }
 
 .gallery-cover-thumb-frame {
@@ -401,6 +406,8 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   background-color: #000;
+  border-radius: 5px 5px 0 0;
+  overflow: hidden;
 }
 
 .gallery-cover-img {
@@ -990,4 +997,99 @@ button.custom-dropdown-option:hover {
 
 .inline-refresh-btn .material-symbols-outlined {
   font-size: 16px;
+}
+
+.header-btn-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.import-clip-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem;
+  color: var(--accent-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.import-clip-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.import-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.import-success {
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.import-error {
+  background-color: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--accent-error);
+}
+
+.text-link-btn {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  text-decoration: underline;
+  cursor: pointer;
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+
+.manual-paste-card {
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.manual-paste-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.paste-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close-sm-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.manual-paste-actions {
+  display: flex;
+  justify-content: flex-end;
 }

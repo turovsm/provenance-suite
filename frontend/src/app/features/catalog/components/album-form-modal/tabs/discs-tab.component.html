@@ -1,11 +1,61 @@
 <section class="form-section">
   <div class="section-header-row">
     <h3 class="section-heading">Discs, AccurateRip Metrics & Track Matrix</h3>
-    <button type="button" (click)="addDisc()" class="add-sub-btn">
-      <span class="material-symbols-outlined">add</span>
-      <span>Add Disc</span>
-    </button>
+    <div class="header-btn-cluster">
+      <button
+        type="button"
+        (click)="importFromClipboard()"
+        class="import-clip-btn"
+        title="Import disc and track metadata from clipboard json"
+      >
+        <span class="material-symbols-outlined">content_paste_go</span>
+        <span>Import Clipboard JSON</span>
+      </button>
+      <button type="button" (click)="addDisc()" class="add-sub-btn">
+        <span class="material-symbols-outlined">add</span>
+        <span>Add Disc</span>
+      </button>
+    </div>
   </div>
+
+  @if (importSuccessMessage()) {
+    <div class="import-banner import-success" role="status">
+      <span class="material-symbols-outlined">check_circle</span>
+      <span>{{ importSuccessMessage() }}</span>
+    </div>
+  }
+
+  @if (importErrorMessage()) {
+    <div class="import-banner import-error" role="alert">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ importErrorMessage() }}</span>
+      <button type="button" class="text-link-btn" (click)="showManualPaste.set(true)">
+        Paste manually
+      </button>
+    </div>
+  }
+
+  @if (showManualPaste()) {
+    <div class="manual-paste-card">
+      <div class="manual-paste-header">
+        <span class="paste-title">Paste JSON Export Data</span>
+        <button type="button" class="close-sm-btn" (click)="showManualPaste.set(false)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <textarea
+        [(ngModel)]="manualJsonText"
+        rows="5"
+        class="code-textarea"
+        placeholder='Paste JSON containing {"discs": [...]}'
+      ></textarea>
+      <div class="manual-paste-actions">
+        <button type="button" (click)="applyManualJson()" class="import-clip-btn">
+          <span>Apply JSON</span>
+        </button>
+      </div>
+    </div>
+  }
 
   @for (disc of discs.controls; track $index; let dIdx = $index) {
     <div [formGroup]="$any(disc)" class="sub-card">
@@ -35,7 +85,7 @@
             [id]="'catalog_number_' + dIdx"
             type="text"
             formControlName="catalog_number"
-            placeholder="e.g. SPYS-0812"
+            placeholder="e.g. HBMS-008"
           />
         </div>
 
@@ -49,12 +99,12 @@
         </div>
 
         <div class="field-group">
-          <label [for]="'log_score_' + dIdx">LOG SCORE (&#8804; 100, negatives allowed)</label>
+          <label [for]="'log_score_' + dIdx">LOG SCORE</label>
           <input
             [id]="'log_score_' + dIdx"
             type="number"
             formControlName="log_score"
-            placeholder="100"
+            placeholder="-5"
             max="100"
           />
         </div>

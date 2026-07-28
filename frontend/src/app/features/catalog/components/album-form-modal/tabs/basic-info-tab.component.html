@@ -7,7 +7,7 @@
       id="title_original"
       type="text"
       formControlName="title_original"
-      placeholder="e.g. Alternative Works Vol.1"
+      placeholder="e.g. 沙耶の唄 オリジナルサウンドトラック"
     />
   </div>
 
@@ -17,7 +17,7 @@
       id="title_translated"
       type="text"
       formControlName="title_translated"
-      placeholder="e.g. Alternative Works Volume 1"
+      placeholder="e.g. Saya no Uta Original Soundtrack"
     />
   </div>
 
@@ -32,7 +32,6 @@
     </div>
   </div>
 
-  <!-- Master Event & Franchise Selectors -->
   <div class="form-row">
     <div class="field-group flex-1">
       <span class="field-label">CONVENTION / EVENT</span>
@@ -47,12 +46,11 @@
       <app-entity-autocomplete
         entityType="franchise"
         formControlName="franchise_id"
-        placeholder="Search franchise (e.g. Touhou Project)..."
+        placeholder="Search franchise (e.g. 沙耶の唄)..."
       />
     </div>
   </div>
 
-  <!-- Release Date Controls -->
   <div class="form-row">
     <div class="field-group flex-1">
       <label for="release_year">RELEASE YEAR</label>
@@ -60,7 +58,7 @@
         id="release_year"
         type="number"
         formControlName="release_year"
-        placeholder="2008"
+        placeholder="2004"
         min="1800"
         max="2100"
       />
@@ -71,7 +69,7 @@
         id="release_month"
         type="number"
         formControlName="release_month"
-        placeholder="12"
+        placeholder="2"
         min="1"
         max="12"
       />
@@ -82,7 +80,7 @@
         id="release_day"
         type="number"
         formControlName="release_day"
-        placeholder="5"
+        placeholder="27"
         min="1"
         max="31"
       />
@@ -115,7 +113,7 @@
         id="storage_drive"
         type="text"
         formControlName="storage_drive"
-        placeholder="e.g. NAS-01 / Disk E"
+        placeholder="e.g. NAS-01 / E"
       />
     </div>
     <div class="field-group flex-2">
@@ -124,7 +122,7 @@
         id="relative_path"
         type="text"
         formControlName="relative_path"
-        placeholder="e.g. Music/Additional/Yosuga No Sora/"
+        placeholder="e.g. Music/OST/沙耶の唄/"
       />
     </div>
   </div>
@@ -135,7 +133,7 @@
       id="original_folder_name"
       type="text"
       formControlName="original_folder_name"
-      placeholder="e.g. [2008.12.05] [SPYS-0812] Sphere — Alternative Works Vol.1 [FLAC]"
+      placeholder="e.g. [2004.02.27] ZIZZ STUDIO — 沙耶の唄 オリジナルサウンドトラック {HBMS-008} [CD-FLAC]"
     />
   </div>
 </section>
