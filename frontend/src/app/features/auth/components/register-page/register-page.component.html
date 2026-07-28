@@ -1,0 +1,98 @@
+<main class="login-viewport-ring">
+  <div class="telemetry-grid-overlay"></div>
+
+  <div class="glass-isolation-card">
+    <header class="branding-header">
+      <div class="vault-node-badge">
+        <span class="material-symbols-outlined header-icon">person_add</span>
+        <span>REGISTRATION</span>
+      </div>
+      <h1>Create Account</h1>
+      <p>Register to explore the music collection</p>
+    </header>
+
+    <form (ngSubmit)="handleRegisterSubmit()" class="auth-form-layout">
+      <div class="input-control-cluster">
+        <label for="reg-username-field">USERNAME</label>
+        <input
+          id="reg-username-field"
+          type="text"
+          name="username"
+          [(ngModel)]="username"
+          [disabled]="state.isProcessing()"
+          placeholder="archivist_handle"
+          required
+          autocomplete="username"
+        />
+      </div>
+
+      <div class="input-control-cluster">
+        <label for="reg-email-field">EMAIL ADDRESS</label>
+        <input
+          id="reg-email-field"
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          [disabled]="state.isProcessing()"
+          placeholder="email@example.com"
+          required
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="input-control-cluster">
+        <label for="reg-password-field">PASSWORD (MIN 12 CHARACTERS)</label>
+        <input
+          id="reg-password-field"
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          [disabled]="state.isProcessing()"
+          placeholder="••••••••••••"
+          required
+          autocomplete="new-password"
+        />
+      </div>
+
+      <div class="input-control-cluster">
+        <label for="reg-confirm-password-field">CONFIRM PASSWORD</label>
+        <input
+          id="reg-confirm-password-field"
+          type="password"
+          name="confirmPassword"
+          [(ngModel)]="confirmPassword"
+          [disabled]="state.isProcessing()"
+          placeholder="••••••••••••"
+          required
+          autocomplete="new-password"
+        />
+      </div>
+
+      @if (localValidationError || state.authenticationError()) {
+        <div class="error-banner" role="alert">
+          <span class="material-symbols-outlined icon-alert">error</span>
+          <span>{{ localValidationError || state.authenticationError() }}</span>
+        </div>
+      }
+
+      <button
+        type="submit"
+        [disabled]="state.isProcessing() || !username || !email || !password || !confirmPassword"
+      >
+        @if (state.isProcessing()) {
+          <span class="pulse-indicator">Creating account...</span>
+        } @else {
+          <span>Register Account</span>
+        }
+      </button>
+    </form>
+
+    <div class="auth-switch-link">
+      <span>Already have an account?</span>
+      <a routerLink="/login" class="link-highlight">
+        <span>Sign In</span>
+        <span class="material-symbols-outlined arrow-icon">arrow_forward</span>
+      </a>
+    </div>
+  </div>
+</main>

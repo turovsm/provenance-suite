@@ -1,0 +1,126 @@
+.workspace-viewport-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-oled-black);
+  overflow: hidden;
+}
+
+.telemetry-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.005) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.workspace-content-canvas {
+  position: relative;
+  z-index: 5;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.workspace-top-bar {
+  height: 60px;
+  padding: 0 2.5rem;
+  background-color: rgba(5, 5, 7, 0.85);
+  border-bottom: 1px solid var(--border-fine-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-branding {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.branding-logo {
+  font-size: 22px;
+  color: var(--accent-blue);
+}
+
+.branding-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.system-metrics-ticker {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+  padding-left: 0.85rem;
+  border-left: 1px solid var(--border-fine-glass);
+}
+
+.session-identity-widget {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.active-user-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.user-icon {
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+.admin-badge {
+  color: var(--accent-blue);
+  font-weight: 700;
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+}
+
+.signout-trigger-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.signout-trigger-btn:hover {
+  color: var(--accent-error);
+  border-color: rgba(248, 113, 113, 0.3);
+  background-color: rgba(248, 113, 113, 0.04);
+}
+
+.canvas-routing-outlet {
+  flex: 1;
+  padding: 2rem 2.5rem;
+  overflow-y: auto;
+  z-index: 2;
+}

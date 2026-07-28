@@ -1,0 +1,9 @@
+from typing import Protocol
+
+
+class PasswordHasher(Protocol):
+    def hash_password(self, password: str) -> str: ...
+
+    def verify_password(self, hash_string: str, password: str) -> bool: ...
+
+    def perform_dummy_verification(self) -> None: ...

@@ -1,0 +1,44 @@
+<form (ngSubmit)="handleFormSubmit()" class="auth-form-layout">
+  <div class="input-control-cluster">
+    <label for="email-field">EMAIL ADDRESS</label>
+    <input
+      id="email-field"
+      type="email"
+      name="email"
+      [(ngModel)]="emailCredentials"
+      [disabled]="isDisabled()"
+      placeholder="email@example.com"
+      required
+      autocomplete="username"
+    />
+  </div>
+
+  <div class="input-control-cluster">
+    <label for="password-field">PASSWORD</label>
+    <input
+      id="password-field"
+      type="password"
+      name="password"
+      [(ngModel)]="passwordCredentials"
+      [disabled]="isDisabled()"
+      placeholder="••••••••••••"
+      required
+      autocomplete="current-password"
+    />
+  </div>
+
+  @if (errorMessage()) {
+    <div class="error-banner" role="alert">
+      <span class="material-symbols-outlined icon-alert">error</span>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <button type="submit" [disabled]="isDisabled() || !emailCredentials || !passwordCredentials">
+    @if (isDisabled()) {
+      <span class="pulse-indicator">Signing in...</span>
+    } @else {
+      <span>Sign In</span>
+    }
+  </button>
+</form>

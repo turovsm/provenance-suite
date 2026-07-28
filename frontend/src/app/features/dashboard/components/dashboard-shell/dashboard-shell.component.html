@@ -1,0 +1,33 @@
+<div class="workspace-viewport-container">
+  <div class="telemetry-grid-overlay"></div>
+
+  <div class="workspace-content-canvas">
+    <header class="workspace-top-bar">
+      <div class="top-branding">
+        <span class="material-symbols-outlined branding-logo">album</span>
+        <span class="branding-text">PROVENANCE</span>
+        <span class="system-metrics-ticker">Preservation Suite</span>
+      </div>
+
+      <div class="session-identity-widget">
+        @if (authState.identity(); as user) {
+          <span class="active-user-handle" [title]="user.id">
+            <span class="material-symbols-outlined user-icon">person</span>
+            <span>{{ user.username }} ({{ user.email }})</span>
+            @if (user.is_superuser) {
+              <span class="admin-badge">[ADMIN]</span>
+            }
+          </span>
+        }
+        <button (click)="executeSignOut()" class="signout-trigger-btn" title="Sign Out">
+          <span class="material-symbols-outlined btn-icon">logout</span>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="canvas-routing-outlet">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -1,0 +1,93 @@
+.auth-form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.input-control-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.input-control-cluster label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.input-control-cluster input {
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.input-control-cluster input:focus {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--border-focus-glow);
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background-color: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 4px;
+  color: var(--accent-error);
+  font-size: 0.78rem;
+}
+
+.icon-alert {
+  font-size: 18px;
+  color: var(--accent-error);
+}
+
+.auth-form-layout button[type='submit'] {
+  cursor: pointer;
+  width: 100%;
+  padding: 0.85rem;
+  background-color: var(--text-primary);
+  border: none;
+  border-radius: 4px;
+  color: var(--bg-oled-black);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  transition: all 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-fine-glass);
+  color: var(--text-muted);
+}
+
+.pulse-indicator {
+  animation: telemetryPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes telemetryPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}

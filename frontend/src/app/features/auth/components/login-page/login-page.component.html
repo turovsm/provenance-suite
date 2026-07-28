@@ -1,0 +1,28 @@
+<main class="login-viewport-ring">
+  <div class="telemetry-grid-overlay"></div>
+
+  <div class="glass-isolation-card">
+    <header class="branding-header">
+      <div class="vault-node-badge">
+        <span class="material-symbols-outlined header-icon">library_music</span>
+        <span>PROVENANCE</span>
+      </div>
+      <h1>Sign In</h1>
+      <p>Access your music collection archive</p>
+    </header>
+
+    <app-login-form
+      [isDisabled]="state.isProcessing()"
+      [errorMessage]="state.authenticationError()"
+      (submitted)="executeAuthenticationRequest($event)"
+    />
+
+    <div class="auth-switch-link">
+      <span>Don't have an account?</span>
+      <a routerLink="/register" class="link-highlight">
+        <span>Create Account</span>
+        <span class="material-symbols-outlined arrow-icon">arrow_forward</span>
+      </a>
+    </div>
+  </div>
+</main>

@@ -1,0 +1,96 @@
+<div class="modal-backdrop">
+  <div class="glass-modal-panel">
+    <header class="modal-header">
+      <div class="modal-title-group">
+        <span class="material-symbols-outlined header-icon">
+          {{ albumToEdit ? 'edit_note' : 'add_circle' }}
+        </span>
+        <h2>{{ albumToEdit ? 'Edit Archival Album' : 'Ingest New Album' }}</h2>
+      </div>
+      <button type="button" (click)="closeModal()" class="close-btn" title="Close Modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <!-- 4-Tab Navigation -->
+    <nav class="modal-tabs-bar">
+      <button
+        type="button"
+        class="tab-nav-btn"
+        [class.tab-active]="currentTab() === 'basic'"
+        (click)="switchTab('basic')"
+      >
+        <span class="material-symbols-outlined">info</span>
+        <span>1. Metadata & Master Entities</span>
+      </button>
+      <button
+        type="button"
+        class="tab-nav-btn"
+        [class.tab-active]="currentTab() === 'discs'"
+        (click)="switchTab('discs')"
+      >
+        <span class="material-symbols-outlined">album</span>
+        <span>2. Discs & Tracks ({{ discs.length }})</span>
+      </button>
+      <button
+        type="button"
+        class="tab-nav-btn"
+        [class.tab-active]="currentTab() === 'covers'"
+        (click)="switchTab('covers')"
+      >
+        <span class="material-symbols-outlined">image</span>
+        <span>3. Artwork Scans ({{ coverService.covers().length }})</span>
+      </button>
+      <button
+        type="button"
+        class="tab-nav-btn"
+        [class.tab-active]="currentTab() === 'archives'"
+        (click)="switchTab('archives')"
+      >
+        <span class="material-symbols-outlined">cloud_download</span>
+        <span>4. Archives & References</span>
+      </button>
+    </nav>
+
+    <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
+      <div class="form-scroll-area">
+        @if (currentTab() === 'basic') {
+          <app-basic-info-tab [form]="form" />
+        }
+
+        @if (currentTab() === 'discs') {
+          <app-discs-tab [discs]="discs" />
+        }
+
+        @if (currentTab() === 'covers') {
+          <app-covers-tab />
+        }
+
+        @if (currentTab() === 'archives') {
+          <app-archives-tab [archives]="archives" [externalLinks]="externalLinks" />
+        }
+      </div>
+
+      <footer class="modal-footer">
+        <div class="reset-btn-group">
+          <button type="button" (click)="resetCurrentTab()" class="reset-btn-sm">
+            Reset Section
+          </button>
+          <button type="button" (click)="resetEntireForm()" class="reset-btn-danger">
+            Reset Form
+          </button>
+        </div>
+        <div class="footer-btn-group">
+          <button type="button" (click)="closeModal()" class="cancel-btn">Close</button>
+          <button
+            type="submit"
+            [disabled]="state.isSubmitting() || form.invalid"
+            class="submit-btn"
+          >
+            <span>{{ albumToEdit ? 'Update Album' : 'Save Album' }}</span>
+          </button>
+        </div>
+      </footer>
+    </form>
+  </div>
+</div>

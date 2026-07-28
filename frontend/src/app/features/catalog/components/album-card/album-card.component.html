@@ -1,0 +1,63 @@
+<div
+  class="glass-album-card"
+  role="button"
+  [attr.tabindex]="0"
+  (click)="handleCardClick()"
+  (keydown.enter)="handleCardClick()"
+>
+  <div class="cover-frame">
+    @if (coverUrl() && !hasImageError) {
+      <img
+        [src]="coverUrl()!"
+        [alt]="album().title_original"
+        class="cover-image"
+        (error)="onImageError()"
+      />
+    } @else {
+      <div class="cover-placeholder">
+        <span class="material-symbols-outlined cover-fallback-icon">graphic_eq</span>
+      </div>
+    }
+  </div>
+
+  <div class="card-meta">
+    <h3 class="title-primary" [title]="album().title_original">
+      {{ album().title_original }}
+    </h3>
+
+    @if (artistName()) {
+      <p class="artists-line">
+        {{ artistName() }}
+      </p>
+    }
+
+    @if (album().title_translated) {
+      <p class="title-sub" [title]="album().title_translated">
+        {{ album().title_translated }}
+      </p>
+    }
+
+    <div class="card-footer-metrics">
+      <span class="disc-count-badge">
+        {{ album().total_discs }} {{ album().total_discs === 1 ? 'Disc' : 'Discs' }}
+      </span>
+
+      @if (formattedReleaseDate(); as relDate) {
+        <span class="release-date">{{ relDate }}</span>
+      }
+    </div>
+
+    @if (isSuperuser()) {
+      <div class="card-admin-actions">
+        <button (click)="handleEdit($event)" class="card-edit-btn" title="Edit Album">
+          <span class="material-symbols-outlined action-icon">edit</span>
+          <span>Edit</span>
+        </button>
+        <button (click)="handleDelete($event)" class="card-delete-btn" title="Delete Album">
+          <span class="material-symbols-outlined action-icon">delete</span>
+          <span>Delete</span>
+        </button>
+      </div>
+    }
+  </div>
+</div>
