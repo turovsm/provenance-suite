@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { AlbumDetailResponse } from '../../../domain/models/music.model';
-import { DraftCoverItem, LocalCoverItem } from '../models/album-form.model';
+import { LocalCoverItem } from '../models/album-form.model';
 
 function randomId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -15,32 +15,27 @@ export class CoverListService {
   readonly changed = new Subject<void>();
 
   addFiles(files: FileList | File[], coverType: string): void {
-    Array.from(files).forEach((file) => this.readAndAppend(file, coverType));
-  }
+    const newItems: LocalCoverItem[] = [];
 
-  private readAndAppend(file: File, coverType: string): void {
-    if (!file.type.startsWith('image/')) return;
-    const previewUrl = URL.createObjectURL(file);
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      this.coversSignal.update((list) => [
-        ...list,
-        {
-          id: randomId(),
-          base64,
-          mimeType: file.type || 'image/jpeg',
-          fileName: file.name,
-          fileSize: file.size,
-          coverType,
-          previewUrl,
-        },
-      ]);
+      newItems.push({
+        id: randomId(),
+        file,
+        base64: '',
+        mimeType: file.type || 'image/jpeg',
+        fileName: file.name,
+        fileSize: file.size,
+        coverType,
+        previewUrl: URL.createObjectURL(file),
+      });
+    });
+
+    if (newItems.length > 0) {
+      this.coversSignal.update((list) => [...list, ...newItems]);
       this.changed.next();
-    };
-    reader.readAsDataURL(file);
+    }
   }
 
   hydrateFromAlbum(covers: AlbumDetailResponse['covers']): void {
@@ -76,21 +71,6 @@ export class CoverListService {
     this.coversSignal.set(items);
   }
 
-  restoreFromDraft(items: DraftCoverItem[] | undefined): void {
-    if (!Array.isArray(items)) return;
-    this.coversSignal.set(
-      items.map((c) => ({
-        id: c.id || randomId(),
-        base64: c.base64,
-        mimeType: c.mimeType || 'image/jpeg',
-        fileName: c.fileName || 'scan.jpg',
-        fileSize: c.fileSize || 0,
-        coverType: c.coverType || 'Front',
-        previewUrl: `data:${c.mimeType || 'image/jpeg'};base64,${c.base64}`,
-      })),
-    );
-  }
-
   updateType(coverId: string, newType: string): void {
     this.coversSignal.update((list) =>
       list.map((c) => (c.id === coverId ? { ...c, coverType: newType } : c)),
@@ -117,16 +97,5 @@ export class CoverListService {
     this.coversSignal().forEach((c) => {
       if (c.previewUrl.startsWith('blob:')) URL.revokeObjectURL(c.previewUrl);
     });
-  }
-
-  snapshotForDraft(): DraftCoverItem[] {
-    return this.coversSignal().map((c) => ({
-      id: c.id,
-      base64: c.base64,
-      mimeType: c.mimeType,
-      fileName: c.fileName,
-      fileSize: c.fileSize,
-      coverType: c.coverType,
-    }));
   }
 }

@@ -19,7 +19,6 @@ describe('AlbumDraftService', () => {
   it('persists and restores form draft payload from localStorage', () => {
     const mockDraft: AlbumFormDraft = {
       formValue: { title_original: 'Drafted Album' },
-      coversList: [],
     };
 
     service.persist(mockDraft);

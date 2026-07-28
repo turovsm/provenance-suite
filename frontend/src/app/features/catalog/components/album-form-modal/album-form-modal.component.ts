@@ -85,9 +85,6 @@ export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
     this.form.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.persistDraftIfCreating());
-    this.coverService.changed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.persistDraftIfCreating());
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -124,7 +121,6 @@ export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
     if (this.albumToEdit) return;
     this.draftService.persist({
       formValue: this.form.value,
-      coversList: this.coverService.snapshotForDraft(),
     });
   }
 
@@ -132,7 +128,6 @@ export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
     const draft = this.draftService.restore();
     if (!draft) return;
     this.builder.applyDraftFormValue(this.form, draft.formValue);
-    this.coverService.restoreFromDraft(draft.coversList);
   }
 
   protected resetCurrentTab(): void {
@@ -176,17 +171,40 @@ export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
     this.closed.emit();
   }
 
-  protected handleSubmit(): void {
+  protected async handleSubmit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
-    const payload = this.payloadMapper.toIngestRequest(this.form.value, this.coverService.covers());
+    const prepareCovers = await Promise.all(
+      this.coverService.covers().map(async (item) => {
+        if (item.base64) return item;
+        if (item.file) {
+          const base64 = await this.fileToBase64(item.file);
+          return { ...item, base64 };
+        }
+        return item;
+      }),
+    );
+
+    const payload = this.payloadMapper.toIngestRequest(this.form.value, prepareCovers);
 
     this.state.ingestAlbum(payload, () => {
       this.draftService.clear();
       this.closeModal();
+    });
+  }
+
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.includes(',') ? result.split(',')[1] : result);
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
     });
   }
 }

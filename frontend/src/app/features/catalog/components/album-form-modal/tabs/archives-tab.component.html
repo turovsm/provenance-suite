@@ -108,7 +108,12 @@
             placeholder="Source (e.g. VGMdb / MusicBrainz)"
             class="flex-1"
           />
-          <input type="url" formControlName="url" placeholder="HTTPS Index URL (e.g. https://vgmdb.net/album/2978)" class="flex-3" />
+          <input
+            type="url"
+            formControlName="url"
+            placeholder="HTTPS Index URL (e.g. https://vgmdb.net/album/2978)"
+            class="flex-3"
+          />
           <button type="button" (click)="removeExternalLink(elIdx)" class="remove-btn">
             <span class="material-symbols-outlined">delete</span>
           </button>

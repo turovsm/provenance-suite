@@ -2,21 +2,13 @@ export type FormTab = 'basic' | 'discs' | 'covers' | 'archives';
 
 export interface LocalCoverItem {
   id: string;
+  file?: File;
   base64: string;
   mimeType: string;
   fileName: string;
   fileSize: number;
   coverType: string;
   previewUrl: string;
-}
-
-export interface DraftCoverItem {
-  id: string;
-  base64: string;
-  mimeType: string;
-  fileName: string;
-  fileSize: number;
-  coverType: string;
 }
 
 export interface ArtistSeed {
@@ -94,5 +86,4 @@ export interface AlbumFormRawValue {
 
 export interface AlbumFormDraft {
   formValue: AlbumFormRawValue;
-  coversList: DraftCoverItem[];
 }
