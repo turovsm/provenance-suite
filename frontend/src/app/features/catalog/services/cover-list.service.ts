@@ -33,7 +33,17 @@ export class CoverListService {
     });
 
     if (newItems.length > 0) {
-      this.coversSignal.update((list) => [...list, ...newItems]);
+      this.coversSignal.update((list) => {
+        const merged = [...list, ...newItems];
+
+        return merged.sort((a, b) =>
+          a.fileName.localeCompare(b.fileName, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          }),
+        );
+      });
+
       this.changed.next();
     }
   }
