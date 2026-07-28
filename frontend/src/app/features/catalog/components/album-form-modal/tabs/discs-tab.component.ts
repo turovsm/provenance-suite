@@ -1,5 +1,11 @@
-import { Component, Input, inject } from '@angular/core';
-import { AbstractControl, FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { Component, Input, inject, signal } from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { ALBUM_REPOSITORY_PORT } from '../../../../../core/tokens/album.token';
 import { CustomSelectComponent } from '../../../../../shared/components/custom-select/custom-select.component';
 import { EntityAutocompleteComponent } from '../../../../../shared/components/entity-autocomplete/entity-autocomplete.component';
@@ -13,12 +19,13 @@ import {
   TRACK_ARTIST_ROLES,
   VIDEO_CODEC_OPTIONS,
 } from '../../../constants/album-form-options';
+import { DiscSeed } from '../../../models/album-form.model';
 import { AlbumFormBuilderService } from '../../../services/album-form-builder.service';
 
 @Component({
   selector: 'app-discs-tab',
   standalone: true,
-  imports: [ReactiveFormsModule, CustomSelectComponent, EntityAutocompleteComponent],
+  imports: [ReactiveFormsModule, FormsModule, CustomSelectComponent, EntityAutocompleteComponent],
   styleUrls: ['../album-form-modal.component.css'],
   templateUrl: './discs-tab.component.html',
 })
@@ -35,6 +42,11 @@ export class DiscsTabComponent {
   protected readonly videoCodecOptions = VIDEO_CODEC_OPTIONS;
   protected readonly bitrateModeOptions = BITRATE_MODE_OPTIONS;
   protected readonly trackArtistRoles = TRACK_ARTIST_ROLES;
+
+  protected readonly importSuccessMessage = signal<string | null>(null);
+  protected readonly importErrorMessage = signal<string | null>(null);
+  protected readonly showManualPaste = signal<boolean>(false);
+  protected manualJsonText = '';
 
   getTracks(discIndex: number): FormArray {
     return this.discs.at(discIndex).get('tracks') as FormArray;
@@ -82,6 +94,70 @@ export class DiscsTabComponent {
     this.getTrackArtists(discIndex, trackIndex).removeAt(artistIndex);
   }
 
+  protected async importFromClipboard(): Promise<void> {
+    this.importSuccessMessage.set(null);
+    this.importErrorMessage.set(null);
+
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        this.showManualPaste.set(true);
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        this.importErrorMessage.set('Clipboard is empty or contains no text.');
+        return;
+      }
+      this.processImportJson(text.trim());
+    } catch {
+      this.showManualPaste.set(true);
+      this.importErrorMessage.set('Unable to access system clipboard directly.');
+    }
+  }
+
+  protected applyManualJson(): void {
+    if (!this.manualJsonText.trim()) return;
+    this.processImportJson(this.manualJsonText.trim());
+    this.manualJsonText = '';
+    this.showManualPaste.set(false);
+  }
+
+  private processImportJson(jsonStr: string): void {
+    this.importSuccessMessage.set(null);
+    this.importErrorMessage.set(null);
+
+    try {
+      const parsed = JSON.parse(jsonStr);
+      let seeds: DiscSeed[] = [];
+
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.discs)) {
+          seeds = parsed.discs;
+        } else if (Array.isArray(parsed)) {
+          seeds = parsed;
+        }
+      }
+
+      if (!seeds || seeds.length === 0) {
+        this.importErrorMessage.set('Invalid format: expected JSON object with a "discs" array.');
+        return;
+      }
+
+      this.builder.populateDiscsFromSeeds(this.discs, seeds);
+
+      const totalTracks = seeds.reduce((acc, d) => acc + (d.tracks?.length || 0), 0);
+      this.importSuccessMessage.set(
+        `Successfully imported ${seeds.length} disc(s) and ${totalTracks} track(s) from export!`,
+      );
+
+      setTimeout(() => {
+        this.importSuccessMessage.set(null);
+      }, 5000);
+    } catch {
+      this.importErrorMessage.set('Failed to parse JSON string: invalid syntax.');
+    }
+  }
+
   protected handleTextFileSelected(
     event: Event | DragEvent,
     control: AbstractControl | null,
@@ -116,7 +192,6 @@ export class DiscsTabComponent {
     option: AutocompleteOption,
   ): void {
     const artistGroup = this.getTrackArtists(discIndex, trackIndex).at(artistIndex) as FormGroup;
-    // subValue carries name_translated for artist options (see EntitySearchService).
     artistGroup.patchValue({ name_translated: option.subValue || '' });
   }
 
