@@ -388,12 +388,17 @@
 }
 
 .gallery-cover-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background-color: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-fine-glass);
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.gallery-cover-card:has(.open-select) {
+  z-index: 100;
 }
 
 .gallery-cover-thumb-frame {
@@ -401,6 +406,8 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   background-color: #000;
+  border-radius: 5px 5px 0 0;
+  overflow: hidden;
 }
 
 .gallery-cover-img {
