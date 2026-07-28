@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "provenance-core-backend"
 version = "0.1.0"
-description = "Core engine for digital asset tracking."
+description = "Digital asset cataloging and music preservation engine."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
