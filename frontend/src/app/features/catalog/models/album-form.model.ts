@@ -13,14 +13,14 @@ export interface LocalCoverItem {
 
 export interface ArtistSeed {
   name_original?: string | null;
-  name_translated?: string | null;
+  aliases?: string[] | null;
   role?: string | null;
 }
 
 export interface TrackSeed {
   track_number?: number | string | null;
   title_original?: string | null;
-  title_translated?: string | null;
+  aliases?: string[] | null;
   duration_seconds?: number | string | null;
   audio_codec?: string | null;
   video_codec?: string | null;
@@ -67,7 +67,7 @@ export interface ExternalLinkSeed {
 export interface AlbumFormRawValue {
   album_id?: string | null;
   title_original?: string | null;
-  title_translated?: string | null;
+  aliases?: string[] | null;
   original_folder_name?: string | null;
   release_year?: number | string | null;
   release_month?: number | string | null;

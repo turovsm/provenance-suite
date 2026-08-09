@@ -3,12 +3,18 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.domain import MAX_ALIAS_LENGTH, MAX_ALIASES_PER_ENTITY
+
 
 class ArtistCreateSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    name_original: str = Field(..., min_length=1, max_length=512)
-    name_translated: str | None = Field(default=None, max_length=512)
+    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(
+        default_factory=list,
+        max_length=MAX_ALIASES_PER_ENTITY,
+        description="Alternative names: romanizations, former names, circle names, etc.",
+    )
 
 
 class ArtistResponseSchema(BaseModel):
@@ -16,7 +22,7 @@ class ArtistResponseSchema(BaseModel):
 
     id: uuid.UUID
     name_original: str
-    name_translated: str | None
+    aliases: list[str] = Field(default_factory=list)
     created_at: datetime | None = None
 
 
@@ -44,8 +50,8 @@ class EventResponseSchema(BaseModel):
 class FranchiseCreateSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    name_original: str = Field(..., min_length=1, max_length=512)
-    name_translated: str | None = Field(default=None, max_length=512)
+    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
     franchise_type: str = Field(default="Game", max_length=128)
 
 
@@ -54,5 +60,5 @@ class FranchiseResponseSchema(BaseModel):
 
     id: uuid.UUID
     name_original: str
-    name_translated: str | None
+    aliases: list[str] = Field(default_factory=list)
     franchise_type: str

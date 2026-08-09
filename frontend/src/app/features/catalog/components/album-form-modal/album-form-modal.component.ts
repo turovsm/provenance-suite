@@ -135,7 +135,7 @@ export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
     if (tab === 'basic') {
       this.form.patchValue({
         title_original: '',
-        title_translated: '',
+        aliases: [],
         original_folder_name: '',
         release_year: null,
         release_month: null,

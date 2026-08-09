@@ -9,7 +9,7 @@ export type BitrateMode = 'CBR' | 'VBR' | 'ABR';
 export interface MasterArtist {
   id: string;
   name_original: string;
-  name_translated: string | null;
+  aliases: string[];
 }
 
 export interface MasterEvent {
@@ -24,21 +24,21 @@ export interface MasterEvent {
 export interface MasterFranchise {
   id: string;
   name_original: string;
-  name_translated: string | null;
+  aliases: string[];
   franchise_type: string;
 }
 
 export interface ArtistIngestPayload {
   id?: string | null;
   name_original: string;
-  name_translated?: string | null;
+  aliases?: string[];
   role?: string;
 }
 
 export interface TrackIngestPayload {
   track_number: number;
   title_original: string;
-  title_translated?: string | null;
+  aliases?: string[];
   duration_seconds?: number | null;
   audio_codec?: AudioCodec | null;
   video_codec?: VideoCodec | null;
@@ -91,7 +91,7 @@ export interface AlbumIngestRequest {
   album_id?: string | null;
   title_original: string;
   original_folder_name: string;
-  title_translated?: string | null;
+  aliases?: string[];
   release_year?: number | null;
   release_month?: number | null;
   release_day?: number | null;
@@ -119,7 +119,7 @@ export interface AlbumIngestResponse {
 export interface ArtistDetailResponse {
   id: string;
   name_original: string;
-  name_translated: string | null;
+  aliases: string[];
   role?: string;
 }
 
@@ -135,7 +135,7 @@ export interface CoverResponse {
 export interface AlbumSummary {
   id: string;
   title_original: string;
-  title_translated: string | null;
+  aliases: string[];
   release_year: number | null;
   release_month: number | null;
   release_day: number | null;
@@ -151,7 +151,7 @@ export interface TrackDetailResponse {
   id: string;
   track_number: number;
   title_original: string;
-  title_translated: string | null;
+  aliases: string[];
   duration_seconds: number | null;
   audio_codec: AudioCodec | null;
   video_codec?: VideoCodec | null;
@@ -217,7 +217,7 @@ export interface AlbumChangelogResponse {
 export interface AlbumDetailResponse {
   id: string;
   title_original: string;
-  title_translated: string | null;
+  aliases: string[];
   release_year: number | null;
   release_month: number | null;
   release_day: number | null;

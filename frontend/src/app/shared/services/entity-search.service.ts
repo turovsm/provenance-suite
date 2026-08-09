@@ -5,7 +5,7 @@ import { MasterArtist, MasterEvent, MasterFranchise } from '../../domain/models/
 import { AutocompleteOption, EntityType } from '../models/autocomplete.model';
 
 function artistToOption(a: MasterArtist): AutocompleteOption {
-  return { id: a.id, display: a.name_original, subValue: a.name_translated || undefined, raw: a };
+  return { id: a.id, display: a.name_original, subValue: a.aliases?.[0] || undefined, raw: a };
 }
 
 function eventToOption(e: MasterEvent): AutocompleteOption {
@@ -13,7 +13,7 @@ function eventToOption(e: MasterEvent): AutocompleteOption {
 }
 
 function franchiseToOption(f: MasterFranchise): AutocompleteOption {
-  return { id: f.id, display: f.name_original, subValue: f.name_translated || undefined, raw: f };
+  return { id: f.id, display: f.name_original, subValue: f.aliases?.[0] || undefined, raw: f };
 }
 
 @Injectable({ providedIn: 'root' })

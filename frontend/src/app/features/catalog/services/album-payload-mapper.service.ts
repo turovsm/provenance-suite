@@ -38,7 +38,7 @@ export class AlbumPayloadMapperService {
     return {
       album_id: formVal.album_id || null,
       title_original: formVal.title_original ?? '',
-      title_translated: formVal.title_translated || null,
+      aliases: formVal.aliases ?? [],
       original_folder_name: formVal.original_folder_name ?? '',
       release_year: toNumberOrNull(formVal.release_year),
       release_month: toNumberOrNull(formVal.release_month),
@@ -79,7 +79,7 @@ export class AlbumPayloadMapperService {
     return {
       track_number: index + 1,
       title_original: t.title_original ?? '',
-      title_translated: t.title_translated || null,
+      aliases: t.aliases ?? [],
       duration_seconds: toNumberOrNull(t.duration_seconds),
       audio_codec: (t.audio_codec as AudioCodec) || null,
       video_codec: (t.video_codec as VideoCodec) || null,
@@ -90,7 +90,7 @@ export class AlbumPayloadMapperService {
       is_instrumental: Boolean(t.is_instrumental),
       artists: (t.artists ?? []).map((ta) => ({
         name_original: ta.name_original ?? '',
-        name_translated: ta.name_translated || null,
+        aliases: ta.aliases ?? [],
         role: ta.role ?? 'Composer',
       })),
     };

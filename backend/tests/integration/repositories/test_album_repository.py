@@ -15,6 +15,7 @@ from src.infrastructure.db.repositories.album import SqlAlchemyAlbumRepository
 @pytest.mark.asyncio
 async def test_album_repository_cascading_save_and_hydration(db_session: AsyncSession) -> None:
     repository = SqlAlchemyAlbumRepository(db_session)
+
     album_id = uuid.uuid4()
     disc_id = uuid.uuid4()
     track_id = uuid.uuid4()
@@ -25,7 +26,7 @@ async def test_album_repository_cascading_save_and_hydration(db_session: AsyncSe
         disc_id=disc_id,
         track_number=1,
         title_original="Core Stream Node",
-        title_translated=None,
+        aliases=["CSN", "コア・ストリーム・ノード"],
         duration_seconds=240,
         audio_codec=AudioCodec.FLAC,
         video_codec=None,
@@ -61,7 +62,7 @@ async def test_album_repository_cascading_save_and_hydration(db_session: AsyncSe
     album_aggregate = Album(
         id=album_id,
         title_original="Relational Ledger Matrix",
-        title_translated="RLM Edition",
+        aliases=["RLM", "リレーショナル・レジャー・マトリックス"],
         release_year=2026,
         release_month=7,
         release_day=18,
@@ -81,6 +82,7 @@ async def test_album_repository_cascading_save_and_hydration(db_session: AsyncSe
 
     assert loaded_aggregate is not None
     assert loaded_aggregate.title_original == "Relational Ledger Matrix"
+    assert loaded_aggregate.aliases == ["RLM", "リレーショナル・レジャー・マトリックス"]
     assert loaded_aggregate.release_year == 2026
     assert len(loaded_aggregate.covers) == 1
     assert loaded_aggregate.covers[0].storage_path == "covers/fake_uuid.jpg"
@@ -90,5 +92,6 @@ async def test_album_repository_cascading_save_and_hydration(db_session: AsyncSe
     assert loaded_aggregate.discs[0].raw_log_text == "Sample EAC Log File Content"
     assert len(loaded_aggregate.discs[0].tracks) == 1
     assert loaded_aggregate.discs[0].tracks[0].title_original == "Core Stream Node"
+    assert loaded_aggregate.discs[0].tracks[0].aliases == ["CSN", "コア・ストリーム・ノード"]
     assert loaded_aggregate.discs[0].tracks[0].sample_rate == 96000
     assert len(loaded_aggregate.changelogs) == 1

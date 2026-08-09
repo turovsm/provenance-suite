@@ -13,6 +13,11 @@ from src.domain.entities.music import (
 )
 from src.domain.entities.user import User
 from src.domain.exceptions import DomainError, DomainInvariantError, InvalidEmailError
+from src.domain.value_objects.aliases import (
+    MAX_ALIAS_LENGTH,
+    MAX_ALIASES_PER_ENTITY,
+    normalize_aliases,
+)
 from src.domain.value_objects.email import EmailAddress
 from src.domain.value_objects.music_types import (
     AudioCodec,
@@ -47,4 +52,7 @@ __all__ = [
     "AudioCodec",
     "VideoCodec",
     "BitrateMode",
+    "MAX_ALIASES_PER_ENTITY",
+    "MAX_ALIAS_LENGTH",
+    "normalize_aliases",
 ]

@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
+from src.domain.value_objects.aliases import normalize_aliases
 from src.domain.value_objects.music_types import (
     AudioCodec,
     BitrateMode,
@@ -27,17 +28,23 @@ class Event:
 class Franchise:
     id: uuid.UUID
     name_original: str
-    name_translated: str | None
-    franchise_type: str
+    aliases: list[str] = field(default_factory=list)
+    franchise_type: str = "Game"
+
+    def __post_init__(self) -> None:
+        self.aliases = normalize_aliases(self.aliases)
 
 
 @dataclass(slots=True)
 class Artist:
     id: uuid.UUID
     name_original: str
-    name_translated: str | None
+    aliases: list[str] = field(default_factory=list)
     role: str = "Primary"
     created_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        self.aliases = normalize_aliases(self.aliases)
 
 
 @dataclass(slots=True)
@@ -46,7 +53,7 @@ class Track:
     disc_id: uuid.UUID
     track_number: int
     title_original: str
-    title_translated: str | None
+    aliases: list[str]
     duration_seconds: int | None
     audio_codec: AudioCodec | None
     video_codec: VideoCodec | None
@@ -56,6 +63,9 @@ class Track:
     bitrate_mode: BitrateMode | None
     is_instrumental: bool = False
     artists: list[Artist] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.aliases = normalize_aliases(self.aliases)
 
 
 @dataclass(slots=True)
@@ -127,7 +137,7 @@ class AlbumChangelog:
 class Album:
     id: uuid.UUID
     title_original: str
-    title_translated: str | None
+    aliases: list[str] = field(default_factory=list)
     release_year: int | None = None
     release_month: int | None = None
     release_day: int | None = None
@@ -143,9 +153,11 @@ class Album:
     original_folder_name: str = ""
     created_at: datetime | None = None
     updated_at: datetime | None = None
-
     discs: list[Disc] = field(default_factory=list)
     covers: list[AlbumCover] = field(default_factory=list)
     archives: list[AlbumArchive] = field(default_factory=list)
     external_links: list[ExternalLink] = field(default_factory=list)
     changelogs: list[AlbumChangelog] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.aliases = normalize_aliases(self.aliases)

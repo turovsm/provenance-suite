@@ -20,13 +20,13 @@ def minimal_album_payload(title: str = "Test Album") -> dict:
 def full_album_payload() -> dict:
     return {
         **minimal_album_payload("Full Aggregate Album"),
-        "title_translated": "Translated Title",
+        "aliases": ["Translated Title", "FAA"],
         "release_year": 2023,
         "release_month": 11,
         "release_day": 3,
         "label": "Test Label",
         "publisher": "Test Publisher",
-        "album_artist": {"name_original": "Composer X", "name_translated": "X"},
+        "album_artist": {"name_original": "Composer X", "aliases": ["X"]},
         "discs": [
             {
                 "disc_number": 1,
@@ -132,6 +132,7 @@ async def test_admin_creates_full_aggregate_and_reads_it_back(
 
     assert body["title_original"] == "Full Aggregate Album"
     assert body["release_year"] == 2023
+    assert body["aliases"] == ["Translated Title", "FAA"]
     assert body["album_artist"]["name_original"] == "Composer X"
 
     assert len(body["discs"]) == 1
@@ -394,8 +395,8 @@ async def test_track_artist_roles_survive_edit_roundtrip(
                         "artists": [
                             {
                                 "name_original": a["name_original"],
-                                "name_translated": a["name_translated"],
-                                "role": a["role"],  # as the frontend now receives it
+                                "aliases": a["aliases"],
+                                "role": a["role"],
                             }
                             for a in t["artists"]
                         ],
@@ -491,7 +492,7 @@ async def test_changelog_captures_all_change_layers(
             {
                 "track_number": 1,
                 "title_original": "Opening",
-                "title_translated": "Opening (EN)",
+                "aliases": ["Opening (EN)"],
                 "duration_seconds": 245,
                 "bitrate_kbps": 1411,
                 "bitrate_mode": "CBR",
@@ -522,7 +523,7 @@ async def test_changelog_captures_all_change_layers(
         "old": "03:20",
         "new": "04:05",
     }
-    assert merged_changes["D1T1 · Title (Translated)"] == {
+    assert merged_changes["D1T1 · Aliases"] == {
         "type": "added",
         "new": "Opening (EN)",
     }
