@@ -33,7 +33,7 @@ describe('EntitySearchService', () => {
 
   it('normalizes artist search results into AutocompleteOption array', () => {
     repoSpy.searchArtists.mockReturnValue(
-      of([{ id: 'a1', name_original: '上海アリス幻樂団', name_translated: 'Team Shanghai Alice' }]),
+      of([{ id: 'a1', name_original: '上海アリス幻樂団', aliases: ['Team Shanghai Alice'] }]),
     );
 
     service.search('artist', 'Shanghai').subscribe((options) => {
@@ -48,7 +48,7 @@ describe('EntitySearchService', () => {
 
   it('resolves master entity by ID via search matching', () => {
     repoSpy.searchArtists.mockReturnValue(
-      of([{ id: 'target-uuid', name_original: 'ZUN', name_translated: null }]),
+      of([{ id: 'target-uuid', name_original: 'ZUN', aliases: [] }]),
     );
 
     service.resolveById('artist', 'target-uuid').subscribe((match) => {

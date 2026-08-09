@@ -9,7 +9,7 @@ describe('AlbumCardComponent', () => {
   const mockAlbum = {
     id: 'a1',
     title_original: 'Scarlet Devil OST',
-    title_translated: 'Embodiment of Scarlet Devil',
+    aliases: ['Embodiment of Scarlet Devil'],
     release_year: 2002,
     release_month: 8,
     release_day: 11,

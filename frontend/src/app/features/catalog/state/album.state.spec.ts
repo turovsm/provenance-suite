@@ -36,7 +36,7 @@ describe('AlbumStateEngine', () => {
     const mockSummary: AlbumSummary = {
       id: 'album-1',
       title_original: 'Album One',
-      title_translated: null,
+      aliases: [],
       release_year: 2024,
       release_month: null,
       release_day: null,
