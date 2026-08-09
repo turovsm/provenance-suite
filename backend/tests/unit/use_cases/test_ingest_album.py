@@ -26,7 +26,7 @@ async def test_album_ingest_constructs_valid_aggregate_graph() -> None:
     request = IngestAlbumRequest(
         title_original="Symphony No. 5",
         original_folder_name="Beethoven_Symphony_5",
-        title_translated="Symphony No. 5 English Edition",
+        aliases=["Symphony No. 5 English Edition", "Beethoven 5th"],
         release_year=1808,
         discs=[
             DiscIngestDTO(
@@ -54,7 +54,7 @@ async def test_album_ingest_constructs_valid_aggregate_graph() -> None:
 
     mock_album_repo.save.assert_called_once()
     saved_album = mock_album_repo.save.call_args[0][0]
-    assert saved_album.title_translated == "Symphony No. 5 English Edition"
+    assert saved_album.aliases == ["Symphony No. 5 English Edition", "Beethoven 5th"]
     assert saved_album.release_year == 1808
     assert len(saved_album.discs) == 1
     assert saved_album.discs[0].tracks[0].title_original == "Allegro con brio"

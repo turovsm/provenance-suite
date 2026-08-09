@@ -201,14 +201,6 @@
                 placeholder="Original Title *"
                 class="flex-2"
               />
-
-              <input
-                type="text"
-                formControlName="title_translated"
-                placeholder="Translated Title"
-                class="flex-2"
-              />
-
               <input
                 type="number"
                 formControlName="duration_seconds"
@@ -289,6 +281,10 @@
                   class="flex-1"
                 />
               </div>
+              <div class="field-group" style="width: 100%; margin-top: 0.25rem">
+                <span class="field-label">TRACK ALIASES</span>
+                <app-aliases-chip-input formControlName="aliases"></app-aliases-chip-input>
+              </div>
             </div>
 
             @if (getTrackArtists(dIdx, tIdx).length > 0) {
@@ -308,22 +304,11 @@
                       [dense]="true"
                       (optionSelected)="handleTrackArtistSelected(dIdx, tIdx, taIdx, $event)"
                     />
-                    <div class="input-with-action flex-2">
-                      <input
-                        type="text"
-                        formControlName="name_translated"
-                        placeholder="Translated Name"
-                        class="input-dense"
-                      />
-                      <button
-                        type="button"
-                        class="inline-refresh-btn"
-                        title="Sync/Refresh translated name in DB and all matching artists"
-                        (click)="refreshArtistTranslation(dIdx, tIdx, taIdx)"
-                      >
-                        <span class="material-symbols-outlined">sync</span>
-                      </button>
-                    </div>
+                    <app-aliases-chip-input
+                      formControlName="aliases"
+                      class="flex-2"
+                      (aliasesChanged)="syncArtistAliases(dIdx, tIdx, taIdx, $event)"
+                    ></app-aliases-chip-input>
                     <app-custom-select
                       formControlName="role"
                       [options]="trackArtistRoles"

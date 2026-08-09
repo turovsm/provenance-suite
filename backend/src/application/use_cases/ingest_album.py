@@ -27,7 +27,7 @@ from src.infrastructure.storage.object_storage import MinioObjectStorageService
 class ArtistIngestDTO:
     name_original: str
     id: uuid.UUID | None = None
-    name_translated: str | None = None
+    aliases: list[str] = field(default_factory=list)
     role: str = "Primary"
 
 
@@ -35,7 +35,7 @@ class ArtistIngestDTO:
 class TrackIngestDTO:
     track_number: int
     title_original: str
-    title_translated: str | None = None
+    aliases: list[str] = field(default_factory=list)
     duration_seconds: int | None = None
     audio_codec: AudioCodec | None = None
     video_codec: VideoCodec | None = None
@@ -95,7 +95,7 @@ class IngestAlbumRequest:
     original_folder_name: str
     album_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
-    title_translated: str | None = None
+    aliases: list[str] = field(default_factory=list)
     release_year: int | None = None
     release_month: int | None = None
     release_day: int | None = None
@@ -139,7 +139,7 @@ class IngestAlbumUseCase:
             domain_album_artist = Artist(
                 id=request.album_artist.id or uuid.uuid4(),
                 name_original=request.album_artist.name_original,
-                name_translated=request.album_artist.name_translated,
+                aliases=list(request.album_artist.aliases),
             )
 
         domain_discs: list[Disc] = []
@@ -161,7 +161,7 @@ class IngestAlbumUseCase:
                     Artist(
                         id=a.id or uuid.uuid4(),
                         name_original=a.name_original,
-                        name_translated=a.name_translated,
+                        aliases=list(a.aliases),
                         role=a.role,
                     )
                     for a in track_dto.artists
@@ -173,7 +173,7 @@ class IngestAlbumUseCase:
                         disc_id=disc_id,
                         track_number=assigned_track_number,
                         title_original=track_dto.title_original,
-                        title_translated=track_dto.title_translated,
+                        aliases=list(track_dto.aliases),
                         duration_seconds=track_dto.duration_seconds,
                         audio_codec=track_dto.audio_codec,
                         video_codec=track_dto.video_codec,
@@ -261,7 +261,7 @@ class IngestAlbumUseCase:
         album_aggregate = Album(
             id=album_id,
             title_original=request.title_original,
-            title_translated=request.title_translated,
+            aliases=list(request.aliases),
             release_year=request.release_year,
             release_month=request.release_month,
             release_day=request.release_day,

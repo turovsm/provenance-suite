@@ -31,9 +31,9 @@
       </p>
     }
 
-    @if (album().title_translated) {
-      <p class="title-sub" [title]="album().title_translated">
-        {{ album().title_translated }}
+    @if (album().aliases && album().aliases.length > 0) {
+      <p class="title-sub" [title]="album().aliases.join(', ')">
+        {{ album().aliases.join(' • ') }}
       </p>
     }
 

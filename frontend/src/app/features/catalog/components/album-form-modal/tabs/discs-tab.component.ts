@@ -6,8 +6,9 @@ import {
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { ALBUM_REPOSITORY_PORT } from '../../../../../core/tokens/album.token';
+import { MasterArtist } from '../../../../../domain/models/music.model';
 import { CustomSelectComponent } from '../../../../../shared/components/custom-select/custom-select.component';
+import { AliasesChipInputComponent } from '../../../../../shared/components/aliases-chip-input/aliases-chip-input.component';
 import { EntityAutocompleteComponent } from '../../../../../shared/components/entity-autocomplete/entity-autocomplete.component';
 import { AutocompleteOption } from '../../../../../shared/models/autocomplete.model';
 import {
@@ -25,14 +26,19 @@ import { AlbumFormBuilderService } from '../../../services/album-form-builder.se
 @Component({
   selector: 'app-discs-tab',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, CustomSelectComponent, EntityAutocompleteComponent],
+  imports: [
+    ReactiveFormsModule,
+    FormsModule,
+    CustomSelectComponent,
+    EntityAutocompleteComponent,
+    AliasesChipInputComponent,
+  ],
   styleUrls: ['../album-form-modal.component.css'],
   templateUrl: './discs-tab.component.html',
 })
 export class DiscsTabComponent {
   @Input({ required: true }) discs!: FormArray;
 
-  private readonly repo = inject(ALBUM_REPOSITORY_PORT);
   private readonly builder = inject(AlbumFormBuilderService);
 
   protected readonly mediaTypes = MEDIA_TYPES;
@@ -92,6 +98,49 @@ export class DiscsTabComponent {
 
   protected removeTrackArtist(discIndex: number, trackIndex: number, artistIndex: number): void {
     this.getTrackArtists(discIndex, trackIndex).removeAt(artistIndex);
+  }
+
+  protected handleTrackArtistSelected(
+    dIdx: number,
+    tIdx: number,
+    taIdx: number,
+    option: AutocompleteOption,
+  ): void {
+    const artistGroup = this.getTrackArtists(dIdx, tIdx).at(taIdx) as FormGroup;
+    const raw = option.raw as MasterArtist;
+    if (raw && Array.isArray(raw.aliases) && raw.aliases.length > 0) {
+      artistGroup.patchValue({ aliases: raw.aliases });
+      this.propagateArtistAliases(raw.name_original, raw.aliases);
+    }
+  }
+
+  protected syncArtistAliases(dIdx: number, tIdx: number, taIdx: number, aliases: string[]): void {
+    const artistGroup = this.getTrackArtists(dIdx, tIdx).at(taIdx) as FormGroup;
+    const nameOriginal = artistGroup.get('name_original')?.value?.trim();
+    if (nameOriginal) {
+      this.propagateArtistAliases(nameOriginal, aliases);
+    }
+  }
+
+  private propagateArtistAliases(nameOriginal: string, aliases: string[]): void {
+    const targetLower = nameOriginal.trim().toLowerCase();
+    this.discs.controls.forEach((discControl) => {
+      const tracks = discControl.get('tracks') as FormArray;
+      if (!tracks) return;
+      tracks.controls.forEach((trackControl) => {
+        const artists = trackControl.get('artists') as FormArray;
+        if (!artists) return;
+        artists.controls.forEach((artControl) => {
+          const name = artControl.get('name_original')?.value?.trim();
+          if (name && name.toLowerCase() === targetLower) {
+            const currentAliases = artControl.get('aliases')?.value;
+            if (JSON.stringify(currentAliases) !== JSON.stringify(aliases)) {
+              artControl.patchValue({ aliases }, { emitEvent: false });
+            }
+          }
+        });
+      });
+    });
   }
 
   protected async importFromClipboard(): Promise<void> {
@@ -183,59 +232,5 @@ export class DiscsTabComponent {
       }
     };
     reader.readAsText(file);
-  }
-
-  protected handleTrackArtistSelected(
-    discIndex: number,
-    trackIndex: number,
-    artistIndex: number,
-    option: AutocompleteOption,
-  ): void {
-    const artistGroup = this.getTrackArtists(discIndex, trackIndex).at(artistIndex) as FormGroup;
-    artistGroup.patchValue({ name_translated: option.subValue || '' });
-  }
-
-  protected refreshArtistTranslation(
-    discIndex: number,
-    trackIndex: number,
-    artistIndex: number,
-  ): void {
-    const artistGroup = this.getTrackArtists(discIndex, trackIndex).at(artistIndex) as FormGroup;
-    const nameOriginal = artistGroup.get('name_original')?.value?.trim();
-    const nameTranslated = artistGroup.get('name_translated')?.value?.trim() || '';
-
-    if (!nameOriginal) return;
-
-    this.repo.createArtist(nameOriginal, nameTranslated).subscribe({
-      next: (savedArtist) => {
-        const updatedTranslation = savedArtist.name_translated || '';
-        artistGroup.patchValue({ name_translated: updatedTranslation });
-        this.propagateArtistTranslation(nameOriginal, updatedTranslation);
-      },
-      error: (err) => {
-        console.error('Failed to sync artist translation:', err);
-      },
-    });
-  }
-
-  private propagateArtistTranslation(nameOriginal: string, nameTranslated: string): void {
-    const targetLower = nameOriginal.trim().toLowerCase();
-
-    this.discs.controls.forEach((discControl) => {
-      const tracks = discControl.get('tracks') as FormArray;
-      if (!tracks) return;
-
-      tracks.controls.forEach((trackControl) => {
-        const artists = trackControl.get('artists') as FormArray;
-        if (!artists) return;
-
-        artists.controls.forEach((artControl) => {
-          const orig = artControl.get('name_original')?.value?.trim();
-          if (orig && orig.toLowerCase() === targetLower) {
-            artControl.patchValue({ name_translated: nameTranslated });
-          }
-        });
-      });
-    });
   }
 }

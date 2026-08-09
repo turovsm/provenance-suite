@@ -3,9 +3,10 @@ from collections.abc import Sequence
 from typing import Any, TypeVar
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import String as SAString, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.domain.value_objects.aliases import normalize_aliases
 from src.infrastructure.db.models.base import BaseInfrastructureModel
 from src.infrastructure.db.models.music import (
     AlbumModel,
@@ -63,9 +64,20 @@ async def _get_distinct_album_attribute(
     return [r for r in res.scalars().all() if r]
 
 
+def _merge_aliases(existing: list[str] | None, incoming: list[str]) -> list[str]:
+    """Case-insensitive union that preserves existing ordering first."""
+    merged = list(existing or [])
+    seen = {a.casefold() for a in merged}
+    for alias in normalize_aliases(incoming):
+        if alias.casefold() not in seen:
+            merged.append(alias)
+            seen.add(alias.casefold())
+    return merged
+
+
 @router.get("/artists", response_model=list[ArtistResponseSchema])
 async def search_artists(
-    query: str = Query(default="", description="Search query for artist or circle name"),
+    query: str = Query(default="", description="Search query for artist name or alias"),
     limit: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
@@ -75,7 +87,10 @@ async def search_artists(
         model_cls=ArtistModel,
         query=query,
         limit=limit,
-        search_columns=[ArtistModel.name_original, ArtistModel.name_translated],
+        search_columns=[
+            ArtistModel.name_original,
+            cast(ArtistModel.aliases, SAString),
+        ],
         order_column=ArtistModel.name_original,
     )
 
@@ -90,6 +105,7 @@ async def create_artist(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
+    aliases = normalize_aliases(payload.aliases)
     stmt = (
         select(ArtistModel)
         .where(ArtistModel.name_original.ilike(payload.name_original.strip()))
@@ -98,13 +114,8 @@ async def create_artist(
     res = await session.execute(stmt)
     existing = res.scalars().first()
 
-    if payload.name_translated and payload.name_translated.strip():
-        translated_name = payload.name_translated.strip()
-    else:
-        translated_name = None
-
     if existing:
-        existing.name_translated = translated_name
+        existing.aliases = _merge_aliases(existing.aliases, aliases)
         await session.commit()
         await session.refresh(existing)
         return existing
@@ -112,7 +123,7 @@ async def create_artist(
     new_artist = ArtistModel(
         id=uuid.uuid4(),
         name_original=payload.name_original.strip(),
-        name_translated=translated_name,
+        aliases=aliases,
     )
     session.add(new_artist)
     await session.commit()
@@ -181,7 +192,10 @@ async def search_franchises(
         model_cls=FranchiseModel,
         query=query,
         limit=limit,
-        search_columns=[FranchiseModel.name_original, FranchiseModel.name_translated],
+        search_columns=[
+            FranchiseModel.name_original,
+            cast(FranchiseModel.aliases, SAString),  # served by idx_franchises_aliases_trgm
+        ],
         order_column=FranchiseModel.name_original,
     )
 
@@ -196,6 +210,7 @@ async def create_franchise(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
+    aliases = normalize_aliases(payload.aliases)
     stmt = (
         select(FranchiseModel)
         .where(FranchiseModel.name_original.ilike(payload.name_original.strip()))
@@ -204,12 +219,15 @@ async def create_franchise(
     res = await session.execute(stmt)
     existing = res.scalars().first()
     if existing:
+        existing.aliases = _merge_aliases(existing.aliases, aliases)
+        await session.commit()
+        await session.refresh(existing)
         return existing
 
     new_franchise = FranchiseModel(
         id=uuid.uuid4(),
         name_original=payload.name_original.strip(),
-        name_translated=payload.name_translated.strip() if payload.name_translated else None,
+        aliases=aliases,
         franchise_type=payload.franchise_type,
     )
     session.add(new_franchise)

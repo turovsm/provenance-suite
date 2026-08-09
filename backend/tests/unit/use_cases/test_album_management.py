@@ -19,7 +19,7 @@ async def test_list_albums_queries_repository_and_returns_paginated_response() -
     fake_album = Album(
         id=uuid.uuid4(),
         title_original="Touhou Project OST",
-        title_translated=None,
+        aliases=[],
         release_year=2004,
         release_month=8,
         release_day=15,

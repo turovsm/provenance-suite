@@ -19,7 +19,7 @@ export class AlbumFormBuilderService {
     return this.fb.group({
       album_id: [null],
       title_original: ['', [Validators.required, Validators.maxLength(512)]],
-      title_translated: ['', [Validators.maxLength(512)]],
+      aliases: [[]],
       original_folder_name: ['', [Validators.required, Validators.maxLength(1024)]],
       release_year: [null, [Validators.min(1800), Validators.max(2100)]],
       release_month: [null, [Validators.min(1), Validators.max(12)]],
@@ -40,7 +40,7 @@ export class AlbumFormBuilderService {
   createArtistGroup(data?: ArtistSeed): FormGroup {
     return this.fb.group({
       name_original: [data?.name_original || '', [Validators.required, Validators.maxLength(512)]],
-      name_translated: [data?.name_translated || '', [Validators.maxLength(512)]],
+      aliases: [data?.aliases ?? []],
       role: [data?.role || 'Composer', Validators.required],
     });
   }
@@ -49,7 +49,7 @@ export class AlbumFormBuilderService {
     const trackGroup = this.fb.group({
       track_number: [t?.track_number ?? 1, [Validators.required, Validators.min(1)]],
       title_original: [t?.title_original || '', Validators.required],
-      title_translated: [t?.title_translated || ''],
+      aliases: [t?.aliases ?? []],
       duration_seconds: [t?.duration_seconds ?? null, Validators.min(0)],
       audio_codec: [t?.audio_codec || 'FLAC'],
       video_codec: [t?.video_codec || ''],
@@ -147,7 +147,7 @@ export class AlbumFormBuilderService {
     form.patchValue({
       album_id: album.id,
       title_original: album.title_original,
-      title_translated: album.title_translated || '',
+      aliases: album.aliases ?? [],
       original_folder_name: album.original_folder_name,
       release_year: album.release_year,
       release_month: album.release_month,
@@ -176,7 +176,7 @@ export class AlbumFormBuilderService {
 
     form.patchValue({
       title_original: fVal.title_original || '',
-      title_translated: fVal.title_translated || '',
+      aliases: fVal.aliases ?? [],
       original_folder_name: fVal.original_folder_name || '',
       release_year: fVal.release_year ?? null,
       release_month: fVal.release_month ?? null,
