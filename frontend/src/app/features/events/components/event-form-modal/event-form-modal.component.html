@@ -1,0 +1,70 @@
+<div class="modal-backdrop">
+  <div class="glass-modal-panel">
+    <header class="modal-header">
+      <div class="modal-title-group">
+        <span class="material-symbols-outlined header-icon">
+          {{ eventToEdit ? 'edit_note' : 'event' }}
+        </span>
+        <h2>{{ eventToEdit ? 'Edit Master Event' : 'Create Master Event' }}</h2>
+      </div>
+      <button type="button" (click)="closeModal()" class="close-btn" title="Close Modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
+      <div class="form-scroll-area">
+        <div class="field-group">
+          <label for="event_short_name">SHORT NAME * (e.g. C104, M3-56)</label>
+          <input
+            id="event_short_name"
+            type="text"
+            formControlName="short_name"
+            placeholder="e.g. C104"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <label for="event_full_name">FULL OFFICIAL NAME</label>
+          <input
+            id="event_full_name"
+            type="text"
+            formControlName="full_name"
+            placeholder="e.g. Comic Market 104"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="field-group flex-1">
+            <label for="event_start_date">START DATE</label>
+            <input id="event_start_date" type="date" formControlName="start_date" />
+          </div>
+
+          <div class="field-group flex-1">
+            <label for="event_end_date">END DATE</label>
+            <input id="event_end_date" type="date" formControlName="end_date" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">EVENT STATUS</span>
+          <app-custom-select formControlName="status" [options]="statusOptions" [openUp]="true" />
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <div class="footer-btn-group">
+          <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
+          <button
+            type="submit"
+            [disabled]="state.isSubmitting() || form.invalid"
+            class="submit-btn"
+          >
+            <span>{{ eventToEdit ? 'Update Event' : 'Save Event' }}</span>
+          </button>
+        </div>
+      </footer>
+    </form>
+  </div>
+</div>

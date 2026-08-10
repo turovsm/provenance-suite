@@ -36,6 +36,16 @@ class EventCreateSchema(BaseModel):
     status: str = Field(default="HELD", max_length=32)
 
 
+class EventUpdateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    short_name: str | None = Field(default=None, min_length=1, max_length=128)
+    full_name: str | None = Field(default=None, max_length=512)
+    start_date: date | None = None
+    end_date: date | None = None
+    status: str | None = Field(default=None, max_length=32)
+
+
 class EventResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True, frozen=True)
 

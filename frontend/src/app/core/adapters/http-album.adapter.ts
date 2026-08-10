@@ -6,6 +6,8 @@ import {
   AlbumDetailResponse,
   AlbumIngestRequest,
   AlbumIngestResponse,
+  EventCreatePayload,
+  EventUpdatePayload,
   MasterArtist,
   MasterEvent,
   MasterFranchise,
@@ -50,15 +52,31 @@ export class HttpAlbumAdapter implements AlbumRepositoryPort {
     });
   }
 
-  searchEvents(query: string): Observable<MasterEvent[]> {
-    const params = new HttpParams().set('query', query);
+  searchEvents(query: string, limit = 20): Observable<MasterEvent[]> {
+    const params = new HttpParams().set('query', query).set('limit', limit.toString());
     return this.http.get<MasterEvent[]>(`${this.baseUrl}/entities/events`, { params });
+  }
+
+  getEventDetail(eventId: string): Observable<MasterEvent> {
+    return this.http.get<MasterEvent>(`${this.baseUrl}/entities/events/${eventId}`);
   }
 
   createEvent(shortName: string): Observable<MasterEvent> {
     return this.http.post<MasterEvent>(`${this.baseUrl}/entities/events`, {
       short_name: shortName,
     });
+  }
+
+  createEventFull(payload: EventCreatePayload): Observable<MasterEvent> {
+    return this.http.post<MasterEvent>(`${this.baseUrl}/entities/events`, payload);
+  }
+
+  updateEvent(eventId: string, payload: EventUpdatePayload): Observable<MasterEvent> {
+    return this.http.put<MasterEvent>(`${this.baseUrl}/entities/events/${eventId}`, payload);
+  }
+
+  deleteEvent(eventId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/entities/events/${eventId}`);
   }
 
   searchFranchises(query: string): Observable<MasterFranchise[]> {

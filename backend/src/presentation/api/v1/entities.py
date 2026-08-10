@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any, TypeVar
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import String as SAString, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from src.presentation.schemas.entities import (
     ArtistResponseSchema,
     EventCreateSchema,
     EventResponseSchema,
+    EventUpdateSchema,
     FranchiseCreateSchema,
     FranchiseResponseSchema,
 )
@@ -148,6 +149,23 @@ async def search_events(
     )
 
 
+@router.get("/events/{event_id}", response_model=EventResponseSchema)
+async def get_event_detail(
+    event_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(EventModel).where(EventModel.id == event_id)
+    res = await session.execute(stmt)
+    event = res.scalars().first()
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event with ID '{event_id}' was not found.",
+        )
+    return event
+
+
 @router.post(
     "/events",
     response_model=EventResponseSchema,
@@ -180,6 +198,57 @@ async def create_event(
     return new_event
 
 
+@router.put("/events/{event_id}", response_model=EventResponseSchema)
+async def update_event(
+    event_id: uuid.UUID,
+    payload: EventUpdateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(EventModel).where(EventModel.id == event_id)
+    res = await session.execute(stmt)
+    event = res.scalars().first()
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event with ID '{event_id}' was not found.",
+        )
+
+    if payload.short_name is not None:
+        event.short_name = payload.short_name.strip()
+    if payload.full_name is not None:
+        event.full_name = payload.full_name.strip() if payload.full_name else None
+    if payload.start_date is not None:
+        event.start_date = payload.start_date
+    if payload.end_date is not None:
+        event.end_date = payload.end_date
+    if payload.status is not None:
+        event.status = payload.status
+
+    await session.commit()
+    await session.refresh(event)
+    return event
+
+
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_event(
+    event_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(EventModel).where(EventModel.id == event_id)
+    res = await session.execute(stmt)
+    event = res.scalars().first()
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event with ID '{event_id}' was not found.",
+        )
+
+    await session.delete(event)
+    await session.commit()
+
+
 @router.get("/franchises", response_model=list[FranchiseResponseSchema])
 async def search_franchises(
     query: str = Query(default=""),
@@ -194,7 +263,7 @@ async def search_franchises(
         limit=limit,
         search_columns=[
             FranchiseModel.name_original,
-            cast(FranchiseModel.aliases, SAString),  # served by idx_franchises_aliases_trgm
+            cast(FranchiseModel.aliases, SAString),
         ],
         order_column=FranchiseModel.name_original,
     )

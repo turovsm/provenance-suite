@@ -4,6 +4,8 @@ import {
   AlbumDetailResponse,
   AlbumIngestRequest,
   AlbumIngestResponse,
+  EventCreatePayload,
+  EventUpdatePayload,
   MasterArtist,
   MasterEvent,
   MasterFranchise,
@@ -22,8 +24,14 @@ export interface AlbumRepositoryPort {
 
   searchArtists(query: string): Observable<MasterArtist[]>;
   createArtist(nameOriginal: string, nameTranslated?: string | null): Observable<MasterArtist>;
-  searchEvents(query: string): Observable<MasterEvent[]>;
+
+  searchEvents(query: string, limit?: number): Observable<MasterEvent[]>;
+  getEventDetail(eventId: string): Observable<MasterEvent>;
   createEvent(shortName: string): Observable<MasterEvent>;
+  createEventFull(payload: EventCreatePayload): Observable<MasterEvent>;
+  updateEvent(eventId: string, payload: EventUpdatePayload): Observable<MasterEvent>;
+  deleteEvent(eventId: string): Observable<void>;
+
   searchFranchises(query: string): Observable<MasterFranchise[]>;
   createFranchise(nameOriginal: string): Observable<MasterFranchise>;
   getLabels(query: string): Observable<string[]>;

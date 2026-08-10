@@ -1,0 +1,104 @@
+<div class="catalog-grid-layout">
+  <header class="grid-control-bar">
+    <div class="search-input-wrapper">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        [value]="state.searchQuery()"
+        (input)="handleSearchInput($event)"
+        placeholder="Search master events by short name or full name..."
+        class="telemetry-search-input"
+      />
+    </div>
+
+    <div class="header-right-cluster">
+      @if (authState.identity()?.is_superuser) {
+        <button (click)="openAddModal()" class="admin-add-btn" title="Create Event">
+          <span class="material-symbols-outlined btn-icon">event_available</span>
+          <span>Add Event</span>
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (state.error()) {
+    <div class="error-banner" role="alert">
+      <span class="material-symbols-outlined icon-alert">error</span>
+      <span>{{ state.error() }}</span>
+    </div>
+  }
+
+  @if (state.isLoading()) {
+    <div class="loading-state-overlay">
+      <span class="pulse-indicator">Loading master events...</span>
+    </div>
+  } @else {
+    @if (state.events().length === 0) {
+      <div class="empty-state-card">
+        <span class="material-symbols-outlined empty-icon">event_busy</span>
+        <h3>No Events Found</h3>
+        <p>No master convention or event records match your active query.</p>
+      </div>
+    } @else {
+      <div class="glass-table-card">
+        <table class="events-data-table">
+          <thead>
+            <tr>
+              <th class="col-name">Short Identifier</th>
+              <th class="col-fullname">Full Official Title</th>
+              <th class="col-date">Date Range</th>
+              <th class="col-status">Status</th>
+              @if (authState.identity()?.is_superuser) {
+                <th class="col-actions">Actions</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (ev of state.events(); track ev.id) {
+              <tr>
+                <td class="col-name">
+                  <span class="event-short-tag">{{ ev.short_name }}</span>
+                </td>
+                <td class="col-fullname">
+                  <span class="event-full-text">{{ ev.full_name || '—' }}</span>
+                </td>
+                <td class="col-date">
+                  <code class="date-code">{{ formatEventDateRange(ev) }}</code>
+                </td>
+                <td class="col-status">
+                  <span [class]="'status-pill ' + getStatusClass(ev.status)">
+                    {{ ev.status }}
+                  </span>
+                </td>
+                @if (authState.identity()?.is_superuser) {
+                  <td class="col-actions">
+                    <div class="table-actions-cluster">
+                      <button
+                        (click)="handleEditEvent(ev)"
+                        class="table-action-btn edit-btn"
+                        title="Edit Event"
+                      >
+                        <span class="material-symbols-outlined action-icon">edit</span>
+                      </button>
+                      <button
+                        (click)="handleDeleteEvent(ev)"
+                        class="table-action-btn delete-btn"
+                        title="Delete Event"
+                      >
+                        <span class="material-symbols-outlined action-icon">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (isAddModalOpen) {
+    <app-event-form-modal [eventToEdit]="eventToEdit()" (closed)="closeAddModal()" />
+  }
+</div>

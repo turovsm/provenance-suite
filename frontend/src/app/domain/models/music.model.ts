@@ -21,6 +21,22 @@ export interface MasterEvent {
   status: string;
 }
 
+export interface EventCreatePayload {
+  short_name: string;
+  full_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  status?: string;
+}
+
+export interface EventUpdatePayload {
+  short_name?: string | null;
+  full_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  status?: string | null;
+}
+
 export interface MasterFranchise {
   id: string;
   name_original: string;
@@ -201,7 +217,6 @@ export interface ExternalLinkDetailResponse {
   url: string;
 }
 
-/** One field-level diff entry inside an album changelog record. */
 export interface AlbumChangeEntry {
   type: 'added' | 'removed' | 'updated';
   old?: string;

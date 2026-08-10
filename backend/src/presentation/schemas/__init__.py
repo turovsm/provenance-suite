@@ -4,6 +4,7 @@ from src.presentation.schemas.entities import (
     ArtistResponseSchema,
     EventCreateSchema,
     EventResponseSchema,
+    EventUpdateSchema,
     FranchiseCreateSchema,
     FranchiseResponseSchema,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "ArtistResponseSchema",
     "EventCreateSchema",
     "EventResponseSchema",
+    "EventUpdateSchema",
     "FranchiseCreateSchema",
     "FranchiseResponseSchema",
 ]

@@ -12,7 +12,7 @@
 </button>
 
 @if (isOpen()) {
-  <div class="options-overlay">
+  <div class="options-overlay" [class.open-up]="isOpeningUp">
     @for (opt of normalizedOptions(); track opt.label + '_' + opt.value) {
       <div
         role="button"
