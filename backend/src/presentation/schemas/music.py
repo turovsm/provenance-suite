@@ -104,6 +104,8 @@ class AlbumIngestRequestSchema(BaseModel):
             "regional release titles, etc."
         ),
     )
+    album_artist_aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
+    franchise_aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
     release_year: int | None = Field(default=None, ge=1800, le=2100)
     release_month: int | None = Field(default=None, ge=1, le=12)
     release_day: int | None = Field(default=None, ge=1, le=31)

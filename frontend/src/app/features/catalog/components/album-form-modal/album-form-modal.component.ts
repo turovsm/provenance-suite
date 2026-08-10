@@ -136,6 +136,8 @@ export class AlbumFormModalComponent implements OnInit, OnChanges, OnDestroy {
       this.form.patchValue({
         title_original: '',
         aliases: [],
+        album_artist_aliases: [],
+        franchise_aliases: [],
         original_folder_name: '',
         release_year: null,
         release_month: null,

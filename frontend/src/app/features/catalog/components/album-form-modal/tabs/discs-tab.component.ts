@@ -112,6 +112,56 @@ export class DiscsTabComponent {
       artistGroup.patchValue({ aliases: raw.aliases });
       this.propagateArtistAliases(raw.name_original, raw.aliases);
     }
+
+    const nameOriginal = raw?.name_original ?? artistGroup.get('name_original')?.value?.trim();
+    if (nameOriginal) {
+      const roleControl = artistGroup.get('role');
+      if (roleControl && roleControl.value === 'Composer') {
+        const commonRole = this.getMostCommonRoleForArtist(nameOriginal, artistGroup);
+        if (commonRole) {
+          roleControl.patchValue(commonRole);
+        }
+      }
+    }
+  }
+
+  private getMostCommonRoleForArtist(
+    nameOriginal: string,
+    excludeGroup?: FormGroup,
+  ): string | null {
+    const targetLower = nameOriginal.trim().toLowerCase();
+    const roleCounts = new Map<string, number>();
+
+    this.discs.controls.forEach((discControl) => {
+      const tracks = discControl.get('tracks') as FormArray;
+      if (!tracks) return;
+      tracks.controls.forEach((trackControl) => {
+        const artists = trackControl.get('artists') as FormArray;
+        if (!artists) return;
+        artists.controls.forEach((artControl) => {
+          if (excludeGroup && artControl === excludeGroup) return;
+          const name = artControl.get('name_original')?.value?.trim();
+          if (name && name.toLowerCase() === targetLower) {
+            const role = artControl.get('role')?.value;
+            if (role) {
+              roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+            }
+          }
+        });
+      });
+    });
+
+    if (roleCounts.size === 0) return null;
+
+    let mostCommon: string | null = null;
+    let maxCount = 0;
+    roleCounts.forEach((count, role) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommon = role;
+      }
+    });
+    return mostCommon;
   }
 
   protected syncArtistAliases(dIdx: number, tIdx: number, taIdx: number, aliases: string[]): void {

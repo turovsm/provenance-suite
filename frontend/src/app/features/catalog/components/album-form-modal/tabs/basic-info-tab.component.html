@@ -12,7 +12,7 @@
   </div>
 
   <div class="field-group">
-    <span class="field-label">ALIASES (Press Enter to add)</span>
+    <span class="field-label">TITLE ALIASES (Press Enter to add)</span>
     <app-aliases-chip-input formControlName="aliases"></app-aliases-chip-input>
   </div>
 
@@ -23,9 +23,13 @@
         entityType="artist"
         formControlName="album_artist_id"
         placeholder="Search master artist or circle (e.g. 上海アリス幻樂団)..."
-        (optionSelected)="handleAlbumArtistSelected($event)"
       />
     </div>
+  </div>
+
+  <div class="field-group">
+    <span class="field-label">ARTIST ALIASES (Press Enter to add)</span>
+    <app-aliases-chip-input formControlName="album_artist_aliases"></app-aliases-chip-input>
   </div>
 
   <div class="form-row">
@@ -45,6 +49,11 @@
         placeholder="Search franchise (e.g. 沙耶の唄)..."
       />
     </div>
+  </div>
+
+  <div class="field-group">
+    <span class="field-label">FRANCHISE ALIASES (Press Enter to add)</span>
+    <app-aliases-chip-input formControlName="franchise_aliases"></app-aliases-chip-input>
   </div>
 
   <div class="form-row">
