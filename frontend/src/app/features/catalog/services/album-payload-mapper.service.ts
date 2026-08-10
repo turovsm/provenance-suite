@@ -32,13 +32,15 @@ function toNumberOrNull(value: unknown): number | null {
 @Injectable({ providedIn: 'root' })
 export class AlbumPayloadMapperService {
   toIngestRequest(formVal: AlbumFormRawValue, covers: LocalCoverItem[]): AlbumIngestRequest {
-    const artistVal = typeof formVal.album_artist_id === 'string' ? formVal.album_artist_id.trim() : null;
+    const artistVal =
+      typeof formVal.album_artist_id === 'string' ? formVal.album_artist_id.trim() : null;
     const isArtistUuid = artistVal ? UUID_PATTERN.test(artistVal) : false;
 
     const eventVal = typeof formVal.event_id === 'string' ? formVal.event_id.trim() : null;
     const isEventUuid = eventVal ? UUID_PATTERN.test(eventVal) : false;
 
-    const franchiseVal = typeof formVal.franchise_id === 'string' ? formVal.franchise_id.trim() : null;
+    const franchiseVal =
+      typeof formVal.franchise_id === 'string' ? formVal.franchise_id.trim() : null;
     const isFranchiseUuid = franchiseVal ? UUID_PATTERN.test(franchiseVal) : false;
 
     const franchiseAliases = [...(formVal.franchise_aliases ?? [])];

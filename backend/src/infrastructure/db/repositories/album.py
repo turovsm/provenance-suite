@@ -378,7 +378,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     id=uuid.uuid4(),
                     name_original=name_orig,
                     aliases=normalize_aliases(
-                        album_artist_aliases or (album.album_artist.aliases if album.album_artist else [])
+                        album_artist_aliases
+                        or (album.album_artist.aliases if album.album_artist else [])
                     ),
                 )
                 self._session.add(new_a)

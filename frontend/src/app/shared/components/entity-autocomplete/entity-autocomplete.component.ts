@@ -173,7 +173,12 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
     }
 
     if (value && typeof value === 'object') {
-      const obj = value as { id?: string; display?: string; name_original?: string; short_name?: string };
+      const obj = value as {
+        id?: string;
+        display?: string;
+        name_original?: string;
+        short_name?: string;
+      };
       if (obj.id) this.selectedOptionId = obj.id;
       this.inputQuery.set(obj.display || obj.name_original || obj.short_name || '');
       return;
