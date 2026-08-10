@@ -145,6 +145,8 @@ async def ingest_album_endpoint(
         title_original=payload.title_original,
         original_folder_name=payload.original_folder_name,
         aliases=list(payload.aliases),
+        album_artist_aliases=list(payload.album_artist_aliases),
+        franchise_aliases=list(payload.franchise_aliases),
         storage_drive=payload.storage_drive,
         relative_path=payload.relative_path,
         release_year=payload.release_year,

@@ -32,13 +32,28 @@ function toNumberOrNull(value: unknown): number | null {
 @Injectable({ providedIn: 'root' })
 export class AlbumPayloadMapperService {
   toIngestRequest(formVal: AlbumFormRawValue, covers: LocalCoverItem[]): AlbumIngestRequest {
-    const artistVal = formVal.album_artist_id;
-    const isArtistUuid = typeof artistVal === 'string' && UUID_PATTERN.test(artistVal);
+    const artistVal = typeof formVal.album_artist_id === 'string' ? formVal.album_artist_id.trim() : null;
+    const isArtistUuid = artistVal ? UUID_PATTERN.test(artistVal) : false;
+
+    const eventVal = typeof formVal.event_id === 'string' ? formVal.event_id.trim() : null;
+    const isEventUuid = eventVal ? UUID_PATTERN.test(eventVal) : false;
+
+    const franchiseVal = typeof formVal.franchise_id === 'string' ? formVal.franchise_id.trim() : null;
+    const isFranchiseUuid = franchiseVal ? UUID_PATTERN.test(franchiseVal) : false;
+
+    const franchiseAliases = [...(formVal.franchise_aliases ?? [])];
+    if (!isFranchiseUuid && franchiseVal) {
+      if (!franchiseAliases.some((a) => a.toLowerCase() === franchiseVal.toLowerCase())) {
+        franchiseAliases.unshift(franchiseVal);
+      }
+    }
 
     return {
       album_id: formVal.album_id || null,
       title_original: formVal.title_original ?? '',
       aliases: formVal.aliases ?? [],
+      album_artist_aliases: formVal.album_artist_aliases ?? [],
+      franchise_aliases: franchiseAliases,
       original_folder_name: formVal.original_folder_name ?? '',
       release_year: toNumberOrNull(formVal.release_year),
       release_month: toNumberOrNull(formVal.release_month),
@@ -47,8 +62,8 @@ export class AlbumPayloadMapperService {
       publisher: formVal.publisher || null,
       storage_drive: formVal.storage_drive || null,
       relative_path: formVal.relative_path || null,
-      event_id: formVal.event_id || null,
-      franchise_id: formVal.franchise_id || null,
+      event_id: isEventUuid ? eventVal : null,
+      franchise_id: isFranchiseUuid ? franchiseVal : null,
       album_artist_id: isArtistUuid ? artistVal : null,
       album_artist: !isArtistUuid && artistVal ? { name_original: artistVal } : null,
       discs: (formVal.discs ?? []).map((d) => this.mapDisc(d)),

@@ -96,6 +96,8 @@ class IngestAlbumRequest:
     album_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
     aliases: list[str] = field(default_factory=list)
+    album_artist_aliases: list[str] = field(default_factory=list)
+    franchise_aliases: list[str] = field(default_factory=list)
     release_year: int | None = None
     release_month: int | None = None
     release_day: int | None = None
@@ -280,7 +282,12 @@ class IngestAlbumUseCase:
             external_links=domain_external_links,
         )
 
-        await self._album_repo.save(album_aggregate, user_id=request.user_id)
+        await self._album_repo.save(
+            album_aggregate,
+            user_id=request.user_id,
+            album_artist_aliases=request.album_artist_aliases,
+            franchise_aliases=request.franchise_aliases,
+        )
 
         return IngestAlbumResponse(
             album_id=album_id,

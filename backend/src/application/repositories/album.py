@@ -6,7 +6,13 @@ from src.domain.entities.music import Album
 
 class AlbumRepository(ABC):
     @abstractmethod
-    async def save(self, album: Album, user_id: uuid.UUID | None = None) -> None:
+    async def save(
+        self,
+        album: Album,
+        user_id: uuid.UUID | None = None,
+        album_artist_aliases: list[str] | None = None,
+        franchise_aliases: list[str] | None = None,
+    ) -> None:
         pass
 
     @abstractmethod

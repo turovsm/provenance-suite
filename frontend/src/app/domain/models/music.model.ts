@@ -92,6 +92,8 @@ export interface AlbumIngestRequest {
   title_original: string;
   original_folder_name: string;
   aliases?: string[];
+  album_artist_aliases?: string[];
+  franchise_aliases?: string[];
   release_year?: number | null;
   release_month?: number | null;
   release_day?: number | null;
