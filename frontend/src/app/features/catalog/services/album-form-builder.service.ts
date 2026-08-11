@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { AlbumDetailResponse } from '../../../domain/models/music.model';
+import { AlbumDetailResponse, MasterArtist } from '../../../domain/models/music.model';
+import { EntitySearchService } from '../../../shared/services/entity-search.service';
 import { fuzzyDateValidator } from '../../../shared/validators/fuzzy-date.validator';
 import {
   AlbumFormRawValue,
@@ -15,6 +16,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class AlbumFormBuilderService {
   private readonly fb = inject(FormBuilder);
+  private readonly entitySearch = inject(EntitySearchService);
 
   buildAlbumForm(): FormGroup {
     return this.fb.group({
@@ -159,6 +161,14 @@ export class AlbumFormBuilderService {
       }
     }
 
+    if (album.album_artist) {
+      this.entitySearch.cacheOption('artist', {
+        id: album.album_artist.id,
+        display: album.album_artist.name_original,
+        raw: album.album_artist as MasterArtist,
+      });
+    }
+
     form.patchValue({
       album_id: album.id,
       title_original: album.title_original,
@@ -173,7 +183,7 @@ export class AlbumFormBuilderService {
       relative_path: album.relative_path || '',
       event_id: album.event_id || null,
       franchise_id: album.franchise_id || null,
-      album_artist_id: album.album_artist?.name_original || null,
+      album_artist_id: album.album_artist?.id || album.album_artist?.name_original || null,
     });
 
     (album.discs ?? []).forEach((d) => this.discsOf(form).push(this.createDiscGroup(d)));
