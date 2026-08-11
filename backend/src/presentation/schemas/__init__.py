@@ -7,6 +7,7 @@ from src.presentation.schemas.entities import (
     EventUpdateSchema,
     FranchiseCreateSchema,
     FranchiseResponseSchema,
+    PaginatedEventsResponseSchema,
 )
 from src.presentation.schemas.music import (
     AlbumChangelogResponseSchema,
@@ -49,6 +50,7 @@ __all__ = [
     "EventCreateSchema",
     "EventResponseSchema",
     "EventUpdateSchema",
+    "PaginatedEventsResponseSchema",
     "FranchiseCreateSchema",
     "FranchiseResponseSchema",
 ]

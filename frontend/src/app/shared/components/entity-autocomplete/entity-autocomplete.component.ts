@@ -131,7 +131,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
     this.inputQuery.set(option.display);
     this.selectedOptionId = option.id ?? null;
     this.isOpen.set(false);
-    // Prefer ID if present, otherwise display string
     const val = option.id || option.display;
     this.onChange(val);
     this.onTouched();

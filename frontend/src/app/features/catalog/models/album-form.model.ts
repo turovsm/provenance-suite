@@ -71,6 +71,7 @@ export interface AlbumFormRawValue {
   album_artist_aliases?: string[] | null;
   franchise_aliases?: string[] | null;
   original_folder_name?: string | null;
+  release_date_str?: string | null;
   release_year?: number | string | null;
   release_month?: number | string | null;
   release_day?: number | string | null;

@@ -1,9 +1,10 @@
 import uuid
 from collections.abc import Sequence
+from datetime import date
 from typing import Any, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import String as SAString, cast, or_, select
+from sqlalchemy import String as SAString, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.value_objects.aliases import normalize_aliases
@@ -24,12 +25,55 @@ from src.presentation.schemas.entities import (
     EventUpdateSchema,
     FranchiseCreateSchema,
     FranchiseResponseSchema,
+    PaginatedEventsResponseSchema,
 )
 
 
 router = APIRouter(prefix="/entities", tags=["Master Entity Registry"])
 
 ModelT = TypeVar("ModelT", bound=BaseInfrastructureModel)
+
+
+def normalize_date_string(d: str | None) -> str | None:
+    if not d or not d.strip():
+        return None
+    return d.strip().replace("/", "-").replace(".", "-")
+
+
+def compute_event_sort_date(d: str | None, is_end_bound: bool = False) -> date | None:
+    norm = normalize_date_string(d)
+    if not norm:
+        return None
+    parts = norm.split("-")
+    if len(parts) != 3:
+        return None
+    try:
+        y = int(parts[0])
+        m_str = parts[1].lower()
+        d_str = parts[2].lower()
+
+        if m_str == "xx":
+            m = 12 if is_end_bound else 1
+        else:
+            m = int(m_str)
+
+        if d_str == "xx":
+            d_num = 31 if is_end_bound else 1
+        else:
+            d_num = int(d_str)
+
+        try:
+            return date(y, m, d_num)
+        except ValueError:
+            if is_end_bound:
+                if m in (4, 6, 9, 11):
+                    return date(y, m, 30)
+                elif m == 2:
+                    is_leap = (y % 4 == 0 and y % 100 != 0) or (y % 400 == 0)
+                    return date(y, m, 29 if is_leap else 28)
+            return date(y, m, 1)
+    except ValueError:
+        return None
 
 
 async def _search_master_entities(
@@ -66,7 +110,6 @@ async def _get_distinct_album_attribute(
 
 
 def _merge_aliases(existing: list[str] | None, incoming: list[str]) -> list[str]:
-    """Case-insensitive union that preserves existing ordering first."""
     merged = list(existing or [])
     seen = {a.casefold() for a in merged}
     for alias in normalize_aliases(incoming):
@@ -132,20 +175,72 @@ async def create_artist(
     return new_artist
 
 
-@router.get("/events", response_model=list[EventResponseSchema])
+@router.get("/events", response_model=PaginatedEventsResponseSchema)
 async def search_events(
-    query: str = Query(default=""),
-    limit: int = Query(default=20, ge=1, le=100),
+    query: str | None = Query(default=None),
+    status: list[str] | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    sort_by: str = Query(default="start_date"),
+    sort_order: str = Query(default="desc"),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    return await _search_master_entities(
-        session=session,
-        model_cls=EventModel,
-        query=query,
+    stmt = select(EventModel)
+    if query and query.strip():
+        q = f"%{query.strip()}%"
+        stmt = stmt.where(
+            or_(
+                EventModel.short_name.ilike(q),
+                EventModel.full_name.ilike(q),
+            )
+        )
+
+    if status:
+        flat_statuses = []
+        for s in status:
+            flat_statuses.extend([item.strip().upper() for item in s.split(",") if item.strip()])
+        if flat_statuses:
+            stmt = stmt.where(func.upper(EventModel.status).in_(flat_statuses))
+
+    if date_from:
+        parsed_from = compute_event_sort_date(date_from, is_end_bound=False)
+        if parsed_from:
+            stmt = stmt.where(EventModel.start_date_sort >= parsed_from)
+    if date_to:
+        parsed_to = compute_event_sort_date(date_to, is_end_bound=True)
+        if parsed_to:
+            stmt = stmt.where(EventModel.start_date_sort <= parsed_to)
+
+    subq = stmt.subquery()
+    count_stmt = select(func.count()).select_from(subq)
+    total_count = (await session.execute(count_stmt)).scalar_one()
+
+    if sort_by == "short_name":
+        sort_col = EventModel.short_name
+    elif sort_by == "status":
+        sort_col = EventModel.status
+    else:
+        sort_col = EventModel.start_date_sort
+
+    if sort_order.lower() == "asc":
+        order_clause = sort_col.asc().nulls_last()
+    else:
+        order_clause = sort_col.desc().nulls_last()
+
+    fetch_stmt = (
+        stmt.order_by(order_clause, EventModel.short_name.asc()).offset(offset).limit(limit)
+    )
+    result = await session.execute(fetch_stmt)
+    events = result.scalars().all()
+
+    return PaginatedEventsResponseSchema(
+        items=events,
+        total_count=total_count,
         limit=limit,
-        search_columns=[EventModel.short_name, EventModel.full_name],
-        order_column=EventModel.short_name,
+        offset=offset,
     )
 
 
@@ -184,12 +279,23 @@ async def create_event(
     if existing:
         return existing
 
+    start_norm = normalize_date_string(payload.start_date)
+    end_norm = normalize_date_string(payload.end_date)
+    orig_start_norm = normalize_date_string(payload.original_start_date)
+    orig_end_norm = normalize_date_string(payload.original_end_date)
+    start_sort = compute_event_sort_date(start_norm, is_end_bound=False)
+
     new_event = EventModel(
         id=uuid.uuid4(),
         short_name=payload.short_name.strip(),
         full_name=payload.full_name.strip() if payload.full_name else None,
-        start_date=payload.start_date,
-        end_date=payload.end_date,
+        start_date=start_norm,
+        end_date=end_norm,
+        original_start_date=orig_start_norm,
+        original_end_date=orig_end_norm,
+        start_date_sort=start_sort,
+        date_history=[d.model_dump(mode="json") for d in payload.date_history],
+        additional_dates=[d.model_dump(mode="json") for d in payload.additional_dates],
         status=payload.status,
     )
     session.add(new_event)
@@ -219,9 +325,18 @@ async def update_event(
     if payload.full_name is not None:
         event.full_name = payload.full_name.strip() if payload.full_name else None
     if payload.start_date is not None:
-        event.start_date = payload.start_date
+        event.start_date = normalize_date_string(payload.start_date)
+        event.start_date_sort = compute_event_sort_date(event.start_date, is_end_bound=False)
     if payload.end_date is not None:
-        event.end_date = payload.end_date
+        event.end_date = normalize_date_string(payload.end_date)
+    if payload.original_start_date is not None:
+        event.original_start_date = normalize_date_string(payload.original_start_date)
+    if payload.original_end_date is not None:
+        event.original_end_date = normalize_date_string(payload.original_end_date)
+    if payload.date_history is not None:
+        event.date_history = [d.model_dump(mode="json") for d in payload.date_history]
+    if payload.additional_dates is not None:
+        event.additional_dates = [d.model_dump(mode="json") for d in payload.additional_dates]
     if payload.status is not None:
         event.status = payload.status
 

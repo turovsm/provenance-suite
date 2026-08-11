@@ -124,7 +124,6 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 export class AliasesChipInputComponent implements ControlValueAccessor {
   placeholder = 'Type alias and press Enter...';
 
-  /** Emits the full alias list whenever the user adds or removes a chip. */
   @Output() aliasesChanged = new EventEmitter<string[]>();
 
   protected aliases = signal<string[]>([]);

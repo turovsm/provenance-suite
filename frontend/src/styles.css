@@ -16,6 +16,9 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) rgba(5, 5, 7, 0.8);
 }
 
 body {
@@ -27,6 +30,28 @@ body {
     BlinkMacSystemFont,
     sans-serif;
   overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(5, 5, 7, 0.8);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-blue);
+  background-clip: content-box;
 }
 
 .material-symbols-outlined {
@@ -60,4 +85,24 @@ input[type='number']::-webkit-outer-spin-button {
 
 input[type='number'] {
   appearance: textfield;
+}
+
+button,
+a,
+[role='button'],
+input[type='button'],
+input[type='submit'] {
+  cursor: pointer;
+}
+
+button *,
+a *,
+[role='button'] * {
+  pointer-events: none;
+}
+
+button:disabled,
+button:disabled * {
+  cursor: not-allowed !important;
+  pointer-events: none;
 }

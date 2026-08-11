@@ -10,6 +10,7 @@ import {
   MasterEvent,
   MasterFranchise,
   PaginatedAlbumsResponse,
+  PaginatedEventsResponse,
 } from '../../domain/models/music.model';
 
 export interface AlbumRepositoryPort {
@@ -25,6 +26,16 @@ export interface AlbumRepositoryPort {
   searchArtists(query: string): Observable<MasterArtist[]>;
   createArtist(nameOriginal: string, nameTranslated?: string | null): Observable<MasterArtist>;
 
+  fetchEvents(
+    query?: string | null,
+    statuses?: string[],
+    dateFrom?: string | null,
+    dateTo?: string | null,
+    sortBy?: string,
+    sortOrder?: string,
+    limit?: number,
+    offset?: number,
+  ): Observable<PaginatedEventsResponse>;
   searchEvents(query: string, limit?: number): Observable<MasterEvent[]>;
   getEventDetail(eventId: string): Observable<MasterEvent>;
   createEvent(shortName: string): Observable<MasterEvent>;

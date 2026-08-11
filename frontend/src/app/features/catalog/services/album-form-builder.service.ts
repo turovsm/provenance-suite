@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AlbumDetailResponse } from '../../../domain/models/music.model';
+import { fuzzyDateValidator } from '../../../shared/validators/fuzzy-date.validator';
 import {
   AlbumFormRawValue,
   ArchiveLinkSeed,
@@ -23,9 +24,7 @@ export class AlbumFormBuilderService {
       album_artist_aliases: [[]],
       franchise_aliases: [[]],
       original_folder_name: ['', [Validators.required, Validators.maxLength(1024)]],
-      release_year: [null, [Validators.min(1800), Validators.max(2100)]],
-      release_month: [null, [Validators.min(1), Validators.max(12)]],
-      release_day: [null, [Validators.min(1), Validators.max(31)]],
+      release_date_str: ['', [fuzzyDateValidator()]],
       label: [''],
       publisher: [''],
       storage_drive: ['', [Validators.maxLength(64)]],
@@ -146,6 +145,20 @@ export class AlbumFormBuilderService {
   populateFromAlbum(form: FormGroup, album: AlbumDetailResponse): void {
     this.clearArrays(form);
 
+    let releaseDateStr = '';
+    if (album.release_year) {
+      const y = album.release_year.toString();
+      const m = album.release_month ? album.release_month.toString().padStart(2, '0') : 'XX';
+      const d = album.release_day ? album.release_day.toString().padStart(2, '0') : 'XX';
+      if (m === 'XX' && d === 'XX') {
+        releaseDateStr = `${y}/XX/XX`;
+      } else if (d === 'XX') {
+        releaseDateStr = `${y}/${m}/XX`;
+      } else {
+        releaseDateStr = `${y}/${m}/${d}`;
+      }
+    }
+
     form.patchValue({
       album_id: album.id,
       title_original: album.title_original,
@@ -153,9 +166,7 @@ export class AlbumFormBuilderService {
       album_artist_aliases: album.album_artist?.aliases ?? [],
       franchise_aliases: [],
       original_folder_name: album.original_folder_name,
-      release_year: album.release_year,
-      release_month: album.release_month,
-      release_day: album.release_day,
+      release_date_str: releaseDateStr,
       label: album.label || '',
       publisher: album.publisher || '',
       storage_drive: album.storage_drive || '',
@@ -178,15 +189,21 @@ export class AlbumFormBuilderService {
   applyDraftFormValue(form: FormGroup, fVal: AlbumFormRawValue): void {
     this.clearArrays(form);
 
+    let draftDateStr = fVal.release_date_str || '';
+    if (!draftDateStr && fVal.release_year) {
+      const y = fVal.release_year.toString();
+      const m = fVal.release_month ? fVal.release_month.toString().padStart(2, '0') : 'XX';
+      const d = fVal.release_day ? fVal.release_day.toString().padStart(2, '0') : 'XX';
+      draftDateStr = `${y}/${m}/${d}`;
+    }
+
     form.patchValue({
       title_original: fVal.title_original || '',
       aliases: fVal.aliases ?? [],
       album_artist_aliases: fVal.album_artist_aliases ?? [],
       franchise_aliases: fVal.franchise_aliases ?? [],
       original_folder_name: fVal.original_folder_name || '',
-      release_year: fVal.release_year ?? null,
-      release_month: fVal.release_month ?? null,
-      release_day: fVal.release_day ?? null,
+      release_date_str: draftDateStr,
       label: fVal.label || '',
       publisher: fVal.publisher || '',
       storage_drive: fVal.storage_drive || '',
