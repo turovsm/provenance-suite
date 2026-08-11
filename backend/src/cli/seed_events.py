@@ -28,6 +28,11 @@ EventParsedTuple = tuple[
     date | None,
 ]
 
+STATUS_TAG_REGEX = re.compile(r"\s*\((?i:skipped|cancelled|canceled|postponed)\)")
+STATUS_TAG_OPT_REGEX = re.compile(
+    r"\s*\((?i:skipped|cancelled|canceled|postponed)\)|\s*(?i:skipped|cancelled|canceled|postponed)"
+)
+
 
 def parse_date_component(part: str) -> tuple[str | None, str | None, date | None]:
     part = part.strip()
@@ -82,92 +87,129 @@ def _range_to_dict(s: str | None, e: str | None) -> dict[str, str | None]:
     }
 
 
-def parse_event_value(raw_val: str) -> EventParsedTuple:
-    val = raw_val.strip().lstrip(":")
-    val = val.replace(r"\-", "-")
-
-    if any(kw in val.lower() for kw in ["unknown", "missing", "tba", "all dates"]):
+def _parse_non_numeric_event(val: str) -> EventParsedTuple | None:
+    val_lower = val.lower()
+    if any(kw in val_lower for kw in ["unknown", "missing", "tba", "all dates"]):
         return None, None, None, None, [], [], "UNKNOWN", None
 
     if not any(char.isdigit() for char in val):
-        is_cancelled = any(kw in val.lower() for kw in ["cancel", "skip"])
+        is_cancelled = any(kw in val_lower for kw in ["cancel", "skip"])
         status = "CANCELLED" if is_cancelled else "UNKNOWN"
         return None, None, None, None, [], [], status, None
+    return None
 
-    if "→" in val or "->" in val:
-        parts = [p.strip() for p in re.split(r"→|->", val) if p.strip()]
-        last_part = parts[-1].lower() if parts else ""
 
-        status = "HELD"
-        step_parts = parts
-        if any(kw in last_part for kw in ["cancel", "skip"]):
-            status = "CANCELLED"
-            step_parts = parts[:-1]
-        elif "postponed" in last_part:
-            status = "POSTPONED"
-            step_parts = parts[:-1]
+def _parse_arrow_timeline(val: str) -> EventParsedTuple | None:
+    if "→" not in val and "->" not in val:
+        return None
 
-        history: list[dict[str, str | None]] = []
-        parsed_steps: list[tuple[str | None, str | None, date | None]] = []
+    parts = [p.strip() for p in re.split(r"→|->", val) if p.strip()]
+    last_part = parts[-1].lower() if parts else ""
 
-        for p in step_parts:
-            p_clean = re.sub(
-                r"\s*\((?:Skipped|Cancelled|Canceled|Postponed)\)", "", p, flags=re.IGNORECASE
-            ).strip()
-            try:
-                s_str, e_str, sort_d = parse_date_component(p_clean)
-                parsed_steps.append((s_str, e_str, sort_d))
-                history.append(_range_to_dict(s_str, e_str))
-            except ValueError:
-                continue
+    status = "HELD"
+    step_parts = parts
+    if any(kw in last_part for kw in ["cancel", "skip"]):
+        status = "CANCELLED"
+        step_parts = parts[:-1]
+    elif "postponed" in last_part:
+        status = "POSTPONED"
+        step_parts = parts[:-1]
 
-        if not parsed_steps:
-            return None, None, None, None, [], [], status, None
+    history: list[dict[str, str | None]] = []
+    parsed_steps: list[tuple[str | None, str | None, date | None]] = []
 
-        orig_start, orig_end = (None, None)
-        if len(parsed_steps) >= 2:
-            orig_start, orig_end, _ = parsed_steps[0]
-
-        final_start, final_end, final_sort = parsed_steps[-1]
-        return final_start, final_end, orig_start, orig_end, history, [], status, final_sort
-
-    val_lower = val.lower()
-    if any(kw in val_lower for kw in ["cancel", "skip", "postponed"]):
-        status = "POSTPONED" if "postponed" in val_lower else "CANCELLED"
-        date_part = re.sub(r"(?i)\s*\(?(?:Skipped|Cancelled|Canceled|Postponed)\)?", "", val).strip(
-            " -/>()"
-        )
+    for p in step_parts:
+        p_clean = STATUS_TAG_REGEX.sub("", p).strip()
         try:
-            s_str, e_str, sort_d = parse_date_component(date_part)
-            return s_str, e_str, None, None, [_range_to_dict(s_str, e_str)], [], status, sort_d
+            s_str, e_str, sort_d = parse_date_component(p_clean)
+            parsed_steps.append((s_str, e_str, sort_d))
+            history.append(_range_to_dict(s_str, e_str))
         except ValueError:
-            return None, None, None, None, [], [], status, None
+            continue
 
-    if "/" in val or "+" in val:
-        parts = [p.strip() for p in re.split(r"[/+]", val) if p.strip()]
-        parsed_sessions: list[tuple[str | None, str | None, date | None]] = []
+    if not parsed_steps:
+        return None, None, None, None, [], [], status, None
 
-        for p in parts:
-            try:
-                s_str, e_str, sort_d = parse_date_component(p)
-                parsed_sessions.append((s_str, e_str, sort_d))
-            except ValueError:
-                continue
+    orig_start, orig_end = (None, None)
+    if len(parsed_steps) >= 2:
+        orig_start, orig_end, _ = parsed_steps[0]
 
-        if parsed_sessions:
-            primary_start, primary_end, primary_sort = parsed_sessions[0]
-            add_dates = [_range_to_dict(s, e) for s, e, _ in parsed_sessions[1:]]
-            return primary_start, primary_end, None, None, [], add_dates, "HELD", primary_sort
+    final_start, final_end, final_sort = parsed_steps[-1]
+    return final_start, final_end, orig_start, orig_end, history, [], status, final_sort
 
-    if " - " in val:
-        parts = val.split(" - ")
-        if len(parts) == 2:
-            try:
-                s_str, _, sort_d = parse_date_component(parts[0])
-                _, e_str, _ = parse_date_component(parts[1])
-                return s_str, e_str, None, None, [], [], "HELD", sort_d
-            except ValueError:
-                pass
+
+def _parse_cancelled_or_postponed_event(val: str) -> EventParsedTuple | None:
+    val_lower = val.lower()
+    if not any(kw in val_lower for kw in ["cancel", "skip", "postponed"]):
+        return None
+
+    status = "POSTPONED" if "postponed" in val_lower else "CANCELLED"
+    date_part = STATUS_TAG_OPT_REGEX.sub("", val).strip(" -/>()")
+    try:
+        s_str, e_str, sort_d = parse_date_component(date_part)
+        return s_str, e_str, None, None, [_range_to_dict(s_str, e_str)], [], status, sort_d
+    except ValueError:
+        return None, None, None, None, [], [], status, None
+
+
+def _parse_slash_or_plus_sessions(val: str) -> EventParsedTuple | None:
+    if "/" not in val and "+" not in val:
+        return None
+
+    parts = [p.strip() for p in re.split(r"[/+]", val) if p.strip()]
+    parsed_sessions: list[tuple[str | None, str | None, date | None]] = []
+
+    for p in parts:
+        try:
+            s_str, e_str, sort_d = parse_date_component(p)
+            parsed_sessions.append((s_str, e_str, sort_d))
+        except ValueError:
+            continue
+
+    if parsed_sessions:
+        primary_start, primary_end, primary_sort = parsed_sessions[0]
+        add_dates = [_range_to_dict(s, e) for s, e, _ in parsed_sessions[1:]]
+        return primary_start, primary_end, None, None, [], add_dates, "HELD", primary_sort
+    return None
+
+
+def _parse_hyphenated_date_range(val: str) -> EventParsedTuple | None:
+    if " - " not in val:
+        return None
+
+    parts = val.split(" - ")
+    if len(parts) == 2:
+        try:
+            s_str, _, sort_d = parse_date_component(parts[0])
+            _, e_str, _ = parse_date_component(parts[1])
+            return s_str, e_str, None, None, [], [], "HELD", sort_d
+        except ValueError:
+            pass
+    return None
+
+
+def parse_event_value(raw_val: str) -> EventParsedTuple:
+    val = raw_val.strip().lstrip(":").replace(r"\-", "-")
+
+    non_numeric = _parse_non_numeric_event(val)
+    if non_numeric is not None:
+        return non_numeric
+
+    arrow_res = _parse_arrow_timeline(val)
+    if arrow_res is not None:
+        return arrow_res
+
+    status_res = _parse_cancelled_or_postponed_event(val)
+    if status_res is not None:
+        return status_res
+
+    session_res = _parse_slash_or_plus_sessions(val)
+    if session_res is not None:
+        return session_res
+
+    hyphen_res = _parse_hyphenated_date_range(val)
+    if hyphen_res is not None:
+        return hyphen_res
 
     start_str, end_str, sort_d = parse_date_component(val)
     return start_str, end_str, None, None, [], [], "HELD", sort_d

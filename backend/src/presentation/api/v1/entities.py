@@ -40,6 +40,30 @@ def normalize_date_string(d: str | None) -> str | None:
     return d.strip().replace("/", "-").replace(".", "-")
 
 
+def _parse_date_part(part: str, default_if_xx: int) -> int:
+    clean = part.lower().strip()
+    return default_if_xx if clean == "xx" else int(clean)
+
+
+def _resolve_last_day_of_month(year: int, month: int) -> int:
+    if month in (4, 6, 9, 11):
+        return 30
+    if month == 2:
+        is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+        return 29 if is_leap else 28
+    return 31
+
+
+def _construct_date_with_fallback(y: int, m: int, d_num: int, is_end_bound: bool) -> date | None:
+    try:
+        return date(y, m, d_num)
+    except ValueError:
+        if is_end_bound:
+            last_day = _resolve_last_day_of_month(y, m)
+            return date(y, m, last_day)
+        return date(y, m, 1)
+
+
 def compute_event_sort_date(d: str | None, is_end_bound: bool = False) -> date | None:
     norm = normalize_date_string(d)
     if not norm:
@@ -49,29 +73,9 @@ def compute_event_sort_date(d: str | None, is_end_bound: bool = False) -> date |
         return None
     try:
         y = int(parts[0])
-        m_str = parts[1].lower()
-        d_str = parts[2].lower()
-
-        if m_str == "xx":
-            m = 12 if is_end_bound else 1
-        else:
-            m = int(m_str)
-
-        if d_str == "xx":
-            d_num = 31 if is_end_bound else 1
-        else:
-            d_num = int(d_str)
-
-        try:
-            return date(y, m, d_num)
-        except ValueError:
-            if is_end_bound:
-                if m in (4, 6, 9, 11):
-                    return date(y, m, 30)
-                elif m == 2:
-                    is_leap = (y % 4 == 0 and y % 100 != 0) or (y % 400 == 0)
-                    return date(y, m, 29 if is_leap else 28)
-            return date(y, m, 1)
+        m = _parse_date_part(parts[1], 12 if is_end_bound else 1)
+        d_num = _parse_date_part(parts[2], 31 if is_end_bound else 1)
+        return _construct_date_with_fallback(y, m, d_num, is_end_bound)
     except ValueError:
         return None
 
@@ -119,6 +123,38 @@ def _merge_aliases(existing: list[str] | None, incoming: list[str]) -> list[str]
     return merged
 
 
+async def _get_or_create_named_entity(
+    session: AsyncSession,
+    model_cls: type[ModelT],
+    name_original: str,
+    incoming_aliases: list[str],
+    **extra_fields: Any,
+) -> ModelT:
+    clean_name = name_original.strip()
+    aliases = normalize_aliases(incoming_aliases)
+
+    stmt = select(model_cls).where(model_cls.name_original.ilike(clean_name)).limit(1)
+    res = await session.execute(stmt)
+    existing = res.scalars().first()
+
+    if existing:
+        existing.aliases = _merge_aliases(existing.aliases, aliases)
+        await session.commit()
+        await session.refresh(existing)
+        return existing
+
+    new_entity = model_cls(
+        id=uuid.uuid4(),
+        name_original=clean_name,
+        aliases=aliases,
+        **extra_fields,
+    )
+    session.add(new_entity)
+    await session.commit()
+    await session.refresh(new_entity)
+    return new_entity
+
+
 @router.get("/artists", response_model=list[ArtistResponseSchema])
 async def search_artists(
     query: str = Query(default="", description="Search query for artist name or alias"),
@@ -149,36 +185,62 @@ async def create_artist(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    aliases = normalize_aliases(payload.aliases)
-    stmt = (
-        select(ArtistModel)
-        .where(ArtistModel.name_original.ilike(payload.name_original.strip()))
-        .limit(1)
+    return await _get_or_create_named_entity(
+        session=session,
+        model_cls=ArtistModel,
+        name_original=payload.name_original,
+        incoming_aliases=payload.aliases,
     )
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
 
-    if existing:
-        existing.aliases = _merge_aliases(existing.aliases, aliases)
-        await session.commit()
-        await session.refresh(existing)
-        return existing
 
-    new_artist = ArtistModel(
-        id=uuid.uuid4(),
-        name_original=payload.name_original.strip(),
-        aliases=aliases,
-    )
-    session.add(new_artist)
-    await session.commit()
-    await session.refresh(new_artist)
-    return new_artist
+def _apply_event_filters(
+    stmt: Any,
+    query: str | None,
+    status_filter: list[str] | None,
+    date_from: str | None,
+    date_to: str | None,
+) -> Any:
+    if query and query.strip():
+        q = f"%{query.strip()}%"
+        stmt = stmt.where(or_(EventModel.short_name.ilike(q), EventModel.full_name.ilike(q)))
+
+    if status_filter:
+        flat_statuses = [
+            item.strip().upper() for s in status_filter for item in s.split(",") if item.strip()
+        ]
+        if flat_statuses:
+            stmt = stmt.where(func.upper(EventModel.status).in_(flat_statuses))
+
+    if date_from:
+        parsed_from = compute_event_sort_date(date_from, is_end_bound=False)
+        if parsed_from:
+            stmt = stmt.where(EventModel.start_date_sort >= parsed_from)
+
+    if date_to:
+        parsed_to = compute_event_sort_date(date_to, is_end_bound=True)
+        if parsed_to:
+            stmt = stmt.where(EventModel.start_date_sort <= parsed_to)
+
+    return stmt
+
+
+def _resolve_event_sort_order(sort_by: str, sort_order: str) -> Any:
+    if sort_by == "short_name":
+        sort_col = EventModel.short_name
+    elif sort_by == "status":
+        sort_col = EventModel.status
+    else:
+        sort_col = EventModel.start_date_sort
+
+    if sort_order.lower() == "asc":
+        return sort_col.asc().nulls_last()
+    return sort_col.desc().nulls_last()
 
 
 @router.get("/events", response_model=PaginatedEventsResponseSchema)
 async def search_events(
     query: str | None = Query(default=None),
-    status: list[str] | None = Query(default=None),
+    status_filter: list[str] | None = Query(default=None, alias="status"),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     sort_by: str = Query(default="start_date"),
@@ -188,48 +250,13 @@ async def search_events(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(EventModel)
-    if query and query.strip():
-        q = f"%{query.strip()}%"
-        stmt = stmt.where(
-            or_(
-                EventModel.short_name.ilike(q),
-                EventModel.full_name.ilike(q),
-            )
-        )
-
-    if status:
-        flat_statuses = []
-        for s in status:
-            flat_statuses.extend([item.strip().upper() for item in s.split(",") if item.strip()])
-        if flat_statuses:
-            stmt = stmt.where(func.upper(EventModel.status).in_(flat_statuses))
-
-    if date_from:
-        parsed_from = compute_event_sort_date(date_from, is_end_bound=False)
-        if parsed_from:
-            stmt = stmt.where(EventModel.start_date_sort >= parsed_from)
-    if date_to:
-        parsed_to = compute_event_sort_date(date_to, is_end_bound=True)
-        if parsed_to:
-            stmt = stmt.where(EventModel.start_date_sort <= parsed_to)
+    stmt = _apply_event_filters(select(EventModel), query, status_filter, date_from, date_to)
 
     subq = stmt.subquery()
     count_stmt = select(func.count()).select_from(subq)
     total_count = (await session.execute(count_stmt)).scalar_one()
 
-    if sort_by == "short_name":
-        sort_col = EventModel.short_name
-    elif sort_by == "status":
-        sort_col = EventModel.status
-    else:
-        sort_col = EventModel.start_date_sort
-
-    if sort_order.lower() == "asc":
-        order_clause = sort_col.asc().nulls_last()
-    else:
-        order_clause = sort_col.desc().nulls_last()
-
+    order_clause = _resolve_event_sort_order(sort_by, sort_order)
     fetch_stmt = (
         stmt.order_by(order_clause, EventModel.short_name.asc()).offset(offset).limit(limit)
     )
@@ -394,30 +421,13 @@ async def create_franchise(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    aliases = normalize_aliases(payload.aliases)
-    stmt = (
-        select(FranchiseModel)
-        .where(FranchiseModel.name_original.ilike(payload.name_original.strip()))
-        .limit(1)
-    )
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
-    if existing:
-        existing.aliases = _merge_aliases(existing.aliases, aliases)
-        await session.commit()
-        await session.refresh(existing)
-        return existing
-
-    new_franchise = FranchiseModel(
-        id=uuid.uuid4(),
-        name_original=payload.name_original.strip(),
-        aliases=aliases,
+    return await _get_or_create_named_entity(
+        session=session,
+        model_cls=FranchiseModel,
+        name_original=payload.name_original,
+        incoming_aliases=payload.aliases,
         franchise_type=payload.franchise_type,
     )
-    session.add(new_franchise)
-    await session.commit()
-    await session.refresh(new_franchise)
-    return new_franchise
 
 
 @router.get("/labels", response_model=list[str])
