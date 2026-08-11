@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,14 +26,39 @@ class ArtistResponseSchema(BaseModel):
     created_at: datetime | None = None
 
 
+class EventDateRangeSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    start_date: str | None = None
+    end_date: str | None = None
+
+
 class EventCreateSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     short_name: str = Field(..., min_length=1, max_length=128)
     full_name: str | None = Field(default=None, max_length=512)
-    start_date: date | None = None
-    end_date: date | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    original_start_date: str | None = None
+    original_end_date: str | None = None
+    date_history: list[EventDateRangeSchema] = Field(default_factory=list)
+    additional_dates: list[EventDateRangeSchema] = Field(default_factory=list)
     status: str = Field(default="HELD", max_length=32)
+
+
+class EventUpdateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    short_name: str | None = Field(default=None, min_length=1, max_length=128)
+    full_name: str | None = Field(default=None, max_length=512)
+    start_date: str | None = None
+    end_date: str | None = None
+    original_start_date: str | None = None
+    original_end_date: str | None = None
+    date_history: list[EventDateRangeSchema] | None = None
+    additional_dates: list[EventDateRangeSchema] | None = None
+    status: str | None = Field(default=None, max_length=32)
 
 
 class EventResponseSchema(BaseModel):
@@ -42,9 +67,22 @@ class EventResponseSchema(BaseModel):
     id: uuid.UUID
     short_name: str
     full_name: str | None
-    start_date: date | None
-    end_date: date | None
+    start_date: str | None
+    end_date: str | None
+    original_start_date: str | None
+    original_end_date: str | None
+    date_history: list[EventDateRangeSchema] = Field(default_factory=list)
+    additional_dates: list[EventDateRangeSchema] = Field(default_factory=list)
     status: str
+
+
+class PaginatedEventsResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: list[EventResponseSchema]
+    total_count: int
+    limit: int
+    offset: int
 
 
 class FranchiseCreateSchema(BaseModel):

@@ -80,6 +80,23 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         return ", ".join(aliases) if aliases else ""
 
     @staticmethod
+    def _merge_aliases(existing: list[str] | None, incoming: list[str] | None) -> list[str]:
+        if not incoming:
+            return list(existing or [])
+        return normalize_aliases((existing or []) + incoming)
+
+    @staticmethod
+    def _parse_uuid(val: uuid.UUID | str | None) -> uuid.UUID | None:
+        if isinstance(val, uuid.UUID):
+            return val
+        if isinstance(val, str) and val.strip():
+            try:
+                return uuid.UUID(val.strip())
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
     def _fmt_duration(seconds: int | None) -> str:
         if seconds is None:
             return ""
@@ -339,6 +356,17 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         if keys:
             await self._redis.delete(*keys)
 
+    async def _find_artist_by_name_or_uuid(self, name_or_uuid_str: str) -> ArtistModel | None:
+        name_orig = name_or_uuid_str.strip()
+        try:
+            artist_uuid = uuid.UUID(name_orig)
+            stmt = select(ArtistModel).where(ArtistModel.id == artist_uuid)
+        except ValueError:
+            stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(name_orig))
+
+        res = await self._session.execute(stmt.limit(1))
+        return res.scalars().first()
+
     async def _resolve_album_artist_id(
         self, album: Album, album_artist_aliases: list[str] | None = None
     ) -> uuid.UUID | None:
@@ -351,36 +379,20 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
 
         if not artist_id and album.album_artist and album.album_artist.name_original:
             name_orig = album.album_artist.name_original.strip()
+            found = await self._find_artist_by_name_or_uuid(name_orig)
+            incoming = album_artist_aliases or (
+                album.album_artist.aliases if album.album_artist else []
+            )
 
-            try:
-                artist_uuid = uuid.UUID(name_orig)
-                stmt = select(ArtistModel).where(ArtistModel.id == artist_uuid)
-            except ValueError:
-                stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(name_orig))
-
-            res = await self._session.execute(stmt.limit(1))
-            found = res.scalars().first()
             if found:
                 artist_id = found.id
-                incoming = album_artist_aliases or (
-                    album.album_artist.aliases if album.album_artist else []
-                )
                 if incoming:
-                    merged = list(found.aliases or [])
-                    seen = {a.casefold() for a in merged}
-                    for alias in incoming:
-                        if alias.casefold() not in seen:
-                            merged.append(alias)
-                            seen.add(alias.casefold())
-                    found.aliases = merged
+                    found.aliases = self._merge_aliases(found.aliases, incoming)
             else:
                 new_a = ArtistModel(
                     id=uuid.uuid4(),
                     name_original=name_orig,
-                    aliases=normalize_aliases(
-                        album_artist_aliases
-                        or (album.album_artist.aliases if album.album_artist else [])
-                    ),
+                    aliases=normalize_aliases(incoming),
                 )
                 self._session.add(new_a)
                 artist_id = new_a.id
@@ -390,15 +402,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         if not raw_event_id:
             return None
 
-        event_uuid = None
-        if isinstance(raw_event_id, uuid.UUID):
-            event_uuid = raw_event_id
-        elif isinstance(raw_event_id, str) and raw_event_id.strip():
-            try:
-                event_uuid = uuid.UUID(raw_event_id.strip())
-            except ValueError:
-                event_uuid = None
-
+        event_uuid = self._parse_uuid(raw_event_id)
         if event_uuid:
             res = await self._session.execute(
                 select(EventModel.id).where(EventModel.id == event_uuid)
@@ -435,6 +439,35 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         await self._session.flush()
         return new_event.id
 
+    async def _find_franchise_by_id(self, franchise_uuid: uuid.UUID) -> FranchiseModel | None:
+        stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_uuid)
+        res = await self._session.execute(stmt)
+        return res.scalars().first()
+
+    async def _find_franchise_by_name(self, name: str) -> FranchiseModel | None:
+        stmt = (
+            select(FranchiseModel)
+            .where(
+                or_(
+                    FranchiseModel.name_original.ilike(name),
+                    cast(FranchiseModel.aliases, SAString).ilike(f"%{name}%"),
+                )
+            )
+            .limit(1)
+        )
+        res = await self._session.execute(stmt)
+        return res.scalars().first()
+
+    @staticmethod
+    def _get_franchise_candidate_name(
+        raw_franchise_id: uuid.UUID | str | None, franchise_aliases: list[str] | None
+    ) -> str | None:
+        if isinstance(raw_franchise_id, str) and raw_franchise_id.strip():
+            return raw_franchise_id.strip()
+        if franchise_aliases:
+            return franchise_aliases[0].strip()
+        return None
+
     async def _resolve_franchise_id(
         self,
         raw_franchise_id: uuid.UUID | str | None,
@@ -443,60 +476,22 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         if not raw_franchise_id and not franchise_aliases:
             return None
 
-        franchise_uuid = None
-        if isinstance(raw_franchise_id, uuid.UUID):
-            franchise_uuid = raw_franchise_id
-        elif isinstance(raw_franchise_id, str) and raw_franchise_id.strip():
-            try:
-                franchise_uuid = uuid.UUID(raw_franchise_id.strip())
-            except ValueError:
-                franchise_uuid = None
-
+        franchise_uuid = self._parse_uuid(raw_franchise_id)
         if franchise_uuid:
-            stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_uuid)
-            res = await self._session.execute(stmt)
-            found = res.scalars().first()
+            found = await self._find_franchise_by_id(franchise_uuid)
             if found:
                 if franchise_aliases:
-                    merged = list(found.aliases or [])
-                    seen = {a.casefold() for a in merged}
-                    for alias in franchise_aliases:
-                        if alias.casefold() not in seen:
-                            merged.append(alias)
-                            seen.add(alias.casefold())
-                    found.aliases = merged
+                    found.aliases = self._merge_aliases(found.aliases, franchise_aliases)
                 return franchise_uuid
 
-        candidate_name = None
-        if isinstance(raw_franchise_id, str) and raw_franchise_id.strip():
-            candidate_name = raw_franchise_id.strip()
-        elif franchise_aliases and len(franchise_aliases) > 0:
-            candidate_name = franchise_aliases[0].strip()
-
+        candidate_name = self._get_franchise_candidate_name(raw_franchise_id, franchise_aliases)
         if not candidate_name:
             return None
 
-        stmt = (
-            select(FranchiseModel)
-            .where(
-                or_(
-                    FranchiseModel.name_original.ilike(candidate_name),
-                    cast(FranchiseModel.aliases, SAString).ilike(f"%{candidate_name}%"),
-                )
-            )
-            .limit(1)
-        )
-        res = await self._session.execute(stmt)
-        found = res.scalars().first()
+        found = await self._find_franchise_by_name(candidate_name)
         if found:
             if franchise_aliases:
-                merged = list(found.aliases or [])
-                seen = {a.casefold() for a in merged}
-                for alias in franchise_aliases:
-                    if alias.casefold() not in seen:
-                        merged.append(alias)
-                        seen.add(alias.casefold())
-                found.aliases = merged
+                found.aliases = self._merge_aliases(found.aliases, franchise_aliases)
             return found.id
 
         new_franchise = FranchiseModel(
@@ -511,15 +506,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
     async def _process_track_artists(self, track_model: TrackModel, track: Track) -> None:
         for track_artist in track.artists:
             name_orig = track_artist.name_original.strip()
+            artist_m = await self._find_artist_by_name_or_uuid(name_orig)
 
-            try:
-                artist_uuid = uuid.UUID(name_orig)
-                stmt = select(ArtistModel).where(ArtistModel.id == artist_uuid)
-            except ValueError:
-                stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(name_orig))
-
-            res = await self._session.execute(stmt.limit(1))
-            artist_m = res.scalars().first()
             if artist_m is None:
                 artist_m = ArtistModel(
                     id=track_artist.id or uuid.uuid4(),
@@ -528,13 +516,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 )
                 self._session.add(artist_m)
             elif track_artist.aliases:
-                merged = list(artist_m.aliases or [])
-                seen = {a.casefold() for a in merged}
-                for alias in track_artist.aliases:
-                    if alias.casefold() not in seen:
-                        merged.append(alias)
-                        seen.add(alias.casefold())
-                artist_m.aliases = merged
+                artist_m.aliases = self._merge_aliases(artist_m.aliases, track_artist.aliases)
 
             t_role = getattr(track_artist, "role", "Composer") or "Composer"
             track_model.artist_associations.append(

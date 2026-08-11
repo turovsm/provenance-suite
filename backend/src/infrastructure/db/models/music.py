@@ -33,8 +33,17 @@ class EventModel(BaseInfrastructureModel):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     short_name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    original_start_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    original_end_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    start_date_sort: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_history: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    additional_dates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     status: Mapped[str] = mapped_column(String(32), default="HELD", nullable=False)
 
     albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="event")

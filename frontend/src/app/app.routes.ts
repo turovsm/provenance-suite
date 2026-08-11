@@ -31,6 +31,13 @@ export const routes: Routes = [
             (m) => m.AlbumGridComponent,
           ),
       },
+      {
+        path: 'events',
+        loadComponent: () =>
+          import('./features/events/components/event-list/event-list.component').then(
+            (m) => m.EventListComponent,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: 'login' },

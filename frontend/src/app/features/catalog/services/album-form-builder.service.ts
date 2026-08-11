@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { AlbumDetailResponse } from '../../../domain/models/music.model';
+import { AlbumDetailResponse, MasterArtist } from '../../../domain/models/music.model';
+import { EntitySearchService } from '../../../shared/services/entity-search.service';
+import { fuzzyDateValidator } from '../../../shared/validators/fuzzy-date.validator';
 import {
   AlbumFormRawValue,
   ArchiveLinkSeed,
@@ -14,6 +16,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class AlbumFormBuilderService {
   private readonly fb = inject(FormBuilder);
+  private readonly entitySearch = inject(EntitySearchService);
 
   buildAlbumForm(): FormGroup {
     return this.fb.group({
@@ -23,9 +26,7 @@ export class AlbumFormBuilderService {
       album_artist_aliases: [[]],
       franchise_aliases: [[]],
       original_folder_name: ['', [Validators.required, Validators.maxLength(1024)]],
-      release_year: [null, [Validators.min(1800), Validators.max(2100)]],
-      release_month: [null, [Validators.min(1), Validators.max(12)]],
-      release_day: [null, [Validators.min(1), Validators.max(31)]],
+      release_date_str: ['', [fuzzyDateValidator()]],
       label: [''],
       publisher: [''],
       storage_drive: ['', [Validators.maxLength(64)]],
@@ -146,6 +147,28 @@ export class AlbumFormBuilderService {
   populateFromAlbum(form: FormGroup, album: AlbumDetailResponse): void {
     this.clearArrays(form);
 
+    let releaseDateStr = '';
+    if (album.release_year) {
+      const y = album.release_year.toString();
+      const m = album.release_month ? album.release_month.toString().padStart(2, '0') : 'XX';
+      const d = album.release_day ? album.release_day.toString().padStart(2, '0') : 'XX';
+      if (m === 'XX' && d === 'XX') {
+        releaseDateStr = `${y}/XX/XX`;
+      } else if (d === 'XX') {
+        releaseDateStr = `${y}/${m}/XX`;
+      } else {
+        releaseDateStr = `${y}/${m}/${d}`;
+      }
+    }
+
+    if (album.album_artist) {
+      this.entitySearch.cacheOption('artist', {
+        id: album.album_artist.id,
+        display: album.album_artist.name_original,
+        raw: album.album_artist as MasterArtist,
+      });
+    }
+
     form.patchValue({
       album_id: album.id,
       title_original: album.title_original,
@@ -153,16 +176,14 @@ export class AlbumFormBuilderService {
       album_artist_aliases: album.album_artist?.aliases ?? [],
       franchise_aliases: [],
       original_folder_name: album.original_folder_name,
-      release_year: album.release_year,
-      release_month: album.release_month,
-      release_day: album.release_day,
+      release_date_str: releaseDateStr,
       label: album.label || '',
       publisher: album.publisher || '',
       storage_drive: album.storage_drive || '',
       relative_path: album.relative_path || '',
       event_id: album.event_id || null,
       franchise_id: album.franchise_id || null,
-      album_artist_id: album.album_artist?.name_original || null,
+      album_artist_id: album.album_artist?.id || album.album_artist?.name_original || null,
     });
 
     (album.discs ?? []).forEach((d) => this.discsOf(form).push(this.createDiscGroup(d)));
@@ -178,15 +199,21 @@ export class AlbumFormBuilderService {
   applyDraftFormValue(form: FormGroup, fVal: AlbumFormRawValue): void {
     this.clearArrays(form);
 
+    let draftDateStr = fVal.release_date_str || '';
+    if (!draftDateStr && fVal.release_year) {
+      const y = fVal.release_year.toString();
+      const m = fVal.release_month ? fVal.release_month.toString().padStart(2, '0') : 'XX';
+      const d = fVal.release_day ? fVal.release_day.toString().padStart(2, '0') : 'XX';
+      draftDateStr = `${y}/${m}/${d}`;
+    }
+
     form.patchValue({
       title_original: fVal.title_original || '',
       aliases: fVal.aliases ?? [],
       album_artist_aliases: fVal.album_artist_aliases ?? [],
       franchise_aliases: fVal.franchise_aliases ?? [],
       original_folder_name: fVal.original_folder_name || '',
-      release_year: fVal.release_year ?? null,
-      release_month: fVal.release_month ?? null,
-      release_day: fVal.release_day ?? null,
+      release_date_str: draftDateStr,
       label: fVal.label || '',
       publisher: fVal.publisher || '',
       storage_drive: fVal.storage_drive || '',

@@ -23,8 +23,7 @@ def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
 
 
 class RedisSlidingWindowRateLimiter(BaseHTTPMiddleware):
-    @staticmethod
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         redis = redis_module.redis_client
         if redis is None:
             logger.warning("Rate limiter inactive: Redis pool not initialized.")
@@ -66,8 +65,7 @@ class RedisSlidingWindowRateLimiter(BaseHTTPMiddleware):
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    @staticmethod
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > settings.MAX_UPLOAD_SIZE_BYTES:
             max_mb = settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)

@@ -4,10 +4,13 @@ import {
   AlbumDetailResponse,
   AlbumIngestRequest,
   AlbumIngestResponse,
+  EventCreatePayload,
+  EventUpdatePayload,
   MasterArtist,
   MasterEvent,
   MasterFranchise,
   PaginatedAlbumsResponse,
+  PaginatedEventsResponse,
 } from '../../domain/models/music.model';
 
 export interface AlbumRepositoryPort {
@@ -22,8 +25,24 @@ export interface AlbumRepositoryPort {
 
   searchArtists(query: string): Observable<MasterArtist[]>;
   createArtist(nameOriginal: string, nameTranslated?: string | null): Observable<MasterArtist>;
-  searchEvents(query: string): Observable<MasterEvent[]>;
+
+  fetchEvents(
+    query?: string | null,
+    statuses?: string[],
+    dateFrom?: string | null,
+    dateTo?: string | null,
+    sortBy?: string,
+    sortOrder?: string,
+    limit?: number,
+    offset?: number,
+  ): Observable<PaginatedEventsResponse>;
+  searchEvents(query: string, limit?: number): Observable<MasterEvent[]>;
+  getEventDetail(eventId: string): Observable<MasterEvent>;
   createEvent(shortName: string): Observable<MasterEvent>;
+  createEventFull(payload: EventCreatePayload): Observable<MasterEvent>;
+  updateEvent(eventId: string, payload: EventUpdatePayload): Observable<MasterEvent>;
+  deleteEvent(eventId: string): Observable<void>;
+
   searchFranchises(query: string): Observable<MasterFranchise[]>;
   createFranchise(nameOriginal: string): Observable<MasterFranchise>;
   getLabels(query: string): Observable<string[]>;

@@ -73,10 +73,6 @@ async def backup_database(_ctx: dict[Any, Any]) -> str:
     return object_key
 
 
-async def warmup_popular_categories_cache(_ctx: dict[Any, Any]) -> None:
-    logger.info("Executing catalog cache warmup...")
-
-
 class WorkerSettings:
     functions = [compute_archive_sha256, backup_database]
     cron_jobs = [

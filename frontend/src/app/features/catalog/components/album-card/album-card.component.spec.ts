@@ -45,7 +45,7 @@ describe('AlbumCardComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.title-primary')?.textContent).toContain('Scarlet Devil OST');
     expect(compiled.querySelector('.artists-line')?.textContent).toContain('ZUN');
-    expect(compiled.querySelector('.release-date')?.textContent).toContain('2002.08.11');
+    expect(compiled.querySelector('.release-date')?.textContent).toContain('2002/08/11');
   });
 
   it('emits cardClicked when clicked', () => {

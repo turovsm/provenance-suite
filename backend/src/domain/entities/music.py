@@ -19,8 +19,13 @@ class Event:
     id: uuid.UUID
     short_name: str
     full_name: str | None
-    start_date: date | None = None
-    end_date: date | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    original_start_date: str | None = None
+    original_end_date: str | None = None
+    start_date_sort: date | None = None
+    date_history: list[dict[str, Any]] = field(default_factory=list)
+    additional_dates: list[dict[str, Any]] = field(default_factory=list)
     status: str = "HELD"
 
 

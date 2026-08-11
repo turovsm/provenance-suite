@@ -22,7 +22,6 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
   template: `
     <div
       class="aliases-input-container"
-      role="button"
       tabindex="0"
       (click)="focusInput()"
       (keydown.enter)="focusInput()"
@@ -33,7 +32,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
           <button
             type="button"
             class="alias-chip-remove"
-            (click)="removeAlias(i); $event.stopPropagation()"
+            (click)="removeAlias(i, $event)"
+            (mousedown)="$event.stopPropagation()"
             title="Remove alias"
           >
             <span class="material-symbols-outlined alias-chip-remove-icon">close</span>
@@ -88,6 +88,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
         font-weight: 500;
       }
       .alias-chip-remove {
+        pointer-events: auto !important;
         background: none;
         border: none;
         color: var(--accent-blue);
@@ -103,6 +104,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
         color: var(--accent-error);
       }
       .alias-chip-remove-icon {
+        pointer-events: none;
         font-size: 14px;
       }
       .alias-text-input {
@@ -124,7 +126,6 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 export class AliasesChipInputComponent implements ControlValueAccessor {
   placeholder = 'Type alias and press Enter...';
 
-  /** Emits the full alias list whenever the user adds or removes a chip. */
   @Output() aliasesChanged = new EventEmitter<string[]>();
 
   protected aliases = signal<string[]>([]);
@@ -171,7 +172,11 @@ export class AliasesChipInputComponent implements ControlValueAccessor {
     this.aliasesChanged.emit(next);
   }
 
-  protected removeAlias(index: number): void {
+  protected removeAlias(index: number, event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
     const next = this.aliases().filter((_, i) => i !== index);
     this.aliases.set(next);
     this.onChange(next);

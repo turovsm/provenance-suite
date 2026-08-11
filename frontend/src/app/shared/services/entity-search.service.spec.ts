@@ -15,12 +15,17 @@ describe('EntitySearchService', () => {
       ingestAlbum: vi.fn(),
       deleteAlbum: vi.fn(),
       searchArtists: vi.fn(),
+      fetchEvents: vi.fn(),
       searchEvents: vi.fn(),
+      getEventDetail: vi.fn(),
+      createEvent: vi.fn(),
+      createEventFull: vi.fn(),
+      updateEvent: vi.fn(),
+      deleteEvent: vi.fn(),
       searchFranchises: vi.fn(),
       getLabels: vi.fn(),
       getPublishers: vi.fn(),
       createArtist: vi.fn(),
-      createEvent: vi.fn(),
       createFranchise: vi.fn(),
     };
 

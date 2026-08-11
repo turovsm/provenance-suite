@@ -68,8 +68,8 @@ export class AlbumDetailDrawerComponent {
     const y = album.release_year.toString();
     const m = album.release_month ? album.release_month.toString().padStart(2, '0') : null;
     const d = album.release_day ? album.release_day.toString().padStart(2, '0') : null;
-    if (m && d) return `${y}.${m}.${d}`;
-    if (m) return `${y}.${m}`;
+    if (m && d) return `${y}/${m}/${d}`;
+    if (m) return `${y}/${m}`;
     return y;
   }
 

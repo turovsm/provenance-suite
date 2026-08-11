@@ -1,11 +1,11 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 
 @Component({
   selector: 'app-dashboard-shell',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   styleUrls: ['./dashboard-shell.component.css'],
   templateUrl: './dashboard-shell.component.html',
 })

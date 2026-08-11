@@ -1,7 +1,7 @@
 -include backend/.env
 export
 
-.PHONY: help install lint format test test-backend test-backend-unit test-backend-integration test-frontend run-backend run-worker run-frontend db-up db-down db-logs db-clean db-migrate db-revision db-seed-admin prod-build prod-up prod-down prod-logs
+.PHONY: help install lint format test test-backend test-backend-unit test-backend-integration test-frontend run-backend run-worker run-frontend db-up db-down db-logs db-clean db-migrate db-revision db-seed-admin db-seed-events prod-build prod-up prod-down prod-logs
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -76,6 +76,9 @@ db-revision: ## Generate a new Alembic database migration
 
 db-seed-admin: ## Create initial superuser account with generated credentials
 	cd $(BACKEND_DIR) && .venv/bin/python -m src.cli.create_superuser
+
+db-seed-events: ## Transfer event data from json file to the DB
+	cd $(BACKEND_DIR) && .venv/bin/python -m src.cli.seed_events events.json
 
 db-clean: ## Stop infrastructure containers and purge volumes
 	docker compose --env-file $(BACKEND_DIR)/.env down -v

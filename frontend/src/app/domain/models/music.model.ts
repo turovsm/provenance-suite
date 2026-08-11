@@ -12,13 +12,53 @@ export interface MasterArtist {
   aliases: string[];
 }
 
+export interface EventDateRange {
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
 export interface MasterEvent {
   id: string;
   short_name: string;
   full_name: string | null;
   start_date: string | null;
   end_date: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  date_history?: EventDateRange[];
+  additional_dates?: EventDateRange[];
   status: string;
+}
+
+export interface PaginatedEventsResponse {
+  items: MasterEvent[];
+  total_count: number;
+  limit: number;
+  offset: number;
+}
+
+export interface EventCreatePayload {
+  short_name: string;
+  full_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  date_history?: EventDateRange[];
+  additional_dates?: EventDateRange[];
+  status?: string;
+}
+
+export interface EventUpdatePayload {
+  short_name?: string | null;
+  full_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  date_history?: EventDateRange[];
+  additional_dates?: EventDateRange[];
+  status?: string | null;
 }
 
 export interface MasterFranchise {
@@ -201,7 +241,6 @@ export interface ExternalLinkDetailResponse {
   url: string;
 }
 
-/** One field-level diff entry inside an album changelog record. */
 export interface AlbumChangeEntry {
   type: 'added' | 'removed' | 'updated';
   old?: string;

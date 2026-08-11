@@ -54,6 +54,41 @@ export class DiscsTabComponent {
   protected readonly showManualPaste = signal<boolean>(false);
   protected manualJsonText = '';
 
+  protected readonly collapsedDiscs = signal<Set<number>>(new Set());
+
+  protected toggleDiscCollapse(index: number, event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    const current = new Set(this.collapsedDiscs());
+    if (current.has(index)) {
+      current.delete(index);
+    } else {
+      current.add(index);
+    }
+    this.collapsedDiscs.set(current);
+  }
+
+  protected isDiscCollapsed(index: number): boolean {
+    return this.collapsedDiscs().has(index);
+  }
+
+  protected getDiscSummary(discIndex: number): string {
+    const group = this.discs.at(discIndex) as FormGroup;
+    if (!group) return '';
+    const mediaType = group.get('media_type')?.value || 'CD';
+    const container = group.get('container_format')?.value || 'Tracks';
+    const catalog = group.get('catalog_number')?.value;
+    const tracks = group.get('tracks') as FormArray;
+    const count = tracks ? tracks.length : 0;
+
+    let summary = `${mediaType} • ${container} | ${count} ${count === 1 ? 'track' : 'tracks'}`;
+    if (catalog && catalog.trim()) {
+      summary += ` | Catalog: ${catalog.trim()}`;
+    }
+    return summary;
+  }
+
   getTracks(discIndex: number): FormArray {
     return this.discs.at(discIndex).get('tracks') as FormArray;
   }
@@ -66,8 +101,16 @@ export class DiscsTabComponent {
     this.discs.push(this.builder.createDiscGroup({ disc_number: this.discs.length + 1 }));
   }
 
-  protected removeDisc(index: number): void {
-    if (this.discs.length > 1) this.discs.removeAt(index);
+  protected removeDisc(index: number, event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (this.discs.length > 1) {
+      this.discs.removeAt(index);
+      const current = new Set(this.collapsedDiscs());
+      current.delete(index);
+      this.collapsedDiscs.set(current);
+    }
   }
 
   private reindexTracks(discIndex: number): void {

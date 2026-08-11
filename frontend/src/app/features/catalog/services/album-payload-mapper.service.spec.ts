@@ -14,9 +14,7 @@ describe('AlbumPayloadMapperService', () => {
     const rawForm: AlbumFormRawValue = {
       title_original: 'Test Original',
       original_folder_name: 'Folder_01',
-      release_year: '2024',
-      release_month: '8',
-      release_day: '15',
+      release_date_str: '2024/08/15',
       album_artist_id: 'a8123456-1234-1234-1234-123456789abc',
       event_id: 'b8123456-1234-1234-1234-123456789abc',
       franchise_id: 'c8123456-1234-1234-1234-123456789abc',
@@ -55,6 +53,8 @@ describe('AlbumPayloadMapperService', () => {
 
     expect(result.title_original).toBe('Test Original');
     expect(result.release_year).toBe(2024);
+    expect(result.release_month).toBe(8);
+    expect(result.release_day).toBe(15);
     expect(result.album_artist_id).toBe('a8123456-1234-1234-1234-123456789abc');
     expect(result.event_id).toBe('b8123456-1234-1234-1234-123456789abc');
     expect(result.franchise_id).toBe('c8123456-1234-1234-1234-123456789abc');

@@ -35,6 +35,8 @@ type OnTouchedFn = () => void;
 export class CustomSelectComponent implements ControlValueAccessor {
   @Input() placeholder = 'Select option...';
   @Input() dense = false;
+  @Input() openUp = false;
+  @Input() direction: 'down' | 'up' = 'down';
 
   private readonly normalizedOpts = signal<SelectOption[]>([]);
   @Input({ required: true }) set options(val: (string | SelectOption)[]) {
@@ -54,6 +56,10 @@ export class CustomSelectComponent implements ControlValueAccessor {
 
   @HostBinding('class.open-select') get isSelectOpen() {
     return this.isOpen();
+  }
+
+  protected get isOpeningUp(): boolean {
+    return this.openUp || this.direction === 'up';
   }
 
   protected readonly normalizedOptions = computed(() => this.normalizedOpts());

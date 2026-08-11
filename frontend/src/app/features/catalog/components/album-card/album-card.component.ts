@@ -30,8 +30,8 @@ export class AlbumCardComponent {
     const y = release_year.toString();
     const m = release_month ? release_month.toString().padStart(2, '0') : null;
     const d = release_day ? release_day.toString().padStart(2, '0') : null;
-    if (m && d) return `${y}.${m}.${d}`;
-    if (m) return `${y}.${m}`;
+    if (m && d) return `${y}/${m}/${d}`;
+    if (m) return `${y}/${m}`;
     return y;
   });
 

@@ -31,6 +31,53 @@ function toNumberOrNull(value: unknown): number | null {
 
 @Injectable({ providedIn: 'root' })
 export class AlbumPayloadMapperService {
+  private parseFuzzyDateStr(
+    dateStr: string | null | undefined,
+    fallbackVal?: AlbumFormRawValue,
+  ): {
+    year: number | null;
+    month: number | null;
+    day: number | null;
+  } {
+    if (!dateStr || !dateStr.trim()) {
+      if (fallbackVal && fallbackVal.release_year) {
+        return {
+          year: toNumberOrNull(fallbackVal.release_year),
+          month: toNumberOrNull(fallbackVal.release_month),
+          day: toNumberOrNull(fallbackVal.release_day),
+        };
+      }
+      return { year: null, month: null, day: null };
+    }
+
+    const cleaned = dateStr.trim().replace(/[/.]/g, '-');
+    const parts = cleaned.split('-');
+    const yearNum = parseInt(parts[0], 10);
+    const year = !isNaN(yearNum) && yearNum >= 1800 && yearNum <= 2100 ? yearNum : null;
+
+    if (!year) {
+      return { year: null, month: null, day: null };
+    }
+
+    let month: number | null = null;
+    if (parts.length > 1 && parts[1].toLowerCase() !== 'xx') {
+      const mNum = parseInt(parts[1], 10);
+      if (!isNaN(mNum) && mNum >= 1 && mNum <= 12) {
+        month = mNum;
+      }
+    }
+
+    let day: number | null = null;
+    if (parts.length > 2 && parts[2].toLowerCase() !== 'xx') {
+      const dNum = parseInt(parts[2], 10);
+      if (!isNaN(dNum) && dNum >= 1 && dNum <= 31) {
+        day = dNum;
+      }
+    }
+
+    return { year, month, day };
+  }
+
   toIngestRequest(formVal: AlbumFormRawValue, covers: LocalCoverItem[]): AlbumIngestRequest {
     const artistVal =
       typeof formVal.album_artist_id === 'string' ? formVal.album_artist_id.trim() : null;
@@ -50,6 +97,8 @@ export class AlbumPayloadMapperService {
       }
     }
 
+    const { year, month, day } = this.parseFuzzyDateStr(formVal.release_date_str, formVal);
+
     return {
       album_id: formVal.album_id || null,
       title_original: formVal.title_original ?? '',
@@ -57,9 +106,9 @@ export class AlbumPayloadMapperService {
       album_artist_aliases: formVal.album_artist_aliases ?? [],
       franchise_aliases: franchiseAliases,
       original_folder_name: formVal.original_folder_name ?? '',
-      release_year: toNumberOrNull(formVal.release_year),
-      release_month: toNumberOrNull(formVal.release_month),
-      release_day: toNumberOrNull(formVal.release_day),
+      release_year: year,
+      release_month: month,
+      release_day: day,
       label: formVal.label || null,
       publisher: formVal.publisher || null,
       storage_drive: formVal.storage_drive || null,
