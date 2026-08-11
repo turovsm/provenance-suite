@@ -5,9 +5,11 @@
   position: relative;
   z-index: 10;
 }
+
 :host(.open-autocomplete) {
   z-index: 99999 !important;
 }
+
 .autocomplete-container {
   position: relative;
   display: flex;
@@ -15,6 +17,7 @@
   width: 100%;
   box-sizing: border-box;
 }
+
 .glass-input {
   box-sizing: border-box;
   width: 100%;
@@ -29,13 +32,16 @@
   line-height: 1.25;
   transition: all 0.2s ease;
 }
+
 .glass-input::placeholder {
   color: var(--text-muted);
 }
+
 .glass-input:hover {
   border-color: rgba(255, 255, 255, 0.15);
   background-color: rgba(255, 255, 255, 0.03);
 }
+
 .glass-input:focus,
 .glass-input.open {
   outline: none;
@@ -43,10 +49,12 @@
   box-shadow: 0 0 0 3px var(--border-focus-glow);
   background-color: rgba(255, 255, 255, 0.03);
 }
+
 .glass-input.dense {
   padding: 0.5rem 2.2rem 0.5rem 0.65rem;
   font-size: 0.78rem;
 }
+
 .arrow-icon {
   position: absolute;
   right: 0.8rem;
@@ -58,13 +66,16 @@
     color 0.2s ease;
   flex-shrink: 0;
 }
+
 .option-item {
   justify-content: space-between !important;
 }
+
 .create-option {
   color: var(--accent-blue) !important;
   font-weight: 600;
 }
+
 .sub-tag {
   font-size: 0.72rem;
   color: var(--text-muted);

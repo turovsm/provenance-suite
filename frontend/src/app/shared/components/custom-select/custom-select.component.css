@@ -5,9 +5,11 @@
   position: relative;
   z-index: 10;
 }
+
 :host(.open-select) {
   z-index: 99999 !important;
 }
+
 .select-trigger {
   display: flex;
   align-items: center;
@@ -25,10 +27,12 @@
   transition: all 0.2s ease;
   text-align: left;
 }
+
 .select-trigger:hover {
   border-color: rgba(255, 255, 255, 0.15);
   background-color: rgba(255, 255, 255, 0.03);
 }
+
 .select-trigger:focus,
 .select-trigger.open {
   outline: none;
@@ -36,18 +40,22 @@
   box-shadow: 0 0 0 3px var(--border-focus-glow);
   background-color: rgba(255, 255, 255, 0.03);
 }
+
 .select-trigger.dense {
   padding: 0.5rem 0.65rem;
   font-size: 0.78rem;
 }
+
 .selected-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .placeholder-text {
   color: var(--text-muted);
 }
+
 .arrow-icon {
   font-size: 18px;
   color: var(--text-muted);

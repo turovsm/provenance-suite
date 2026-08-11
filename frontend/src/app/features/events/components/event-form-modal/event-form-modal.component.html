@@ -102,9 +102,9 @@
             </button>
           </div>
 
-          <div formArrayName="date_history" class="sub-array-list">
+          <div class="sub-array-list">
             @for (step of dateHistoryArray.controls; track step; let i = $index) {
-              <div [formGroupName]="i" class="form-row align-center">
+              <div [formGroup]="$any(step)" class="form-row align-center">
                 <span class="step-index-tag">Step #{{ i + 1 }}</span>
                 <div class="field-group flex-1">
                   <input type="text" placeholder="yyyy/mm/dd" formControlName="start_date" />
@@ -129,9 +129,9 @@
             </button>
           </div>
 
-          <div formArrayName="additional_dates" class="sub-array-list">
+          <div class="sub-array-list">
             @for (session of additionalDatesArray.controls; track session; let i = $index) {
-              <div [formGroupName]="i" class="form-row align-center">
+              <div [formGroup]="$any(session)" class="form-row align-center">
                 <span class="step-index-tag">Session #{{ i + 1 }}</span>
                 <div class="field-group flex-1">
                   <input type="text" placeholder="yyyy/mm/dd" formControlName="start_date" />

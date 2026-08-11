@@ -58,7 +58,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
   protected readonly inputQuery = signal<string>('');
   protected readonly options = signal<AutocompleteOption[]>([]);
   protected readonly isOpen = signal<boolean>(false);
-  private selectedOptionId: string | null = null;
 
   @HostBinding('class.open-autocomplete') get isAutocompleteOpen() {
     return this.isOpen();
@@ -86,7 +85,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
   protected onInput(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     this.inputQuery.set(val);
-    this.selectedOptionId = null;
     this.isOpen.set(true);
     this.searchSubject$.next(val);
     this.onChange(val);
@@ -99,7 +97,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
     const match = this.options().find((o) => o.display.trim().toLowerCase() === trimmed);
     if (match) {
       if (match.id) {
-        this.selectedOptionId = match.id;
         this.onChange(match.id);
       }
       this.optionSelected.emit(match);
@@ -133,7 +130,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
 
   protected selectOption(option: AutocompleteOption): void {
     this.inputQuery.set(option.display);
-    this.selectedOptionId = option.id ?? null;
     this.isOpen.set(false);
     if (option.id) {
       this.entitySearch.cacheOption(this.entityType, option);
@@ -169,10 +165,8 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
   writeValue(value: unknown): void {
     if (typeof value === 'string') {
       if (UUID_PATTERN.test(value)) {
-        this.selectedOptionId = value;
         this.resolveUuidDisplayName(value);
       } else {
-        this.selectedOptionId = null;
         this.inputQuery.set(value);
       }
       return;
@@ -185,7 +179,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
         name_original?: string;
         short_name?: string;
       };
-      if (obj.id) this.selectedOptionId = obj.id;
       const displayStr = obj.display || obj.name_original || obj.short_name || '';
       this.inputQuery.set(displayStr);
       if (obj.id && displayStr) {
@@ -198,7 +191,6 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
       return;
     }
 
-    this.selectedOptionId = null;
     this.inputQuery.set('');
   }
 
