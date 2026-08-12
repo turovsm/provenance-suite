@@ -10,6 +10,7 @@ import { AlbumSummary } from '../../../../domain/models/music.model';
 export class AlbumCardComponent {
   readonly album = input.required<AlbumSummary>();
   readonly isSuperuser = input<boolean>(false);
+  readonly isLoadingEdit = input<boolean>(false);
 
   readonly deleteRequested = output<string>();
   readonly editRequested = output<string>();
@@ -44,16 +45,21 @@ export class AlbumCardComponent {
   }
 
   protected handleCardClick(): void {
+    if (this.isLoadingEdit()) return;
     this.cardClicked.emit(this.album().id);
   }
 
   protected handleEdit(event: MouseEvent): void {
     event.stopPropagation();
+    event.preventDefault();
+    if (this.isLoadingEdit()) return;
     this.editRequested.emit(this.album().id);
   }
 
   protected handleDelete(event: MouseEvent): void {
     event.stopPropagation();
+    event.preventDefault();
+    if (this.isLoadingEdit()) return;
     if (confirm(`Remove "${this.album().title_original}" from archive?`)) {
       this.deleteRequested.emit(this.album().id);
     }

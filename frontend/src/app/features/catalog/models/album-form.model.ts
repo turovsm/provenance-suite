@@ -13,7 +13,6 @@ export interface LocalCoverItem {
 
 export interface ArtistSeed {
   name_original?: string | null;
-  aliases?: string[] | null;
   role?: string | null;
 }
 
@@ -68,8 +67,6 @@ export interface AlbumFormRawValue {
   album_id?: string | null;
   title_original?: string | null;
   aliases?: string[] | null;
-  album_artist_aliases?: string[] | null;
-  franchise_aliases?: string[] | null;
   original_folder_name?: string | null;
   release_date_str?: string | null;
   release_year?: number | string | null;

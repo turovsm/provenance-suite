@@ -27,8 +27,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
       (keydown.enter)="focusInput()"
     >
       @for (alias of aliases(); track alias; let i = $index) {
-        <span class="alias-chip">
-          {{ alias }}
+        <span class="alias-chip" [title]="alias">
+          <span class="alias-chip-text">{{ alias }}</span>
           <button
             type="button"
             class="alias-chip-remove"
@@ -86,6 +86,12 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
         font-family: var(--font-mono), monospace;
         font-size: 0.72rem;
         font-weight: 500;
+        max-width: 200px;
+      }
+      .alias-chip-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .alias-chip-remove {
         pointer-events: auto !important;
@@ -98,6 +104,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
         align-items: center;
         opacity: 0.7;
         transition: all 0.15s ease;
+        flex-shrink: 0;
       }
       .alias-chip-remove:hover {
         opacity: 1;

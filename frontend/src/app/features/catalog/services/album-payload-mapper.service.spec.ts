@@ -65,14 +65,13 @@ describe('AlbumPayloadMapperService', () => {
     expect(result.covers[0].cover_type).toBe('Front');
   });
 
-  it('maps plain artist/event/franchise strings to null IDs while preserving names/aliases', () => {
+  it('maps plain artist/event/franchise strings to null IDs while preserving names', () => {
     const rawForm: AlbumFormRawValue = {
       title_original: 'Independent Release',
       original_folder_name: 'Indie_01',
       album_artist_id: 'Custom Circle Name',
       event_id: 'Comiket 70',
       franchise_id: 'ぶらばん！',
-      franchise_aliases: ['Bra-Ban!'],
     };
 
     const result = service.toIngestRequest(rawForm, []);
@@ -81,7 +80,5 @@ describe('AlbumPayloadMapperService', () => {
     expect(result.event_id).toBeNull();
     expect(result.franchise_id).toBeNull();
     expect(result.album_artist?.name_original).toBe('Custom Circle Name');
-    expect(result.franchise_aliases).toContain('ぶらばん！');
-    expect(result.franchise_aliases).toContain('Bra-Ban!');
   });
 });

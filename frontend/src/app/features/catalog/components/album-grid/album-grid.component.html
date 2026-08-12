@@ -45,6 +45,7 @@
           <app-album-card
             [album]="album"
             [isSuperuser]="authState.identity()?.is_superuser ?? false"
+            [isLoadingEdit]="loadingEditId() === album.id"
             (cardClicked)="handleSelectAlbum($event)"
             (editRequested)="handleEditAlbum($event)"
             (deleteRequested)="handleDeleteAlbum($event)"

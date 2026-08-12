@@ -1,5 +1,5 @@
 import { DatePipe, KeyValuePipe, NgClass } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import {
   AlbumChangeEntry,
   AlbumDetailResponse,
@@ -40,6 +40,11 @@ export class AlbumDetailDrawerComponent {
   protected readonly copiedField = signal<string | null>(null);
 
   protected readonly expandedChangelogId = signal<string | null>(null);
+
+  @HostListener('window:keydown.escape')
+  protected handleEscapeKey(): void {
+    this.close();
+  }
 
   protected toggleChangelog(id: string): void {
     this.expandedChangelogId.set(this.expandedChangelogId() === id ? null : id);
@@ -111,7 +116,7 @@ export class AlbumDetailDrawerComponent {
     return parts.join(' • ') || 'FLAC';
   }
 
-  protected handleBackdropClick(event: MouseEvent): void {
+  protected handleBackdropClick(event: Event): void {
     if (event.target === event.currentTarget) {
       this.close();
     }

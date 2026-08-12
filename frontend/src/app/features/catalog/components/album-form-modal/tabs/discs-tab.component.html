@@ -324,17 +324,13 @@
                       <span class="artist-sub-tag">Artist #{{ taIdx + 1 }}</span>
                       <app-entity-autocomplete
                         entityType="artist"
+                        bindValue="display"
                         formControlName="name_original"
                         placeholder="Search artist..."
                         class="flex-2"
                         [dense]="true"
                         (optionSelected)="handleTrackArtistSelected(dIdx, tIdx, taIdx, $event)"
                       />
-                      <app-aliases-chip-input
-                        formControlName="aliases"
-                        class="flex-2"
-                        (aliasesChanged)="syncArtistAliases(dIdx, tIdx, taIdx, $event)"
-                      ></app-aliases-chip-input>
                       <app-custom-select
                         formControlName="role"
                         [options]="trackArtistRoles"

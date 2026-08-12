@@ -62,9 +62,11 @@ describe('EntitySearchService', () => {
     });
   });
 
-  it('returns null for free-text entity creation without a backend record', () => {
+  it('returns autocomplete option for free-text label/publisher entity creation', () => {
     service.create('label', 'Independent').subscribe((res) => {
-      expect(res).toBeNull();
+      expect(res).not.toBeNull();
+      expect(res?.display).toBe('Independent');
+      expect(res?.id).toBe('label:Independent');
     });
     expect(repoSpy.createArtist).not.toHaveBeenCalled();
   });

@@ -2,6 +2,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  height: 100%;
   background-color: var(--bg-surface-glass);
   border: 1px solid var(--border-fine-glass);
   border-radius: 6px;
@@ -25,6 +26,7 @@
   background-color: rgba(0, 0, 0, 0.5);
   border-bottom: 1px solid var(--border-fine-glass);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .cover-image {
@@ -47,34 +49,13 @@
   color: rgba(255, 255, 255, 0.12);
 }
 
-.category-badges-cluster {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  justify-content: flex-end;
-  max-width: 85%;
-}
-
-.category-badge {
-  padding: 0.15rem 0.4rem;
-  background-color: rgba(5, 5, 7, 0.85);
-  border: 1px solid var(--border-fine-glass);
-  border-radius: 3px;
-  color: var(--accent-blue);
-  font-family: var(--font-mono), monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
 .card-meta {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.85rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .title-primary {
@@ -84,14 +65,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.title-sub {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25rem;
+  height: 1.25rem;
 }
 
 .artists-line {
@@ -101,13 +76,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 500;
+  line-height: 1.1rem;
+  height: 1.1rem;
 }
 
 .card-footer-metrics {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0.4rem;
+  margin-top: auto;
   padding-top: 0.4rem;
   border-top: 1px solid rgba(255, 255, 255, 0.03);
   font-size: 0.7rem;
@@ -124,64 +101,12 @@
   font-size: 0.65rem;
 }
 
-.card-delete-btn {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  margin-top: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  background-color: rgba(248, 113, 113, 0.06);
-  border: 1px solid rgba(248, 113, 113, 0.2);
-  border-radius: 3px;
-  color: var(--accent-error);
-  font-size: 0.7rem;
-  transition: all 0.15s ease;
-}
-
-.delete-icon {
-  font-size: 15px;
-}
-
-.card-delete-btn:hover {
-  background-color: rgba(248, 113, 113, 0.18);
-  border-color: var(--accent-error);
-}
-
 .card-admin-actions {
   display: flex;
-  align-content: center;
+  align-items: center;
   gap: 0.4rem;
   margin-top: 0.5rem;
   width: 100%;
-}
-
-.card-edit-btn {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  flex: 1;
-  padding: 0.35rem 0.5rem;
-  background-color: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-radius: 3px;
-  color: var(--accent-blue);
-  font-size: 0.7rem;
-  transition: all 0.15s ease;
-}
-
-.card-edit-btn:hover {
-  background-color: rgba(56, 189, 248, 0.18);
-  border-color: var(--accent-blue);
-}
-
-.card-admin-actions {
-  display: flex;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
 }
 
 .card-edit-btn,
@@ -193,7 +118,6 @@
   gap: 0.25rem;
   flex: 1;
   height: 28px;
-  margin: 0 !important;
   padding: 0 0.5rem;
   border-radius: 3px;
   font-size: 0.7rem;
@@ -208,7 +132,7 @@
   color: var(--accent-blue);
 }
 
-.card-edit-btn:hover {
+.card-edit-btn:hover:not(:disabled) {
   background-color: rgba(56, 189, 248, 0.18);
   border-color: var(--accent-blue);
 }
@@ -219,11 +143,21 @@
   color: var(--accent-error);
 }
 
-.card-delete-btn:hover {
+.card-delete-btn:hover:not(:disabled) {
   background-color: rgba(248, 113, 113, 0.18);
   border-color: var(--accent-error);
 }
 
 .action-icon {
   font-size: 15px;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
 }

@@ -90,21 +90,12 @@ export class AlbumPayloadMapperService {
       typeof formVal.franchise_id === 'string' ? formVal.franchise_id.trim() : null;
     const isFranchiseUuid = franchiseVal ? UUID_PATTERN.test(franchiseVal) : false;
 
-    const franchiseAliases = [...(formVal.franchise_aliases ?? [])];
-    if (!isFranchiseUuid && franchiseVal) {
-      if (!franchiseAliases.some((a) => a.toLowerCase() === franchiseVal.toLowerCase())) {
-        franchiseAliases.unshift(franchiseVal);
-      }
-    }
-
     const { year, month, day } = this.parseFuzzyDateStr(formVal.release_date_str, formVal);
 
     return {
       album_id: formVal.album_id || null,
       title_original: formVal.title_original ?? '',
       aliases: formVal.aliases ?? [],
-      album_artist_aliases: formVal.album_artist_aliases ?? [],
-      franchise_aliases: franchiseAliases,
       original_folder_name: formVal.original_folder_name ?? '',
       release_year: year,
       release_month: month,
@@ -156,7 +147,6 @@ export class AlbumPayloadMapperService {
       is_instrumental: Boolean(t.is_instrumental),
       artists: (t.artists ?? []).map((ta) => ({
         name_original: ta.name_original ?? '',
-        aliases: ta.aliases ?? [],
         role: ta.role ?? 'Composer',
       })),
     };
