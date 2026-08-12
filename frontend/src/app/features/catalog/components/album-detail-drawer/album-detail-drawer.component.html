@@ -4,7 +4,7 @@
     role="button"
     tabindex="0"
     (click)="handleBackdropClick($event)"
-    (keydown.escape)="close()"
+    (keydown.enter)="handleBackdropClick($event)"
   >
     <div class="glass-drawer-panel">
       <header class="drawer-header">
@@ -332,6 +332,7 @@
                   class="changelog-card"
                   [class.expanded]="expandedChangelogId() === cl.id"
                   (click)="toggleChangelog(cl.id)"
+                  (keydown.enter)="toggleChangelog(cl.id)"
                   role="button"
                   tabindex="0"
                 >

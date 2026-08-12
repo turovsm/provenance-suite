@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from collections import Counter
 from datetime import date
@@ -372,10 +374,14 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
     ) -> uuid.UUID | None:
         artist_id = album.album_artist_id
         if artist_id:
-            check_stmt = select(ArtistModel.id).where(ArtistModel.id == artist_id)
+            check_stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
             res = await self._session.execute(check_stmt)
-            if not res.scalar_one_or_none():
+            found = res.scalars().first()
+            if not found:
                 artist_id = None
+            else:
+                if album_artist_aliases:
+                    found.aliases = self._merge_aliases(found.aliases, album_artist_aliases)
 
         if not artist_id and album.album_artist and album.album_artist.name_original:
             name_orig = album.album_artist.name_original.strip()
@@ -640,7 +646,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             )
         )
         res = await self._session.execute(stmt)
-        model = res.scalar_one_or_none()
+        model = res.unique().scalar_one_or_none()
 
         artist_id = await self._resolve_album_artist_id(
             album, album_artist_aliases=album_artist_aliases
@@ -732,7 +738,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             )
         )
         result = await self._session.execute(stmt)
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         if not model:
             return None
         return self._to_domain_entity(model)
@@ -771,7 +777,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             )
         )
         result = await self._session.execute(fetch_stmt)
-        return [self._to_domain_entity(m) for m in result.scalars().all()], total_count
+        return [self._to_domain_entity(m) for m in result.unique().scalars().all()], total_count
 
     async def delete(self, album_id: uuid.UUID) -> bool:
         stmt = select(AlbumModel).where(AlbumModel.id == album_id)

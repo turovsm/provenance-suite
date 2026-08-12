@@ -168,6 +168,7 @@ async def search_artists(
         query=query,
         limit=limit,
         search_columns=[
+            cast(ArtistModel.id, SAString),
             ArtistModel.name_original,
             cast(ArtistModel.aliases, SAString),
         ],
@@ -404,6 +405,7 @@ async def search_franchises(
         query=query,
         limit=limit,
         search_columns=[
+            cast(FranchiseModel.id, SAString),
             FranchiseModel.name_original,
             cast(FranchiseModel.aliases, SAString),
         ],

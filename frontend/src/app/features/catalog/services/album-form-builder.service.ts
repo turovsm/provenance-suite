@@ -23,8 +23,6 @@ export class AlbumFormBuilderService {
       album_id: [null],
       title_original: ['', [Validators.required, Validators.maxLength(512)]],
       aliases: [[]],
-      album_artist_aliases: [[]],
-      franchise_aliases: [[]],
       original_folder_name: ['', [Validators.required, Validators.maxLength(1024)]],
       release_date_str: ['', [fuzzyDateValidator()]],
       label: [''],
@@ -43,7 +41,6 @@ export class AlbumFormBuilderService {
   createArtistGroup(data?: ArtistSeed): FormGroup {
     return this.fb.group({
       name_original: [data?.name_original || '', [Validators.required, Validators.maxLength(512)]],
-      aliases: [data?.aliases ?? []],
       role: [data?.role || 'Composer', Validators.required],
     });
   }
@@ -168,13 +165,25 @@ export class AlbumFormBuilderService {
         raw: album.album_artist as MasterArtist,
       });
     }
+    if (album.label) {
+      this.entitySearch.cacheOption('label', {
+        id: `label:${album.label}`,
+        display: album.label,
+        raw: album.label,
+      });
+    }
+    if (album.publisher) {
+      this.entitySearch.cacheOption('publisher', {
+        id: `publisher:${album.publisher}`,
+        display: album.publisher,
+        raw: album.publisher,
+      });
+    }
 
     form.patchValue({
       album_id: album.id,
       title_original: album.title_original,
       aliases: album.aliases ?? [],
-      album_artist_aliases: album.album_artist?.aliases ?? [],
-      franchise_aliases: [],
       original_folder_name: album.original_folder_name,
       release_date_str: releaseDateStr,
       label: album.label || '',
@@ -210,8 +219,6 @@ export class AlbumFormBuilderService {
     form.patchValue({
       title_original: fVal.title_original || '',
       aliases: fVal.aliases ?? [],
-      album_artist_aliases: fVal.album_artist_aliases ?? [],
-      franchise_aliases: fVal.franchise_aliases ?? [],
       original_folder_name: fVal.original_folder_name || '',
       release_date_str: draftDateStr,
       label: fVal.label || '',

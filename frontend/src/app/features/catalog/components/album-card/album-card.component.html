@@ -26,14 +26,8 @@
     </h3>
 
     @if (artistName()) {
-      <p class="artists-line">
+      <p class="artists-line" [title]="artistName()">
         {{ artistName() }}
-      </p>
-    }
-
-    @if (album().aliases && album().aliases.length > 0) {
-      <p class="title-sub" [title]="album().aliases.join(', ')">
-        {{ album().aliases.join(' • ') }}
       </p>
     }
 
@@ -49,11 +43,27 @@
 
     @if (isSuperuser()) {
       <div class="card-admin-actions">
-        <button (click)="handleEdit($event)" class="card-edit-btn" title="Edit Album">
-          <span class="material-symbols-outlined action-icon">edit</span>
-          <span>Edit</span>
+        <button
+          type="button"
+          (click)="handleEdit($event)"
+          class="card-edit-btn"
+          [disabled]="isLoadingEdit()"
+          title="Edit Album"
+        >
+          @if (isLoadingEdit()) {
+            <span class="material-symbols-outlined action-icon spinning">sync</span>
+          } @else {
+            <span class="material-symbols-outlined action-icon">edit</span>
+            <span>Edit</span>
+          }
         </button>
-        <button (click)="handleDelete($event)" class="card-delete-btn" title="Delete Album">
+        <button
+          type="button"
+          (click)="handleDelete($event)"
+          class="card-delete-btn"
+          [disabled]="isLoadingEdit()"
+          title="Delete Album"
+        >
           <span class="material-symbols-outlined action-icon">delete</span>
           <span>Delete</span>
         </button>

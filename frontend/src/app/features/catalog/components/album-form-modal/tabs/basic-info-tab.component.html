@@ -21,15 +21,11 @@
       <span class="field-label">ALBUM ARTIST / CIRCLE *</span>
       <app-entity-autocomplete
         entityType="artist"
+        bindValue="id"
         formControlName="album_artist_id"
         placeholder="Search master artist or circle (e.g. 上海アリス幻樂団)..."
       />
     </div>
-  </div>
-
-  <div class="field-group">
-    <span class="field-label">ARTIST ALIASES (Press Enter to add)</span>
-    <app-aliases-chip-input formControlName="album_artist_aliases"></app-aliases-chip-input>
   </div>
 
   <div class="form-row">
@@ -37,6 +33,7 @@
       <span class="field-label">CONVENTION / EVENT</span>
       <app-entity-autocomplete
         entityType="event"
+        bindValue="id"
         formControlName="event_id"
         placeholder="Search event (e.g. Comiket 100)..."
       />
@@ -45,15 +42,11 @@
       <span class="field-label">MEDIA FRANCHISE</span>
       <app-entity-autocomplete
         entityType="franchise"
+        bindValue="id"
         formControlName="franchise_id"
         placeholder="Search franchise (e.g. 沙耶の唄)..."
       />
     </div>
-  </div>
-
-  <div class="field-group">
-    <span class="field-label">FRANCHISE ALIASES (Press Enter to add)</span>
-    <app-aliases-chip-input formControlName="franchise_aliases"></app-aliases-chip-input>
   </div>
 
   <div class="field-group">
@@ -77,6 +70,7 @@
       <span class="field-label">RECORD LABEL</span>
       <app-entity-autocomplete
         entityType="label"
+        bindValue="display"
         formControlName="label"
         placeholder="e.g. Lantis"
       />
@@ -85,6 +79,7 @@
       <span class="field-label">PUBLISHER / DISTRIBUTOR</span>
       <app-entity-autocomplete
         entityType="publisher"
+        bindValue="display"
         formControlName="publisher"
         placeholder="e.g. Bandai Namco"
       />
