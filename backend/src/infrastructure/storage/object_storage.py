@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import logging
+from typing import Any
 
 import anyio
 import thumbhash
@@ -89,6 +90,19 @@ class MinioObjectStorageService:
         img_rgb.save(buffer, format="JPEG", quality=85, optimize=True)
         return buffer.getvalue(), thumb_hash_str
 
+    def _normalize_entity_image(self, data: bytes, max_dim: int = 800) -> bytes:
+        self._verify_magic_bytes(data)
+
+        img = Image.open(io.BytesIO(data))
+        img_rgb = img.convert("RGB")
+        width, height = img_rgb.size
+        if width > max_dim or height > max_dim:
+            img_rgb.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
+        buffer = io.BytesIO()
+        img_rgb.save(buffer, format="JPEG", quality=85, optimize=True)
+        return buffer.getvalue()
+
     async def upload_cover(self, object_key: str, data: bytes) -> tuple[str, str]:
         def _upload() -> tuple[str, str]:
             self.ensure_bucket_and_policy()
@@ -103,6 +117,24 @@ class MinioObjectStorageService:
                 content_type="image/jpeg",
             )
             return object_key, thumb_hash_str
+
+        return await anyio.to_thread.run_sync(_upload)
+
+    async def upload_entity_avatar(self, entity_type: str, entity_id: Any, data: bytes) -> str:
+        def _upload() -> str:
+            self.ensure_bucket_and_policy()
+            processed_data = self._normalize_entity_image(data)
+            object_key = f"entities/{entity_type}/{entity_id}.jpg"
+            data_stream = io.BytesIO(processed_data)
+
+            self._client.put_object(
+                bucket_name=self._bucket,
+                object_name=object_key,
+                data=data_stream,
+                length=len(processed_data),
+                content_type="image/jpeg",
+            )
+            return object_key
 
         return await anyio.to_thread.run_sync(_upload)
 

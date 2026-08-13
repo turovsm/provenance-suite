@@ -1,0 +1,103 @@
+<div class="modal-backdrop">
+  <div class="glass-modal-panel">
+    <header class="modal-header">
+      <div class="modal-title-group">
+        <span class="material-symbols-outlined header-icon">
+          {{ entityToEdit ? 'edit_note' : 'add_circle' }}
+        </span>
+        <h2>{{ entityToEdit ? 'Edit Master Entity' : 'Create Master Entity' }}</h2>
+      </div>
+      <button type="button" (click)="closeModal()" class="close-btn" title="Close Modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
+      <div class="form-scroll-area">
+        <div class="field-group">
+          <span class="field-label">ENTITY TYPE</span>
+          <app-custom-select
+            formControlName="entity_type"
+            [options]="entityTypeOptions"
+            [dense]="true"
+          />
+        </div>
+
+        <div class="field-group">
+          <label for="entity_name_original">ORIGINAL NAME *</label>
+          <input
+            id="entity_name_original"
+            type="text"
+            formControlName="name_original"
+            placeholder="e.g. 上海アリス幻樂団 / ZIZZ STUDIO / Lantis"
+            required
+          />
+        </div>
+
+        @if (form.get('entity_type')?.value === 'franchise') {
+          <div class="field-group">
+            <label for="franchise_type">FRANCHISE CATEGORY</label>
+            <input
+              id="franchise_type"
+              type="text"
+              formControlName="franchise_type"
+              placeholder="e.g. Game, Visual Novel, Anime"
+            />
+          </div>
+        }
+
+        <div class="field-group">
+          <span class="field-label">ALIASES (Press Enter to add)</span>
+          <app-aliases-chip-input formControlName="aliases" />
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">ENTITY AVATAR / LOGO SCAN</span>
+          <div class="avatar-upload-row">
+            <div class="avatar-preview-box">
+              @if (imagePreviewUrl()) {
+                <img [src]="imagePreviewUrl()!" alt="Avatar Preview" class="preview-img" />
+              } @else {
+                <span class="material-symbols-outlined fallback-icon">add_a_photo</span>
+              }
+            </div>
+
+            <label class="upload-trigger-btn">
+              <span class="material-symbols-outlined icon-chip">upload_file</span>
+              <span>Upload Image Scan (JPEG / PNG)</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                (change)="handleFileSelected($event)"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="entity_description">BIOGRAPHY / DESCRIPTION (Markdown supported)</label>
+          <textarea
+            id="entity_description"
+            formControlName="description"
+            rows="5"
+            class="code-textarea"
+            placeholder="Detailed description, circle history, or franchise overview..."
+          ></textarea>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <div class="footer-btn-group">
+          <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
+          <button
+            type="submit"
+            [disabled]="state.isSubmitting() || form.invalid"
+            class="submit-btn"
+          >
+            <span>{{ entityToEdit ? 'Update Entity' : 'Save Entity' }}</span>
+          </button>
+        </div>
+      </footer>
+    </form>
+  </div>
+</div>

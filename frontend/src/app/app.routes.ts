@@ -38,6 +38,20 @@ export const routes: Routes = [
             (m) => m.EventListComponent,
           ),
       },
+      {
+        path: 'entities',
+        loadComponent: () =>
+          import('./features/entities/components/entity-directory/entity-directory.component').then(
+            (m) => m.EntityDirectoryComponent,
+          ),
+      },
+      {
+        path: 'entities/:type/:id',
+        loadComponent: () =>
+          import('./features/entities/components/entity-detail/entity-detail.component').then(
+            (m) => m.EntityDetailComponent,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: 'login' },

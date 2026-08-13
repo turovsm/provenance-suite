@@ -1,7 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { ALBUM_REPOSITORY_PORT } from '../../core/tokens/album.token';
-import { MasterArtist, MasterEvent, MasterFranchise } from '../../domain/models/music.model';
+import {
+  MasterArtist,
+  MasterEvent,
+  MasterFranchise,
+  MasterLabel,
+  MasterPublisher,
+} from '../../domain/models/music.model';
 import { AutocompleteOption, EntityType } from '../models/autocomplete.model';
 
 function artistToOption(a: MasterArtist): AutocompleteOption {
@@ -14,6 +20,14 @@ function eventToOption(e: MasterEvent): AutocompleteOption {
 
 function franchiseToOption(f: MasterFranchise): AutocompleteOption {
   return { id: f.id, display: f.name_original, subValue: f.aliases?.[0] || undefined, raw: f };
+}
+
+function labelToOption(l: MasterLabel): AutocompleteOption {
+  return { id: l.id, display: l.name_original, subValue: l.aliases?.[0] || undefined, raw: l };
+}
+
+function publisherToOption(p: MasterPublisher): AutocompleteOption {
+  return { id: p.id, display: p.name_original, subValue: p.aliases?.[0] || undefined, raw: p };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -57,16 +71,12 @@ export class EntitySearchService {
           .pipe(map((list) => list.map(franchiseToOption)));
         break;
       case 'label':
-        search$ = this.repo
-          .getLabels(query)
-          .pipe(map((list) => list.map((str) => ({ id: `label:${str}`, display: str, raw: str }))));
+        search$ = this.repo.searchLabels(query).pipe(map((list) => list.map(labelToOption)));
         break;
       case 'publisher':
         search$ = this.repo
-          .getPublishers(query)
-          .pipe(
-            map((list) => list.map((str) => ({ id: `publisher:${str}`, display: str, raw: str }))),
-          );
+          .searchPublishers(query)
+          .pipe(map((list) => list.map(publisherToOption)));
         break;
       default:
         return of([]);
@@ -138,12 +148,12 @@ export class EntitySearchService {
         create$ = this.repo.createFranchise(cleanName).pipe(map(franchiseToOption));
         break;
       case 'label':
+        create$ = this.repo.createLabel({ name_original: cleanName }).pipe(map(labelToOption));
+        break;
       case 'publisher':
-        create$ = of({
-          id: `${entityType}:${cleanName}`,
-          display: cleanName,
-          raw: cleanName,
-        });
+        create$ = this.repo
+          .createPublisher({ name_original: cleanName })
+          .pipe(map(publisherToOption));
         break;
       default:
         return of(null);
@@ -164,29 +174,30 @@ export class EntitySearchService {
       return of(this.optionCache.get(cacheKey)!);
     }
 
-    if (entityType === 'event') {
-      return this.repo.getEventDetail(uuid).pipe(
-        map((ev) => {
-          if (!ev) return null;
-          const opt = eventToOption(ev);
-          this.cacheOption(entityType, opt);
-          return opt;
-        }),
-        catchError(() => of(null)),
-      );
+    let detail$: Observable<AutocompleteOption | null>;
+    switch (entityType) {
+      case 'artist':
+        detail$ = this.repo.getArtistDetail(uuid).pipe(map(artistToOption));
+        break;
+      case 'event':
+        detail$ = this.repo.getEventDetail(uuid).pipe(map(eventToOption));
+        break;
+      case 'franchise':
+        detail$ = this.repo.getFranchiseDetail(uuid).pipe(map(franchiseToOption));
+        break;
+      case 'label':
+        detail$ = this.repo.getLabelDetail(uuid).pipe(map(labelToOption));
+        break;
+      case 'publisher':
+        detail$ = this.repo.getPublisherDetail(uuid).pipe(map(publisherToOption));
+        break;
+      default:
+        return of(null);
     }
 
-    return this.search(entityType, uuid).pipe(
-      map((options) => {
-        const target = uuid.toLowerCase();
-        const match = options.find(
-          (o) => (o.id && o.id.toLowerCase() === target) || o.display.toLowerCase() === target,
-        );
-        if (match) {
-          this.cacheOption(entityType, match);
-          return match;
-        }
-        return null;
+    return detail$.pipe(
+      tap((found) => {
+        if (found) this.cacheOption(entityType, found);
       }),
       catchError(() => of(null)),
     );

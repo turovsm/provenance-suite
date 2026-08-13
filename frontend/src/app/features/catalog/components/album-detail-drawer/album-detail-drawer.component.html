@@ -55,14 +55,14 @@
               @if (album.label) {
                 <div class="meta-item">
                   <span class="meta-label">Label:</span>
-                  <span class="meta-value">{{ album.label }}</span>
+                  <span class="meta-value">{{ getLabelName(album.label) }}</span>
                 </div>
               }
 
               @if (album.publisher) {
                 <div class="meta-item">
                   <span class="meta-label">Publisher:</span>
-                  <span class="meta-value">{{ album.publisher }}</span>
+                  <span class="meta-value">{{ getPublisherName(album.publisher) }}</span>
                 </div>
               }
 
@@ -149,12 +149,12 @@
 
                 <table class="tracks-data-table">
                   <thead>
-                    <tr>
-                      <th class="col-num">#</th>
-                      <th class="col-title">Title</th>
-                      <th class="col-specs">Specs</th>
-                      <th class="col-time">Time</th>
-                    </tr>
+                  <tr>
+                    <th class="col-num">#</th>
+                    <th class="col-title">Title</th>
+                    <th class="col-specs">Specs</th>
+                    <th class="col-time">Time</th>
+                  </tr>
                   </thead>
                   <tbody>
                     @for (track of activeDisc.tracks; track track.id) {
@@ -187,7 +187,7 @@
                                               ? art.aliases.join(', ')
                                               : art.name_original
                                           "
-                                          >{{ art.name_original }}</span
+                                        >{{ art.name_original }}</span
                                         >
                                         @if (!last) {
                                           <span class="credit-sep">, </span>
@@ -214,16 +214,16 @@
                     <button type="button" class="inspector-btn" (click)="toggleInspector('log')">
                       <span class="material-symbols-outlined">description</span>
                       <span>{{
-                        activeInspectorTab() === 'log' ? 'Hide Log' : 'View Ripper Log'
-                      }}</span>
+                          activeInspectorTab() === 'log' ? 'Hide Log' : 'View Ripper Log'
+                        }}</span>
                     </button>
                   }
                   @if (activeDisc.raw_cue_text) {
                     <button type="button" class="inspector-btn" (click)="toggleInspector('cue')">
                       <span class="material-symbols-outlined">list_alt</span>
                       <span>{{
-                        activeInspectorTab() === 'cue' ? 'Hide CUE' : 'View CUE Sheet'
-                      }}</span>
+                          activeInspectorTab() === 'cue' ? 'Hide CUE' : 'View CUE Sheet'
+                        }}</span>
                     </button>
                   }
                 </div>
@@ -368,7 +368,7 @@
                                 <span class="cl-val val-updated">
                                   <span class="old-text">{{ item.value.old }}</span>
                                   <span class="material-symbols-outlined val-arrow-icon"
-                                    >arrow_forward</span
+                                  >arrow_forward</span
                                   >
                                   <span class="new-text">{{ item.value.new }}</span>
                                 </span>

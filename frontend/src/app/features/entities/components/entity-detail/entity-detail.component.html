@@ -1,0 +1,140 @@
+<div class="entity-detail-viewport">
+  <nav class="back-nav-bar">
+    <button (click)="goBack()" class="back-link-btn">
+      <span class="material-symbols-outlined">arrow_back</span>
+      <span>Back to Directory</span>
+    </button>
+  </nav>
+
+  @if (state.isLoading()) {
+    <div class="loading-state-overlay">
+      <span class="pulse-indicator">Loading entity profile & discography...</span>
+    </div>
+  } @else if (currentEntity(); as hero) {
+    <section class="hero-entity-card">
+      <div
+        class="hero-avatar-frame"
+        [class.artist-avatar]="hero.type === 'artist'"
+        [class.logo-avatar]="hero.type !== 'artist'"
+      >
+        @if (hero.image_url) {
+          <img [src]="hero.image_url" [alt]="hero.name_original" class="hero-avatar-img" />
+        } @else {
+          <span class="material-symbols-outlined fallback-icon">
+            {{ getFallbackIcon(hero.type) }}
+          </span>
+        }
+      </div>
+
+      <div class="hero-meta-cluster">
+        <div class="hero-title-row">
+          <div>
+            <span [class]="'type-badge badge-' + hero.type">
+              {{ hero.franchise_type || hero.type }}
+            </span>
+            <h1 class="hero-name">{{ hero.name_original }}</h1>
+          </div>
+
+          @if (authState.identity()?.is_superuser) {
+            <div class="action-btn-group">
+              <button (click)="openEditModal()" class="admin-action-btn btn-edit">
+                <span class="material-symbols-outlined">edit</span>
+                <span>Edit</span>
+              </button>
+              <button (click)="handleDelete()" class="admin-action-btn btn-delete">
+                <span class="material-symbols-outlined">delete</span>
+                <span>Delete</span>
+              </button>
+            </div>
+          }
+        </div>
+
+        @if (hero.aliases && hero.aliases.length > 0) {
+          <div class="aliases-chip-row">
+            @for (alias of hero.aliases; track alias) {
+              <span class="alias-pill">{{ alias }}</span>
+            }
+          </div>
+        }
+
+        @if (hero.description) {
+          <div class="hero-description-box">
+            {{ hero.description }}
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (hero.type === 'artist') {
+      @if (state.artistDiscography(); as disco) {
+        @if (disco.main_albums.length > 0) {
+          <section class="discography-section">
+            <div class="section-header">
+              <span class="material-symbols-outlined">album</span>
+              <h2>Primary Discography ({{ disco.main_albums.length }})</h2>
+            </div>
+            <div class="albums-responsive-grid">
+              @for (album of disco.main_albums; track album.id) {
+                <app-album-card
+                  [album]="album"
+                  [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                  (cardClicked)="handleSelectAlbum($event)"
+                />
+              }
+            </div>
+          </section>
+        }
+
+        @if (disco.contribution_albums.length > 0) {
+          <section class="discography-section">
+            <div class="section-header">
+              <span class="material-symbols-outlined">group</span>
+              <h2>
+                Guest Contributions & Track Appearances ({{ disco.contribution_albums.length }})
+              </h2>
+            </div>
+            <div class="albums-responsive-grid">
+              @for (album of disco.contribution_albums; track album.id) {
+                <app-album-card
+                  [album]="album"
+                  [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                  (cardClicked)="handleSelectAlbum($event)"
+                />
+              }
+            </div>
+          </section>
+        }
+      }
+    } @else {
+      @if (state.entityAlbums().length > 0) {
+        <section class="discography-section">
+          <div class="section-header">
+            <span class="material-symbols-outlined">album</span>
+            <h2>Catalog Albums ({{ state.entityAlbums().length }})</h2>
+          </div>
+          <div class="albums-responsive-grid">
+            @for (album of state.entityAlbums(); track album.id) {
+              <app-album-card
+                [album]="album"
+                [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                (cardClicked)="handleSelectAlbum($event)"
+              />
+            }
+          </div>
+        </section>
+      }
+    }
+  }
+
+  @if (isEditModalOpen) {
+    <app-entity-form-modal
+      [entityToEdit]="summaryForModal()"
+      [defaultType]="entityType()"
+      (closed)="isEditModalOpen = false"
+    />
+  }
+
+  @if (albumState.selectedAlbumDetail()) {
+    <app-album-detail-drawer />
+  }
+</div>

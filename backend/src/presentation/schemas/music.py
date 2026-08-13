@@ -14,7 +14,11 @@ from src.domain import (
     MediaType,
     VideoCodec,
 )
-from src.presentation.schemas.entities import ArtistResponseSchema
+from src.presentation.schemas.entities import (
+    ArtistResponseSchema,
+    LabelResponseSchema,
+    PublisherResponseSchema,
+)
 
 
 class ArtistIngestSchema(BaseModel):
@@ -152,8 +156,8 @@ class AlbumSummaryResponseSchema(BaseModel):
     release_year: int | None
     release_month: int | None
     release_day: int | None
-    label: str | None
-    publisher: str | None
+    label: LabelResponseSchema | None = None
+    publisher: PublisherResponseSchema | None = None
     original_folder_name: str
     album_artist: ArtistResponseSchema | None
     total_discs: int
@@ -250,8 +254,8 @@ class AlbumDetailResponseSchema(BaseModel):
     release_year: int | None
     release_month: int | None
     release_day: int | None
-    label: str | None
-    publisher: str | None
+    label: LabelResponseSchema | None = None
+    publisher: PublisherResponseSchema | None = None
     storage_drive: str | None = None
     relative_path: str | None = None
     event_id: uuid.UUID | None = None
