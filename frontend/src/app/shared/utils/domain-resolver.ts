@@ -29,11 +29,17 @@ const EXTERNAL_INDEX_MAPPINGS: DomainMapping[] = [
   { patterns: ['touhoudb.com'], name: 'TouhouDB' },
   { patterns: ['anidb.net'], name: 'AniDB' },
   { patterns: ['cdjapan.co.jp'], name: 'CDJapan' },
+  { patterns: ['mora.jp'], name: 'Mora' },
+  { patterns: ['ototoy.jp'], name: 'Ototoy' },
   { patterns: ['tower.jp', 'tower.com'], name: 'Tower Records' },
   { patterns: ['suruga-ya.jp', 'suruga-ya.com'], name: 'Suruga' },
   { patterns: ['hololivepro.com'], name: 'HololivePro' },
   { patterns: ['spotify.com'], name: 'Spotify' },
   { patterns: ['apple.com'], name: 'Apple Music' },
+  { patterns: ['amazon.co.jp', 'amazon.com'], name: 'Amazon Music' },
+  { patterns: ['deezer.com'], name: 'Deezer' },
+  { patterns: ['qobuz.com'], name: 'Qobuz' },
+  { patterns: ['tidal.com'], name: 'Tidal' },
   { patterns: ['youtube.com', 'youtu.be'], name: 'YouTube' },
 ];
 
