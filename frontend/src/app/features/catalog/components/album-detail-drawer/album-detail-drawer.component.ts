@@ -1,11 +1,14 @@
 import { DatePipe, KeyValuePipe, NgClass } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import {
   AlbumChangeEntry,
   AlbumDetailResponse,
   ArtistDetailResponse,
+  MasterLabel,
+  MasterPublisher,
   TrackDetailResponse,
 } from '../../../../domain/models/music.model';
+import { AlbumStateEngine } from '../../state/album.state';
 
 export interface TrackCreditGroup {
   role: string;
@@ -21,7 +24,6 @@ const ROLE_CLASS_MAP: Record<string, string> = {
   lyricist: 'role-lyricist',
   mixer: 'role-mixer',
 };
-import { AlbumStateEngine } from '../../state/album.state';
 
 @Component({
   selector: 'app-album-detail-drawer',
@@ -40,6 +42,11 @@ export class AlbumDetailDrawerComponent {
   protected readonly copiedField = signal<string | null>(null);
 
   protected readonly expandedChangelogId = signal<string | null>(null);
+
+  @HostListener('window:keydown.escape')
+  protected handleEscapeKey(): void {
+    this.close();
+  }
 
   protected toggleChangelog(id: string): void {
     this.expandedChangelogId.set(this.expandedChangelogId() === id ? null : id);
@@ -68,9 +75,19 @@ export class AlbumDetailDrawerComponent {
     const y = album.release_year.toString();
     const m = album.release_month ? album.release_month.toString().padStart(2, '0') : null;
     const d = album.release_day ? album.release_day.toString().padStart(2, '0') : null;
-    if (m && d) return `${y}.${m}.${d}`;
-    if (m) return `${y}.${m}`;
+    if (m && d) return `${y}/${m}/${d}`;
+    if (m) return `${y}/${m}`;
     return y;
+  }
+
+  protected getLabelName(label: MasterLabel | string | null): string {
+    if (!label) return '';
+    return typeof label === 'string' ? label : label.name_original;
+  }
+
+  protected getPublisherName(publisher: MasterPublisher | string | null): string {
+    if (!publisher) return '';
+    return typeof publisher === 'string' ? publisher : publisher.name_original;
   }
 
   protected groupTrackCredits(track: TrackDetailResponse): TrackCreditGroup[] {
@@ -111,7 +128,7 @@ export class AlbumDetailDrawerComponent {
     return parts.join(' • ') || 'FLAC';
   }
 
-  protected handleBackdropClick(event: MouseEvent): void {
+  protected handleBackdropClick(event: Event): void {
     if (event.target === event.currentTarget) {
       this.close();
     }

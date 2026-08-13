@@ -73,7 +73,7 @@ async def ingest_album_endpoint(
         domain_album_artist = ArtistIngestDTO(
             id=payload.album_artist.id,
             name_original=payload.album_artist.name_original,
-            name_translated=payload.album_artist.name_translated,
+            aliases=list(payload.album_artist.aliases),
         )
 
     use_case_discs = [
@@ -91,7 +91,7 @@ async def ingest_album_endpoint(
                 TrackIngestDTO(
                     track_number=t.track_number,
                     title_original=t.title_original,
-                    title_translated=t.title_translated,
+                    aliases=list(t.aliases),
                     duration_seconds=t.duration_seconds,
                     audio_codec=t.audio_codec,
                     video_codec=t.video_codec,
@@ -104,7 +104,7 @@ async def ingest_album_endpoint(
                         ArtistIngestDTO(
                             id=a.id,
                             name_original=a.name_original,
-                            name_translated=a.name_translated,
+                            aliases=list(a.aliases),
                             role=a.role,
                         )
                         for a in t.artists
@@ -144,9 +144,11 @@ async def ingest_album_endpoint(
         user_id=superuser.id,
         title_original=payload.title_original,
         original_folder_name=payload.original_folder_name,
+        aliases=list(payload.aliases),
+        album_artist_aliases=list(payload.album_artist_aliases),
+        franchise_aliases=list(payload.franchise_aliases),
         storage_drive=payload.storage_drive,
         relative_path=payload.relative_path,
-        title_translated=payload.title_translated,
         release_year=payload.release_year,
         release_month=payload.release_month,
         release_day=payload.release_day,
@@ -197,7 +199,7 @@ async def list_albums_endpoint(
         AlbumSummaryResponseSchema(
             id=album.id,
             title_original=album.title_original,
-            title_translated=album.title_translated,
+            aliases=list(album.aliases),
             release_year=album.release_year,
             release_month=album.release_month,
             release_day=album.release_day,
@@ -265,7 +267,7 @@ async def get_album_detail_endpoint(
                     id=t.id,
                     track_number=t.track_number,
                     title_original=t.title_original,
-                    title_translated=t.title_translated,
+                    aliases=list(t.aliases),
                     duration_seconds=t.duration_seconds,
                     audio_codec=t.audio_codec,
                     video_codec=t.video_codec,
@@ -341,7 +343,7 @@ async def get_album_detail_endpoint(
     return AlbumDetailResponseSchema(
         id=album.id,
         title_original=album.title_original,
-        title_translated=album.title_translated,
+        aliases=list(album.aliases),
         release_year=album.release_year,
         release_month=album.release_month,
         release_day=album.release_day,

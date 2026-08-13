@@ -1,300 +1,358 @@
 <section class="form-section">
   <div class="section-header-row">
     <h3 class="section-heading">Discs, AccurateRip Metrics & Track Matrix</h3>
-    <button type="button" (click)="addDisc()" class="add-sub-btn">
-      <span class="material-symbols-outlined">add</span>
-      <span>Add Disc</span>
-    </button>
+    <div class="header-btn-cluster">
+      <button
+        type="button"
+        (click)="importFromClipboard()"
+        class="import-clip-btn"
+        title="Import disc and track metadata from clipboard json"
+      >
+        <span class="material-symbols-outlined">content_paste_go</span>
+        <span>Import Clipboard JSON</span>
+      </button>
+      <button type="button" (click)="addDisc()" class="add-sub-btn">
+        <span class="material-symbols-outlined">add</span>
+        <span>Add Disc</span>
+      </button>
+    </div>
   </div>
 
+  @if (importSuccessMessage()) {
+    <div class="import-banner import-success" role="status">
+      <span class="material-symbols-outlined">check_circle</span>
+      <span>{{ importSuccessMessage() }}</span>
+    </div>
+  }
+
+  @if (importErrorMessage()) {
+    <div class="import-banner import-error" role="alert">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ importErrorMessage() }}</span>
+      <button type="button" class="text-link-btn" (click)="showManualPaste.set(true)">
+        Paste manually
+      </button>
+    </div>
+  }
+
+  @if (showManualPaste()) {
+    <div class="manual-paste-card">
+      <div class="manual-paste-header">
+        <span class="paste-title">Paste JSON Export Data</span>
+        <button type="button" class="close-sm-btn" (click)="showManualPaste.set(false)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <textarea
+        [(ngModel)]="manualJsonText"
+        rows="5"
+        class="code-textarea"
+        placeholder='Paste JSON containing {"discs": [...]}'
+      ></textarea>
+      <div class="manual-paste-actions">
+        <button type="button" (click)="applyManualJson()" class="import-clip-btn">
+          <span>Apply JSON</span>
+        </button>
+      </div>
+    </div>
+  }
+
   @for (disc of discs.controls; track $index; let dIdx = $index) {
-    <div [formGroup]="$any(disc)" class="sub-card">
-      <div class="sub-card-header">
-        <span class="sub-card-title">Disc {{ dIdx + 1 }} Settings</span>
-        @if (discs.length > 1) {
-          <button type="button" (click)="removeDisc(dIdx)" class="remove-btn">
-            <span class="material-symbols-outlined">delete</span>
+    <div [formGroup]="$any(disc)" class="sub-card" [class.disc-collapsed]="isDiscCollapsed(dIdx)">
+      <div
+        class="sub-card-header interactive-header"
+        role="button"
+        tabindex="0"
+        (click)="toggleDiscCollapse(dIdx)"
+        (keydown.enter)="toggleDiscCollapse(dIdx)"
+      >
+        <div class="sub-card-title-group">
+          <button type="button" class="collapse-toggle-btn" title="Toggle Disc Collapse">
+            <span class="material-symbols-outlined">
+              {{ isDiscCollapsed(dIdx) ? 'expand_more' : 'expand_less' }}
+            </span>
           </button>
-        }
-      </div>
+          <span class="sub-card-title">Disc {{ dIdx + 1 }} Settings</span>
 
-      <div class="form-row-grid">
-        <div class="field-group">
-          <span class="field-label">MEDIA TYPE</span>
-          <app-custom-select formControlName="media_type" [options]="mediaTypes" />
+          @if (isDiscCollapsed(dIdx)) {
+            <span class="disc-collapsed-summary-tag">{{ getDiscSummary(dIdx) }}</span>
+          }
         </div>
 
-        <div class="field-group">
-          <span class="field-label">CONTAINER FORMAT</span>
-          <app-custom-select formControlName="container_format" [options]="containerFormats" />
-        </div>
-
-        <div class="field-group">
-          <label [for]="'catalog_number_' + dIdx">CATALOG NUMBER</label>
-          <input
-            [id]="'catalog_number_' + dIdx"
-            type="text"
-            formControlName="catalog_number"
-            placeholder="e.g. SPYS-0812"
-          />
-        </div>
-
-        <div class="field-group">
-          <span class="field-label">RIPPER LOG TYPE</span>
-          <app-custom-select
-            formControlName="log_type"
-            [options]="logTypeOptions"
-            placeholder="None / Unlogged"
-          />
-        </div>
-
-        <div class="field-group">
-          <label [for]="'log_score_' + dIdx">LOG SCORE (&#8804; 100, negatives allowed)</label>
-          <input
-            [id]="'log_score_' + dIdx"
-            type="number"
-            formControlName="log_score"
-            placeholder="100"
-            max="100"
-          />
+        <div class="header-action-cluster">
+          @if (discs.length > 1) {
+            <button
+              type="button"
+              (click)="removeDisc(dIdx, $event)"
+              class="remove-btn"
+              title="Delete Disc"
+            >
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          }
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="field-group flex-1">
-          <div class="field-label-row">
-            <label [for]="'raw_log_text_' + dIdx">RAW RIPPER LOG TEXT</label>
-            <label class="drop-file-chip">
-              <span class="material-symbols-outlined icon-chip">upload_file</span>
-              <span>Drop or Pick .log / .txt</span>
-              <input
-                type="file"
-                accept=".log,.txt"
-                (change)="handleTextFileSelected($event, disc.get('raw_log_text'))"
-              />
-            </label>
+      @if (!isDiscCollapsed(dIdx)) {
+        <div class="form-row-grid">
+          <div class="field-group">
+            <span class="field-label">MEDIA TYPE</span>
+            <app-custom-select formControlName="media_type" [options]="mediaTypes" />
           </div>
-          <textarea
-            [id]="'raw_log_text_' + dIdx"
-            formControlName="raw_log_text"
-            rows="4"
-            class="code-textarea"
-            placeholder="Paste or drop EAC / XLD Log File Content..."
-            (dragover)="$event.preventDefault()"
-            (drop)="handleTextFileSelected($event, disc.get('raw_log_text'))"
-          ></textarea>
-        </div>
 
-        <div class="field-group flex-1">
-          <div class="field-label-row">
-            <label [for]="'raw_cue_text_' + dIdx">RAW CUE SHEET TEXT</label>
-            <label class="drop-file-chip">
-              <span class="material-symbols-outlined icon-chip">upload_file</span>
-              <span>Drop or Pick .cue / .txt</span>
-              <input
-                type="file"
-                accept=".cue,.txt"
-                (change)="handleTextFileSelected($event, disc.get('raw_cue_text'))"
-              />
-            </label>
+          <div class="field-group">
+            <span class="field-label">CONTAINER FORMAT</span>
+            <app-custom-select formControlName="container_format" [options]="containerFormats" />
           </div>
-          <textarea
-            [id]="'raw_cue_text_' + dIdx"
-            formControlName="raw_cue_text"
-            rows="4"
-            class="code-textarea"
-            placeholder="Paste or drop CUE Sheet Content..."
-            (dragover)="$event.preventDefault()"
-            (drop)="handleTextFileSelected($event, disc.get('raw_cue_text'))"
-          ></textarea>
-        </div>
-      </div>
 
-      <div class="field-group">
-        <div class="field-label-row">
-          <label [for]="'accuraterip_summary_' + dIdx">ACCURATERIP SUMMARY REPORT</label>
-          <label class="drop-file-chip">
-            <span class="material-symbols-outlined icon-chip">upload_file</span>
-            <span>Drop or Pick .txt / report</span>
+          <div class="field-group">
+            <label [for]="'catalog_number_' + dIdx">CATALOG NUMBER</label>
             <input
-              type="file"
-              accept=".txt,.accuraterip,.log"
-              (change)="handleTextFileSelected($event, disc.get('accuraterip_summary'))"
+              [id]="'catalog_number_' + dIdx"
+              type="text"
+              formControlName="catalog_number"
+              placeholder="e.g. HBMS-008"
             />
-          </label>
+          </div>
+
+          <div class="field-group">
+            <span class="field-label">RIPPER LOG TYPE</span>
+            <app-custom-select
+              formControlName="log_type"
+              [options]="logTypeOptions"
+              placeholder="None / Unlogged"
+            />
+          </div>
+
+          <div class="field-group">
+            <label [for]="'log_score_' + dIdx">LOG SCORE</label>
+            <input
+              [id]="'log_score_' + dIdx"
+              type="number"
+              formControlName="log_score"
+              placeholder="-5"
+              max="100"
+            />
+          </div>
         </div>
-        <textarea
-          [id]="'accuraterip_summary_' + dIdx"
-          formControlName="accuraterip_summary"
-          rows="3"
-          class="code-textarea"
-          placeholder="Paste or drop AccurateRip multi-line log output..."
-          (dragover)="$event.preventDefault()"
-          (drop)="handleTextFileSelected($event, disc.get('accuraterip_summary'))"
-        ></textarea>
-      </div>
 
-      <div class="tracks-container">
-        <div class="tracks-header">
-          <span class="sub-section-subtitle">Track Matrix Entries</span>
-          <button type="button" (click)="addTrack(dIdx)" class="add-text-btn">+ Add Track</button>
-        </div>
-
-        @for (track of getTracks(dIdx).controls; track $index; let tIdx = $index) {
-          <div [formGroup]="$any(track)" class="track-block">
-            <div class="track-matrix-row">
-              <span class="track-index">{{ tIdx + 1 }}</span>
-
-              <input
-                type="text"
-                formControlName="title_original"
-                placeholder="Original Title *"
-                class="flex-2"
-              />
-
-              <input
-                type="text"
-                formControlName="title_translated"
-                placeholder="Translated Title"
-                class="flex-2"
-              />
-
-              <input
-                type="number"
-                formControlName="duration_seconds"
-                placeholder="Secs (s)"
-                class="w-70"
-              />
-
-              <label class="inst-checkbox-label" title="Instrumental / Karaoke track">
+        <div class="form-row">
+          <div class="field-group flex-1">
+            <div class="field-label-row">
+              <label [for]="'raw_log_text_' + dIdx">RAW RIPPER LOG TEXT</label>
+              <label class="drop-file-chip">
+                <span class="material-symbols-outlined icon-chip">upload_file</span>
+                <span>Drop or Pick .log / .txt</span>
                 <input
-                  type="checkbox"
-                  formControlName="is_instrumental"
-                  class="inst-checkbox-input"
+                  type="file"
+                  accept=".log,.txt"
+                  (change)="handleTextFileSelected($event, disc.get('raw_log_text'))"
                 />
-                <span class="inst-checkbox-text">Inst</span>
               </label>
+            </div>
+            <textarea
+              [id]="'raw_log_text_' + dIdx"
+              formControlName="raw_log_text"
+              rows="4"
+              class="code-textarea"
+              placeholder="Paste or drop EAC / XLD Log File Content..."
+              (dragover)="$event.preventDefault()"
+              (drop)="handleTextFileSelected($event, disc.get('raw_log_text'))"
+            ></textarea>
+          </div>
 
-              <button
-                type="button"
-                (click)="addTrackArtist(dIdx, tIdx)"
-                class="add-track-artist-btn"
-                title="Add Per-Track Artist"
-              >
-                <span class="material-symbols-outlined icon-btn-sm">add</span>
-                <span>Artist</span>
-              </button>
+          <div class="field-group flex-1">
+            <div class="field-label-row">
+              <label [for]="'raw_cue_text_' + dIdx">RAW CUE SHEET TEXT</label>
+              <label class="drop-file-chip">
+                <span class="material-symbols-outlined icon-chip">upload_file</span>
+                <span>Drop or Pick .cue / .txt</span>
+                <input
+                  type="file"
+                  accept=".cue,.txt"
+                  (change)="handleTextFileSelected($event, disc.get('raw_cue_text'))"
+                />
+              </label>
+            </div>
+            <textarea
+              [id]="'raw_cue_text_' + dIdx"
+              formControlName="raw_cue_text"
+              rows="4"
+              class="code-textarea"
+              placeholder="Paste or drop CUE Sheet Content..."
+              (dragover)="$event.preventDefault()"
+              (drop)="handleTextFileSelected($event, disc.get('raw_cue_text'))"
+            ></textarea>
+          </div>
+        </div>
 
-              @if (getTracks(dIdx).length > 1) {
+        <div class="field-group">
+          <div class="field-label-row">
+            <label [for]="'accuraterip_summary_' + dIdx">ACCURATERIP SUMMARY REPORT</label>
+            <label class="drop-file-chip">
+              <span class="material-symbols-outlined icon-chip">upload_file</span>
+              <span>Drop or Pick .txt / report</span>
+              <input
+                type="file"
+                accept=".txt,.accuraterip,.log"
+                (change)="handleTextFileSelected($event, disc.get('accuraterip_summary'))"
+              />
+            </label>
+          </div>
+          <textarea
+            [id]="'accuraterip_summary_' + dIdx"
+            formControlName="accuraterip_summary"
+            rows="3"
+            class="code-textarea"
+            placeholder="Paste or drop AccurateRip multi-line log output..."
+            (dragover)="$event.preventDefault()"
+            (drop)="handleTextFileSelected($event, disc.get('accuraterip_summary'))"
+          ></textarea>
+        </div>
+
+        <div class="tracks-container">
+          <div class="tracks-header">
+            <span class="sub-section-subtitle">Track Matrix Entries</span>
+            <button type="button" (click)="addTrack(dIdx)" class="add-text-btn">+ Add Track</button>
+          </div>
+
+          @for (track of getTracks(dIdx).controls; track $index; let tIdx = $index) {
+            <div [formGroup]="$any(track)" class="track-block">
+              <div class="track-matrix-row">
+                <span class="track-index">{{ tIdx + 1 }}</span>
+
+                <input
+                  type="text"
+                  formControlName="title_original"
+                  placeholder="Original Title *"
+                  class="flex-2"
+                />
+                <input
+                  type="number"
+                  formControlName="duration_seconds"
+                  placeholder="Secs (s)"
+                  class="w-70"
+                />
+
+                <label class="inst-checkbox-label" title="Instrumental / Karaoke track">
+                  <input
+                    type="checkbox"
+                    formControlName="is_instrumental"
+                    class="inst-checkbox-input"
+                  />
+                  <span class="inst-checkbox-text">Inst</span>
+                </label>
+
                 <button
                   type="button"
-                  (click)="removeTrack(dIdx, tIdx)"
-                  class="icon-only-btn"
-                  title="Remove Track"
+                  (click)="addTrackArtist(dIdx, tIdx)"
+                  class="add-track-artist-btn"
+                  title="Add Per-Track Artist"
                 >
-                  <span class="material-symbols-outlined">remove_circle_outline</span>
+                  <span class="material-symbols-outlined icon-btn-sm">add</span>
+                  <span>Artist</span>
                 </button>
-              }
 
-              <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.25rem">
-                <app-custom-select
-                  formControlName="audio_codec"
-                  [options]="audioCodecs"
-                  [dense]="true"
-                  class="flex-1"
-                />
+                @if (getTracks(dIdx).length > 1) {
+                  <button
+                    type="button"
+                    (click)="removeTrack(dIdx, tIdx)"
+                    class="icon-only-btn"
+                    title="Remove Track"
+                  >
+                    <span class="material-symbols-outlined">remove_circle_outline</span>
+                  </button>
+                }
 
-                <app-custom-select
-                  formControlName="video_codec"
-                  [options]="videoCodecOptions"
-                  [dense]="true"
-                  class="flex-1"
-                />
+                <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.25rem">
+                  <app-custom-select
+                    formControlName="audio_codec"
+                    [options]="audioCodecs"
+                    [dense]="true"
+                    class="flex-1"
+                  />
 
-                <input
-                  type="number"
-                  formControlName="bitrate_kbps"
-                  placeholder="Bitrate (kbps)"
-                  class="flex-1"
-                />
+                  <app-custom-select
+                    formControlName="video_codec"
+                    [options]="videoCodecOptions"
+                    [dense]="true"
+                    class="flex-1"
+                  />
 
-                <app-custom-select
-                  formControlName="bitrate_mode"
-                  [options]="bitrateModeOptions"
-                  [dense]="true"
-                  class="flex-1"
-                />
+                  <input
+                    type="number"
+                    formControlName="bitrate_kbps"
+                    placeholder="Bitrate (kbps)"
+                    class="flex-1"
+                  />
 
-                <input
-                  type="number"
-                  formControlName="bit_depth"
-                  placeholder="Bits (e.g. 16/24)"
-                  class="flex-1"
-                />
+                  <app-custom-select
+                    formControlName="bitrate_mode"
+                    [options]="bitrateModeOptions"
+                    [dense]="true"
+                    class="flex-1"
+                  />
 
-                <input
-                  type="number"
-                  formControlName="sample_rate"
-                  placeholder="Hz (e.g. 44100)"
-                  class="flex-1"
-                />
+                  <input
+                    type="number"
+                    formControlName="bit_depth"
+                    placeholder="Bits (e.g. 16/24)"
+                    class="flex-1"
+                  />
+
+                  <input
+                    type="number"
+                    formControlName="sample_rate"
+                    placeholder="Hz (e.g. 44100)"
+                    class="flex-1"
+                  />
+                </div>
+                <div class="field-group" style="width: 100%; margin-top: 0.25rem">
+                  <span class="field-label">TRACK ALIASES</span>
+                  <app-aliases-chip-input formControlName="aliases"></app-aliases-chip-input>
+                </div>
               </div>
-            </div>
 
-            @if (getTrackArtists(dIdx, tIdx).length > 0) {
-              <div class="track-artists-container">
-                @for (
-                  tArt of getTrackArtists(dIdx, tIdx).controls;
-                  track $index;
-                  let taIdx = $index
-                ) {
-                  <div [formGroup]="$any(tArt)" class="track-artist-row">
-                    <span class="artist-sub-tag">Artist #{{ taIdx + 1 }}</span>
-                    <app-entity-autocomplete
-                      entityType="artist"
-                      formControlName="name_original"
-                      placeholder="Search artist..."
-                      class="flex-2"
-                      [dense]="true"
-                      (optionSelected)="handleTrackArtistSelected(dIdx, tIdx, taIdx, $event)"
-                    />
-                    <div class="input-with-action flex-2">
-                      <input
-                        type="text"
-                        formControlName="name_translated"
-                        placeholder="Translated Name"
-                        class="input-dense"
+              @if (getTrackArtists(dIdx, tIdx).length > 0) {
+                <div class="track-artists-container">
+                  @for (
+                    tArt of getTrackArtists(dIdx, tIdx).controls;
+                    track $index;
+                    let taIdx = $index
+                  ) {
+                    <div [formGroup]="$any(tArt)" class="track-artist-row">
+                      <span class="artist-sub-tag">Artist #{{ taIdx + 1 }}</span>
+                      <app-entity-autocomplete
+                        entityType="artist"
+                        bindValue="display"
+                        formControlName="name_original"
+                        placeholder="Search artist..."
+                        class="flex-2"
+                        [dense]="true"
+                        (optionSelected)="handleTrackArtistSelected(dIdx, tIdx, taIdx, $event)"
+                      />
+                      <app-custom-select
+                        formControlName="role"
+                        [options]="trackArtistRoles"
+                        [dense]="true"
+                        class="flex-1"
                       />
                       <button
                         type="button"
-                        class="inline-refresh-btn"
-                        title="Sync/Refresh translated name in DB and all matching artists"
-                        (click)="refreshArtistTranslation(dIdx, tIdx, taIdx)"
+                        (click)="removeTrackArtist(dIdx, tIdx, taIdx)"
+                        class="icon-only-btn"
+                        title="Remove Artist"
                       >
-                        <span class="material-symbols-outlined">sync</span>
+                        <span class="material-symbols-outlined">close</span>
                       </button>
                     </div>
-                    <app-custom-select
-                      formControlName="role"
-                      [options]="trackArtistRoles"
-                      [dense]="true"
-                      class="flex-1"
-                    />
-                    <button
-                      type="button"
-                      (click)="removeTrackArtist(dIdx, tIdx, taIdx)"
-                      class="icon-only-btn"
-                      title="Remove Artist"
-                    >
-                      <span class="material-symbols-outlined">close</span>
-                    </button>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
   }
 </section>

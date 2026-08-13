@@ -2,6 +2,7 @@ export type FormTab = 'basic' | 'discs' | 'covers' | 'archives';
 
 export interface LocalCoverItem {
   id: string;
+  file?: File;
   base64: string;
   mimeType: string;
   fileName: string;
@@ -10,25 +11,15 @@ export interface LocalCoverItem {
   previewUrl: string;
 }
 
-export interface DraftCoverItem {
-  id: string;
-  base64: string;
-  mimeType: string;
-  fileName: string;
-  fileSize: number;
-  coverType: string;
-}
-
 export interface ArtistSeed {
   name_original?: string | null;
-  name_translated?: string | null;
   role?: string | null;
 }
 
 export interface TrackSeed {
   track_number?: number | string | null;
   title_original?: string | null;
-  title_translated?: string | null;
+  aliases?: string[] | null;
   duration_seconds?: number | string | null;
   audio_codec?: string | null;
   video_codec?: string | null;
@@ -75,8 +66,9 @@ export interface ExternalLinkSeed {
 export interface AlbumFormRawValue {
   album_id?: string | null;
   title_original?: string | null;
-  title_translated?: string | null;
+  aliases?: string[] | null;
   original_folder_name?: string | null;
+  release_date_str?: string | null;
   release_year?: number | string | null;
   release_month?: number | string | null;
   release_day?: number | string | null;
@@ -94,5 +86,4 @@ export interface AlbumFormRawValue {
 
 export interface AlbumFormDraft {
   formValue: AlbumFormRawValue;
-  coversList: DraftCoverItem[];
 }

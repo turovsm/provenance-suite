@@ -9,7 +9,7 @@ describe('AlbumCardComponent', () => {
   const mockAlbum = {
     id: 'a1',
     title_original: 'Scarlet Devil OST',
-    title_translated: 'Embodiment of Scarlet Devil',
+    aliases: ['Embodiment of Scarlet Devil'],
     release_year: 2002,
     release_month: 8,
     release_day: 11,
@@ -45,7 +45,7 @@ describe('AlbumCardComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.title-primary')?.textContent).toContain('Scarlet Devil OST');
     expect(compiled.querySelector('.artists-line')?.textContent).toContain('ZUN');
-    expect(compiled.querySelector('.release-date')?.textContent).toContain('2002.08.11');
+    expect(compiled.querySelector('.release-date')?.textContent).toContain('2002/08/11');
   });
 
   it('emits cardClicked when clicked', () => {

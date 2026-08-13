@@ -1,11 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { AliasesChipInputComponent } from '../../../../../shared/components/aliases-chip-input/aliases-chip-input.component';
 import { EntityAutocompleteComponent } from '../../../../../shared/components/entity-autocomplete/entity-autocomplete.component';
 
 @Component({
   selector: 'app-basic-info-tab',
   standalone: true,
-  imports: [ReactiveFormsModule, EntityAutocompleteComponent],
+  imports: [ReactiveFormsModule, EntityAutocompleteComponent, AliasesChipInputComponent],
   styleUrls: ['../album-form-modal.component.css'],
   templateUrl: './basic-info-tab.component.html',
 })

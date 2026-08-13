@@ -1,7 +1,13 @@
-import { Component, Input, inject } from '@angular/core';
-import { AbstractControl, FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { ALBUM_REPOSITORY_PORT } from '../../../../../core/tokens/album.token';
+import { Component, Input, inject, signal } from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { CustomSelectComponent } from '../../../../../shared/components/custom-select/custom-select.component';
+import { AliasesChipInputComponent } from '../../../../../shared/components/aliases-chip-input/aliases-chip-input.component';
 import { EntityAutocompleteComponent } from '../../../../../shared/components/entity-autocomplete/entity-autocomplete.component';
 import { AutocompleteOption } from '../../../../../shared/models/autocomplete.model';
 import {
@@ -13,19 +19,25 @@ import {
   TRACK_ARTIST_ROLES,
   VIDEO_CODEC_OPTIONS,
 } from '../../../constants/album-form-options';
+import { DiscSeed } from '../../../models/album-form.model';
 import { AlbumFormBuilderService } from '../../../services/album-form-builder.service';
 
 @Component({
   selector: 'app-discs-tab',
   standalone: true,
-  imports: [ReactiveFormsModule, CustomSelectComponent, EntityAutocompleteComponent],
+  imports: [
+    ReactiveFormsModule,
+    FormsModule,
+    CustomSelectComponent,
+    EntityAutocompleteComponent,
+    AliasesChipInputComponent,
+  ],
   styleUrls: ['../album-form-modal.component.css'],
   templateUrl: './discs-tab.component.html',
 })
 export class DiscsTabComponent {
   @Input({ required: true }) discs!: FormArray;
 
-  private readonly repo = inject(ALBUM_REPOSITORY_PORT);
   private readonly builder = inject(AlbumFormBuilderService);
 
   protected readonly mediaTypes = MEDIA_TYPES;
@@ -35,6 +47,46 @@ export class DiscsTabComponent {
   protected readonly videoCodecOptions = VIDEO_CODEC_OPTIONS;
   protected readonly bitrateModeOptions = BITRATE_MODE_OPTIONS;
   protected readonly trackArtistRoles = TRACK_ARTIST_ROLES;
+
+  protected readonly importSuccessMessage = signal<string | null>(null);
+  protected readonly importErrorMessage = signal<string | null>(null);
+  protected readonly showManualPaste = signal<boolean>(false);
+  protected manualJsonText = '';
+
+  protected readonly collapsedDiscs = signal<Set<number>>(new Set());
+
+  protected toggleDiscCollapse(index: number, event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    const current = new Set(this.collapsedDiscs());
+    if (current.has(index)) {
+      current.delete(index);
+    } else {
+      current.add(index);
+    }
+    this.collapsedDiscs.set(current);
+  }
+
+  protected isDiscCollapsed(index: number): boolean {
+    return this.collapsedDiscs().has(index);
+  }
+
+  protected getDiscSummary(discIndex: number): string {
+    const group = this.discs.at(discIndex) as FormGroup;
+    if (!group) return '';
+    const mediaType = group.get('media_type')?.value || 'CD';
+    const container = group.get('container_format')?.value || 'Tracks';
+    const catalog = group.get('catalog_number')?.value;
+    const tracks = group.get('tracks') as FormArray;
+    const count = tracks ? tracks.length : 0;
+
+    let summary = `${mediaType} • ${container} | ${count} ${count === 1 ? 'track' : 'tracks'}`;
+    if (catalog && catalog.trim()) {
+      summary += ` | Catalog: ${catalog.trim()}`;
+    }
+    return summary;
+  }
 
   getTracks(discIndex: number): FormArray {
     return this.discs.at(discIndex).get('tracks') as FormArray;
@@ -48,8 +100,16 @@ export class DiscsTabComponent {
     this.discs.push(this.builder.createDiscGroup({ disc_number: this.discs.length + 1 }));
   }
 
-  protected removeDisc(index: number): void {
-    if (this.discs.length > 1) this.discs.removeAt(index);
+  protected removeDisc(index: number, event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (this.discs.length > 1) {
+      this.discs.removeAt(index);
+      const current = new Set(this.collapsedDiscs());
+      current.delete(index);
+      this.collapsedDiscs.set(current);
+    }
   }
 
   private reindexTracks(discIndex: number): void {
@@ -82,6 +142,128 @@ export class DiscsTabComponent {
     this.getTrackArtists(discIndex, trackIndex).removeAt(artistIndex);
   }
 
+  protected handleTrackArtistSelected(
+    dIdx: number,
+    tIdx: number,
+    taIdx: number,
+    option: AutocompleteOption,
+  ): void {
+    const artistGroup = this.getTrackArtists(dIdx, tIdx).at(taIdx) as FormGroup;
+    const nameOriginal = option.display ?? artistGroup.get('name_original')?.value?.trim();
+    if (nameOriginal) {
+      const roleControl = artistGroup.get('role');
+      if (roleControl && roleControl.value === 'Composer') {
+        const commonRole = this.getMostCommonRoleForArtist(nameOriginal, artistGroup);
+        if (commonRole) {
+          roleControl.patchValue(commonRole);
+        }
+      }
+    }
+  }
+
+  private getMostCommonRoleForArtist(
+    nameOriginal: string,
+    excludeGroup?: FormGroup,
+  ): string | null {
+    const targetLower = nameOriginal.trim().toLowerCase();
+    const roleCounts = new Map<string, number>();
+
+    this.discs.controls.forEach((discControl) => {
+      const tracks = discControl.get('tracks') as FormArray;
+      if (!tracks) return;
+      tracks.controls.forEach((trackControl) => {
+        const artists = trackControl.get('artists') as FormArray;
+        if (!artists) return;
+        artists.controls.forEach((artControl) => {
+          if (excludeGroup && artControl === excludeGroup) return;
+          const name = artControl.get('name_original')?.value?.trim();
+          if (name && name.toLowerCase() === targetLower) {
+            const role = artControl.get('role')?.value;
+            if (role) {
+              roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+            }
+          }
+        });
+      });
+    });
+
+    if (roleCounts.size === 0) return null;
+
+    let mostCommon: string | null = null;
+    let maxCount = 0;
+    roleCounts.forEach((count, role) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommon = role;
+      }
+    });
+    return mostCommon;
+  }
+
+  protected async importFromClipboard(): Promise<void> {
+    this.importSuccessMessage.set(null);
+    this.importErrorMessage.set(null);
+
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        this.showManualPaste.set(true);
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        this.importErrorMessage.set('Clipboard is empty or contains no text.');
+        return;
+      }
+      this.processImportJson(text.trim());
+    } catch {
+      this.showManualPaste.set(true);
+      this.importErrorMessage.set('Unable to access system clipboard directly.');
+    }
+  }
+
+  protected applyManualJson(): void {
+    if (!this.manualJsonText.trim()) return;
+    this.processImportJson(this.manualJsonText.trim());
+    this.manualJsonText = '';
+    this.showManualPaste.set(false);
+  }
+
+  private processImportJson(jsonStr: string): void {
+    this.importSuccessMessage.set(null);
+    this.importErrorMessage.set(null);
+
+    try {
+      const parsed = JSON.parse(jsonStr);
+      let seeds: DiscSeed[] = [];
+
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.discs)) {
+          seeds = parsed.discs;
+        } else if (Array.isArray(parsed)) {
+          seeds = parsed;
+        }
+      }
+
+      if (!seeds || seeds.length === 0) {
+        this.importErrorMessage.set('Invalid format: expected JSON object with a "discs" array.');
+        return;
+      }
+
+      this.builder.populateDiscsFromSeeds(this.discs, seeds);
+
+      const totalTracks = seeds.reduce((acc, d) => acc + (d.tracks?.length || 0), 0);
+      this.importSuccessMessage.set(
+        `Successfully imported ${seeds.length} disc(s) and ${totalTracks} track(s) from export!`,
+      );
+
+      setTimeout(() => {
+        this.importSuccessMessage.set(null);
+      }, 5000);
+    } catch {
+      this.importErrorMessage.set('Failed to parse JSON string: invalid syntax.');
+    }
+  }
+
   protected handleTextFileSelected(
     event: Event | DragEvent,
     control: AbstractControl | null,
@@ -107,60 +289,5 @@ export class DiscsTabComponent {
       }
     };
     reader.readAsText(file);
-  }
-
-  protected handleTrackArtistSelected(
-    discIndex: number,
-    trackIndex: number,
-    artistIndex: number,
-    option: AutocompleteOption,
-  ): void {
-    const artistGroup = this.getTrackArtists(discIndex, trackIndex).at(artistIndex) as FormGroup;
-    // subValue carries name_translated for artist options (see EntitySearchService).
-    artistGroup.patchValue({ name_translated: option.subValue || '' });
-  }
-
-  protected refreshArtistTranslation(
-    discIndex: number,
-    trackIndex: number,
-    artistIndex: number,
-  ): void {
-    const artistGroup = this.getTrackArtists(discIndex, trackIndex).at(artistIndex) as FormGroup;
-    const nameOriginal = artistGroup.get('name_original')?.value?.trim();
-    const nameTranslated = artistGroup.get('name_translated')?.value?.trim() || '';
-
-    if (!nameOriginal) return;
-
-    this.repo.createArtist(nameOriginal, nameTranslated).subscribe({
-      next: (savedArtist) => {
-        const updatedTranslation = savedArtist.name_translated || '';
-        artistGroup.patchValue({ name_translated: updatedTranslation });
-        this.propagateArtistTranslation(nameOriginal, updatedTranslation);
-      },
-      error: (err) => {
-        console.error('Failed to sync artist translation:', err);
-      },
-    });
-  }
-
-  private propagateArtistTranslation(nameOriginal: string, nameTranslated: string): void {
-    const targetLower = nameOriginal.trim().toLowerCase();
-
-    this.discs.controls.forEach((discControl) => {
-      const tracks = discControl.get('tracks') as FormArray;
-      if (!tracks) return;
-
-      tracks.controls.forEach((trackControl) => {
-        const artists = trackControl.get('artists') as FormArray;
-        if (!artists) return;
-
-        artists.controls.forEach((artControl) => {
-          const orig = artControl.get('name_original')?.value?.trim();
-          if (orig && orig.toLowerCase() === targetLower) {
-            artControl.patchValue({ name_translated: nameTranslated });
-          }
-        });
-      });
-    });
   }
 }

@@ -9,7 +9,127 @@ export type BitrateMode = 'CBR' | 'VBR' | 'ABR';
 export interface MasterArtist {
   id: string;
   name_original: string;
-  name_translated: string | null;
+  aliases: string[];
+  image_url?: string | null;
+  description?: string | null;
+  created_at?: string | null;
+}
+
+export interface MasterFranchise {
+  id: string;
+  name_original: string;
+  aliases: string[];
+  franchise_type: string;
+  image_url?: string | null;
+  description?: string | null;
+  created_at?: string | null;
+}
+
+export interface MasterLabel {
+  id: string;
+  name_original: string;
+  aliases: string[];
+  image_url?: string | null;
+  description?: string | null;
+  created_at?: string | null;
+}
+
+export interface MasterPublisher {
+  id: string;
+  name_original: string;
+  aliases: string[];
+  image_url?: string | null;
+  description?: string | null;
+  created_at?: string | null;
+}
+
+export type EntityTypeTag = 'artist' | 'franchise' | 'label' | 'publisher';
+
+export interface EntitySummary {
+  id: string;
+  name_original: string;
+  aliases: string[];
+  entity_type: EntityTypeTag;
+  image_url?: string | null;
+  description?: string | null;
+  franchise_type?: string | null;
+  created_at?: string | null;
+}
+
+export interface PaginatedEntitiesResponse {
+  items: EntitySummary[];
+  total_count: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ArtistDiscography {
+  artist_id: string;
+  main_albums: AlbumSummary[];
+  contribution_albums: AlbumSummary[];
+}
+
+export interface ArtistCreatePayload {
+  name_original: string;
+  aliases?: string[];
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface ArtistUpdatePayload {
+  name_original?: string | null;
+  aliases?: string[];
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface FranchiseCreatePayload {
+  name_original: string;
+  aliases?: string[];
+  franchise_type?: string;
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface FranchiseUpdatePayload {
+  name_original?: string | null;
+  aliases?: string[];
+  franchise_type?: string | null;
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface LabelCreatePayload {
+  name_original: string;
+  aliases?: string[];
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface LabelUpdatePayload {
+  name_original?: string | null;
+  aliases?: string[];
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface PublisherCreatePayload {
+  name_original: string;
+  aliases?: string[];
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface PublisherUpdatePayload {
+  name_original?: string | null;
+  aliases?: string[];
+  description?: string | null;
+  image_data?: string | null;
+}
+
+export interface EventDateRange {
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 export interface MasterEvent {
@@ -18,27 +138,54 @@ export interface MasterEvent {
   full_name: string | null;
   start_date: string | null;
   end_date: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  date_history?: EventDateRange[];
+  additional_dates?: EventDateRange[];
   status: string;
 }
 
-export interface MasterFranchise {
-  id: string;
-  name_original: string;
-  name_translated: string | null;
-  franchise_type: string;
+export interface PaginatedEventsResponse {
+  items: MasterEvent[];
+  total_count: number;
+  limit: number;
+  offset: number;
+}
+
+export interface EventCreatePayload {
+  short_name: string;
+  full_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  date_history?: EventDateRange[];
+  additional_dates?: EventDateRange[];
+  status?: string;
+}
+
+export interface EventUpdatePayload {
+  short_name?: string | null;
+  full_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  date_history?: EventDateRange[];
+  additional_dates?: EventDateRange[];
+  status?: string | null;
 }
 
 export interface ArtistIngestPayload {
   id?: string | null;
   name_original: string;
-  name_translated?: string | null;
   role?: string;
 }
 
 export interface TrackIngestPayload {
   track_number: number;
   title_original: string;
-  title_translated?: string | null;
+  aliases?: string[];
   duration_seconds?: number | null;
   audio_codec?: AudioCodec | null;
   video_codec?: VideoCodec | null;
@@ -91,7 +238,7 @@ export interface AlbumIngestRequest {
   album_id?: string | null;
   title_original: string;
   original_folder_name: string;
-  title_translated?: string | null;
+  aliases?: string[];
   release_year?: number | null;
   release_month?: number | null;
   release_day?: number | null;
@@ -119,8 +266,10 @@ export interface AlbumIngestResponse {
 export interface ArtistDetailResponse {
   id: string;
   name_original: string;
-  name_translated: string | null;
+  aliases: string[];
   role?: string;
+  image_url?: string | null;
+  description?: string | null;
 }
 
 export interface CoverResponse {
@@ -135,12 +284,12 @@ export interface CoverResponse {
 export interface AlbumSummary {
   id: string;
   title_original: string;
-  title_translated: string | null;
+  aliases: string[];
   release_year: number | null;
   release_month: number | null;
   release_day: number | null;
-  label: string | null;
-  publisher: string | null;
+  label: MasterLabel | string | null;
+  publisher: MasterPublisher | string | null;
   original_folder_name: string;
   album_artist: ArtistDetailResponse | null;
   total_discs: number;
@@ -151,7 +300,7 @@ export interface TrackDetailResponse {
   id: string;
   track_number: number;
   title_original: string;
-  title_translated: string | null;
+  aliases: string[];
   duration_seconds: number | null;
   audio_codec: AudioCodec | null;
   video_codec?: VideoCodec | null;
@@ -199,7 +348,6 @@ export interface ExternalLinkDetailResponse {
   url: string;
 }
 
-/** One field-level diff entry inside an album changelog record. */
 export interface AlbumChangeEntry {
   type: 'added' | 'removed' | 'updated';
   old?: string;
@@ -217,12 +365,12 @@ export interface AlbumChangelogResponse {
 export interface AlbumDetailResponse {
   id: string;
   title_original: string;
-  title_translated: string | null;
+  aliases: string[];
   release_year: number | null;
   release_month: number | null;
   release_day: number | null;
-  label: string | null;
-  publisher: string | null;
+  label: MasterLabel | string | null;
+  publisher: MasterPublisher | string | null;
   storage_drive?: string | null;
   relative_path?: string | null;
   event_id?: string | null;

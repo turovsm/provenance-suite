@@ -7,6 +7,26 @@
         <span class="material-symbols-outlined branding-logo">album</span>
         <span class="branding-text">PROVENANCE</span>
         <span class="system-metrics-ticker">Preservation Suite</span>
+
+        <nav class="shell-nav-bar">
+          <a
+            routerLink="/"
+            routerLinkActive="nav-active"
+            [routerLinkActiveOptions]="{ exact: true }"
+            class="shell-nav-link"
+          >
+            <span class="material-symbols-outlined nav-icon">library_music</span>
+            <span>Catalog</span>
+          </a>
+          <a routerLink="/entities" routerLinkActive="nav-active" class="shell-nav-link">
+            <span class="material-symbols-outlined nav-icon">folder_shared</span>
+            <span>Entities</span>
+          </a>
+          <a routerLink="/events" routerLinkActive="nav-active" class="shell-nav-link">
+            <span class="material-symbols-outlined nav-icon">event</span>
+            <span>Events</span>
+          </a>
+        </nav>
       </div>
 
       <div class="session-identity-widget">

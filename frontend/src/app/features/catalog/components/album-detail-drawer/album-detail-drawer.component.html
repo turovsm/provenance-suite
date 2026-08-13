@@ -4,7 +4,7 @@
     role="button"
     tabindex="0"
     (click)="handleBackdropClick($event)"
-    (keydown.escape)="close()"
+    (keydown.enter)="handleBackdropClick($event)"
   >
     <div class="glass-drawer-panel">
       <header class="drawer-header">
@@ -33,16 +33,20 @@
           <div class="hero-details-cluster">
             <h1 class="album-title-main">{{ album.title_original }}</h1>
 
-            @if (album.title_translated) {
-              <h2 class="album-title-sub">{{ album.title_translated }}</h2>
+            @if (album.aliases && album.aliases.length > 0) {
+              <div class="categories-chip-grid" style="margin-top: 0.5rem">
+                @for (alias of album.aliases; track alias) {
+                  <span class="category-badge">{{ alias }}</span>
+                }
+              </div>
             }
 
             @if (album.album_artist; as heroArtist) {
               <div class="hero-artist-line">
                 <span class="material-symbols-outlined hero-artist-icon">artist</span>
                 <span class="hero-artist-name">{{ heroArtist.name_original }}</span>
-                @if (heroArtist.name_translated) {
-                  <span class="hero-artist-translated">{{ heroArtist.name_translated }}</span>
+                @if (heroArtist.aliases && heroArtist.aliases.length > 0) {
+                  <span class="hero-artist-translated">{{ heroArtist.aliases.join(', ') }}</span>
                 }
               </div>
             }
@@ -51,14 +55,14 @@
               @if (album.label) {
                 <div class="meta-item">
                   <span class="meta-label">Label:</span>
-                  <span class="meta-value">{{ album.label }}</span>
+                  <span class="meta-value">{{ getLabelName(album.label) }}</span>
                 </div>
               }
 
               @if (album.publisher) {
                 <div class="meta-item">
                   <span class="meta-label">Publisher:</span>
-                  <span class="meta-value">{{ album.publisher }}</span>
+                  <span class="meta-value">{{ getPublisherName(album.publisher) }}</span>
                 </div>
               }
 
@@ -164,8 +168,8 @@
                                 <span class="inst-badge">[Inst]</span>
                               }
                             </span>
-                            @if (track.title_translated) {
-                              <span class="track-sub-title">{{ track.title_translated }}</span>
+                            @if (track.aliases && track.aliases.length > 0) {
+                              <span class="track-sub-title">{{ track.aliases.join(' • ') }}</span>
                             }
                             @if (track.artists && track.artists.length > 0) {
                               <div class="track-credits">
@@ -178,7 +182,11 @@
                                       @for (art of group.artists; track art.id; let last = $last) {
                                         <span
                                           class="credit-name"
-                                          [title]="art.name_translated || art.name_original"
+                                          [title]="
+                                            art.aliases && art.aliases.length
+                                              ? art.aliases.join(', ')
+                                              : art.name_original
+                                          "
                                           >{{ art.name_original }}</span
                                         >
                                         @if (!last) {
@@ -324,6 +332,7 @@
                   class="changelog-card"
                   [class.expanded]="expandedChangelogId() === cl.id"
                   (click)="toggleChangelog(cl.id)"
+                  (keydown.enter)="toggleChangelog(cl.id)"
                   role="button"
                   tabindex="0"
                 >
@@ -358,7 +367,9 @@
                               } @else if (item.value.type === 'updated') {
                                 <span class="cl-val val-updated">
                                   <span class="old-text">{{ item.value.old }}</span>
-                                  <span class="arrow-sep">➔</span>
+                                  <span class="material-symbols-outlined val-arrow-icon"
+                                    >arrow_forward</span
+                                  >
                                   <span class="new-text">{{ item.value.new }}</span>
                                 </span>
                               }

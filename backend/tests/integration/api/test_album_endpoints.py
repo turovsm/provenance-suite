@@ -1,6 +1,3 @@
-"""Album catalog API tests: authorization matrix, CRUD lifecycle, validation,
-pagination, search, and changelog behavior."""
-
 import uuid
 
 from httpx import AsyncClient
@@ -20,13 +17,13 @@ def minimal_album_payload(title: str = "Test Album") -> dict:
 def full_album_payload() -> dict:
     return {
         **minimal_album_payload("Full Aggregate Album"),
-        "title_translated": "Translated Title",
+        "aliases": ["Translated Title", "FAA"],
         "release_year": 2023,
         "release_month": 11,
         "release_day": 3,
         "label": "Test Label",
         "publisher": "Test Publisher",
-        "album_artist": {"name_original": "Composer X", "name_translated": "X"},
+        "album_artist": {"name_original": "Composer X", "aliases": ["X"]},
         "discs": [
             {
                 "disc_number": 1,
@@ -63,11 +60,6 @@ def full_album_payload() -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Authorization matrix
-# ---------------------------------------------------------------------------
-
-
 async def test_anonymous_cannot_list_albums(client: AsyncClient) -> None:
     response = await client.get("/api/v1/albums")
     assert response.status_code in (401, 403)
@@ -96,11 +88,6 @@ async def test_regular_user_cannot_delete_album(client: AsyncClient, user_tokens
 async def test_anonymous_cannot_create_album(client: AsyncClient) -> None:
     response = await client.post("/api/v1/albums", json=minimal_album_payload())
     assert response.status_code in (401, 403)
-
-
-# ---------------------------------------------------------------------------
-# Create / read lifecycle
-# ---------------------------------------------------------------------------
 
 
 async def test_admin_creates_minimal_album(client: AsyncClient, admin_tokens: dict) -> None:
@@ -132,6 +119,7 @@ async def test_admin_creates_full_aggregate_and_reads_it_back(
 
     assert body["title_original"] == "Full Aggregate Album"
     assert body["release_year"] == 2023
+    assert body["aliases"] == ["Translated Title", "FAA"]
     assert body["album_artist"]["name_original"] == "Composer X"
 
     assert len(body["discs"]) == 1
@@ -172,11 +160,6 @@ async def test_get_detail_malformed_uuid_returns_422(
     assert response.status_code == 422
 
 
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-
-
 async def test_create_rejects_missing_required_fields(
     client: AsyncClient, admin_tokens: dict
 ) -> None:
@@ -196,11 +179,6 @@ async def test_create_rejects_out_of_range_release_year(
     payload = minimal_album_payload() | {"release_year": 1500}
     response = await client.post("/api/v1/albums", json=payload, headers=bearer(admin_tokens))
     assert response.status_code == 422
-
-
-# ---------------------------------------------------------------------------
-# Update & changelog
-# ---------------------------------------------------------------------------
 
 
 async def test_update_same_album_id_records_changelog_diff(
@@ -230,11 +208,6 @@ async def test_update_same_album_id_records_changelog_diff(
     assert listing.json()["total_count"] == 1
 
 
-# ---------------------------------------------------------------------------
-# Delete
-# ---------------------------------------------------------------------------
-
-
 async def test_admin_delete_lifecycle(client: AsyncClient, admin_tokens: dict) -> None:
     created = await client.post(
         "/api/v1/albums", json=minimal_album_payload("Doomed"), headers=bearer(admin_tokens)
@@ -251,11 +224,6 @@ async def test_admin_delete_lifecycle(client: AsyncClient, admin_tokens: dict) -
 async def test_delete_unknown_album_returns_404(client: AsyncClient, admin_tokens: dict) -> None:
     response = await client.delete(f"/api/v1/albums/{uuid.uuid4()}", headers=bearer(admin_tokens))
     assert response.status_code == 404
-
-
-# ---------------------------------------------------------------------------
-# Pagination & search
-# ---------------------------------------------------------------------------
 
 
 async def test_pagination_limits_and_counts(client: AsyncClient, admin_tokens: dict) -> None:
@@ -313,16 +281,9 @@ async def test_search_filters_by_title(client: AsyncClient, admin_tokens: dict) 
     assert misses.json()["total_count"] == 0
 
 
-# ---------------------------------------------------------------------------
-# Regressions: track-artist role round-trip & log_score bounds
-# ---------------------------------------------------------------------------
-
-
 async def test_track_artist_roles_survive_read_back(
     client: AsyncClient, admin_tokens: dict
 ) -> None:
-    """REGRESSION: roles were silently dropped by the response schema, so
-    every edit round-trip reset credits to 'Composer'."""
     payload = minimal_album_payload("Role Roundtrip") | {
         "discs": [
             {
@@ -356,8 +317,6 @@ async def test_track_artist_roles_survive_read_back(
 async def test_track_artist_roles_survive_edit_roundtrip(
     client: AsyncClient, admin_tokens: dict
 ) -> None:
-    """Simulates the frontend edit flow: GET detail, resubmit what was read.
-    Roles must remain intact after the second save."""
     payload = minimal_album_payload("Edit Roundtrip") | {
         "discs": [
             {
@@ -394,8 +353,8 @@ async def test_track_artist_roles_survive_edit_roundtrip(
                         "artists": [
                             {
                                 "name_original": a["name_original"],
-                                "name_translated": a["name_translated"],
-                                "role": a["role"],  # as the frontend now receives it
+                                "aliases": a["aliases"],
+                                "role": a["role"],
                             }
                             for a in t["artists"]
                         ],
@@ -415,7 +374,6 @@ async def test_track_artist_roles_survive_edit_roundtrip(
 
 
 async def test_negative_log_score_accepted(client: AsyncClient, admin_tokens: dict) -> None:
-    """Rip log scores have no lower bound (penalty points can go below zero)."""
     payload = minimal_album_payload("Bad Rip") | {
         "discs": [
             {
@@ -453,17 +411,9 @@ async def test_log_score_above_100_rejected(client: AsyncClient, admin_tokens: d
     assert response.status_code == 422
 
 
-# ---------------------------------------------------------------------------
-# Regression: changelog captures disc-, track-, and archive-level changes
-# ---------------------------------------------------------------------------
-
-
 async def test_changelog_captures_all_change_layers(
     client: AsyncClient, admin_tokens: dict
 ) -> None:
-    """REGRESSION: the diff engine only tracked album scalars, track titles,
-    and archive/link membership — disc fields (log score), track fields
-    (duration, bitrate, translations), and credits were invisible."""
     base_disc = {
         "disc_number": 1,
         "media_type": "CD",
@@ -491,7 +441,7 @@ async def test_changelog_captures_all_change_layers(
             {
                 "track_number": 1,
                 "title_original": "Opening",
-                "title_translated": "Opening (EN)",
+                "aliases": ["Opening (EN)"],
                 "duration_seconds": 245,
                 "bitrate_kbps": 1411,
                 "bitrate_mode": "CBR",
@@ -522,7 +472,7 @@ async def test_changelog_captures_all_change_layers(
         "old": "03:20",
         "new": "04:05",
     }
-    assert merged_changes["D1T1 · Title (Translated)"] == {
+    assert merged_changes["D1T1 · Aliases"] == {
         "type": "added",
         "new": "Opening (EN)",
     }
@@ -533,3 +483,55 @@ async def test_changelog_captures_all_change_layers(
         "new": "Singer A (Vocalist)",
     }
     assert merged_changes["External Link (+VGMdb)"]["type"] == "added"
+
+
+async def test_event_crud_lifecycle(
+    client: AsyncClient, admin_tokens: dict, user_tokens: dict
+) -> None:
+    create_res = await client.post(
+        "/api/v1/entities/events",
+        json={
+            "short_name": "C88",
+            "full_name": "Comiket 88",
+            "start_date": "2015-08-14",
+            "end_date": "2015-08-16",
+            "status": "HELD",
+        },
+        headers=bearer(admin_tokens),
+    )
+    assert create_res.status_code == 201
+    event_id = create_res.json()["id"]
+
+    detail_res = await client.get(
+        f"/api/v1/entities/events/{event_id}", headers=bearer(user_tokens)
+    )
+    assert detail_res.status_code == 200
+    assert detail_res.json()["short_name"] == "C88"
+
+    unauth_update = await client.put(
+        f"/api/v1/entities/events/{event_id}",
+        json={"short_name": "C88 (Updated)"},
+        headers=bearer(user_tokens),
+    )
+    assert unauth_update.status_code == 403
+
+    update_res = await client.put(
+        f"/api/v1/entities/events/{event_id}",
+        json={"short_name": "C88 (Updated)"},
+        headers=bearer(admin_tokens),
+    )
+    assert update_res.status_code == 200
+    assert update_res.json()["short_name"] == "C88 (Updated)"
+
+    unauth_delete = await client.delete(
+        f"/api/v1/entities/events/{event_id}", headers=bearer(user_tokens)
+    )
+    assert unauth_delete.status_code == 403
+
+    delete_res = await client.delete(
+        f"/api/v1/entities/events/{event_id}", headers=bearer(admin_tokens)
+    )
+    assert delete_res.status_code == 204
+
+    gone = await client.get(f"/api/v1/entities/events/{event_id}", headers=bearer(user_tokens))
+    assert gone.status_code == 404

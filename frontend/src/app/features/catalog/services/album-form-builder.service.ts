@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { AlbumDetailResponse } from '../../../domain/models/music.model';
+import { AlbumDetailResponse, MasterArtist } from '../../../domain/models/music.model';
+import { EntitySearchService } from '../../../shared/services/entity-search.service';
+import { fuzzyDateValidator } from '../../../shared/validators/fuzzy-date.validator';
 import {
   AlbumFormRawValue,
   ArchiveLinkSeed,
@@ -14,16 +16,15 @@ import {
 @Injectable({ providedIn: 'root' })
 export class AlbumFormBuilderService {
   private readonly fb = inject(FormBuilder);
+  private readonly entitySearch = inject(EntitySearchService);
 
   buildAlbumForm(): FormGroup {
     return this.fb.group({
       album_id: [null],
       title_original: ['', [Validators.required, Validators.maxLength(512)]],
-      title_translated: ['', [Validators.maxLength(512)]],
+      aliases: [[]],
       original_folder_name: ['', [Validators.required, Validators.maxLength(1024)]],
-      release_year: [null, [Validators.min(1800), Validators.max(2100)]],
-      release_month: [null, [Validators.min(1), Validators.max(12)]],
-      release_day: [null, [Validators.min(1), Validators.max(31)]],
+      release_date_str: ['', [fuzzyDateValidator()]],
       label: [''],
       publisher: [''],
       storage_drive: ['', [Validators.maxLength(64)]],
@@ -40,7 +41,6 @@ export class AlbumFormBuilderService {
   createArtistGroup(data?: ArtistSeed): FormGroup {
     return this.fb.group({
       name_original: [data?.name_original || '', [Validators.required, Validators.maxLength(512)]],
-      name_translated: [data?.name_translated || '', [Validators.maxLength(512)]],
       role: [data?.role || 'Composer', Validators.required],
     });
   }
@@ -49,7 +49,7 @@ export class AlbumFormBuilderService {
     const trackGroup = this.fb.group({
       track_number: [t?.track_number ?? 1, [Validators.required, Validators.min(1)]],
       title_original: [t?.title_original || '', Validators.required],
-      title_translated: [t?.title_translated || ''],
+      aliases: [t?.aliases ?? []],
       duration_seconds: [t?.duration_seconds ?? null, Validators.min(0)],
       audio_codec: [t?.audio_codec || 'FLAC'],
       video_codec: [t?.video_codec || ''],
@@ -93,9 +93,18 @@ export class AlbumFormBuilderService {
     return discGroup;
   }
 
+  populateDiscsFromSeeds(discsArray: FormArray, seeds: DiscSeed[]): void {
+    discsArray.clear();
+    if (Array.isArray(seeds) && seeds.length > 0) {
+      seeds.forEach((d) => discsArray.push(this.createDiscGroup(d)));
+    } else {
+      discsArray.push(this.createDiscGroup({ disc_number: 1 }));
+    }
+  }
+
   createArchiveLinkGroup(lnk?: ArchiveLinkSeed): FormGroup {
     return this.fb.group({
-      provider_name: [lnk?.provider_name || 'Mega', Validators.required],
+      provider_name: [lnk?.provider_name || '', Validators.required],
       download_url: [lnk?.download_url || '', Validators.required],
       is_active: [lnk?.is_active ?? true],
     });
@@ -121,14 +130,10 @@ export class AlbumFormBuilderService {
 
   createExternalLinkGroup(el?: ExternalLinkSeed): FormGroup {
     return this.fb.group({
-      site_name: [el?.site_name || 'VGMdb', Validators.required],
+      site_name: [el?.site_name || '', Validators.required],
       url: [el?.url || '', Validators.required],
     });
   }
-
-  // ------------------------------------------------------------------
-  // Projections onto an existing form instance
-  // ------------------------------------------------------------------
 
   resetToDefaults(form: FormGroup): void {
     form.reset();
@@ -139,21 +144,69 @@ export class AlbumFormBuilderService {
   populateFromAlbum(form: FormGroup, album: AlbumDetailResponse): void {
     this.clearArrays(form);
 
+    let releaseDateStr = '';
+    if (album.release_year) {
+      const y = album.release_year.toString();
+      const m = album.release_month ? album.release_month.toString().padStart(2, '0') : 'XX';
+      const d = album.release_day ? album.release_day.toString().padStart(2, '0') : 'XX';
+      if (m === 'XX' && d === 'XX') {
+        releaseDateStr = `${y}/XX/XX`;
+      } else if (d === 'XX') {
+        releaseDateStr = `${y}/${m}/XX`;
+      } else {
+        releaseDateStr = `${y}/${m}/${d}`;
+      }
+    }
+
+    if (album.album_artist) {
+      this.entitySearch.cacheOption('artist', {
+        id: album.album_artist.id,
+        display: album.album_artist.name_original,
+        raw: album.album_artist as MasterArtist,
+      });
+    }
+
+    if (album.label) {
+      const labelDisplay =
+        typeof album.label === 'string' ? album.label : album.label.name_original;
+      const labelId = typeof album.label === 'string' ? `label:${album.label}` : album.label.id;
+      this.entitySearch.cacheOption('label', {
+        id: labelId,
+        display: labelDisplay,
+        raw: album.label,
+      });
+    }
+
+    if (album.publisher) {
+      const publisherDisplay =
+        typeof album.publisher === 'string' ? album.publisher : album.publisher.name_original;
+      const publisherId =
+        typeof album.publisher === 'string' ? `publisher:${album.publisher}` : album.publisher.id;
+      this.entitySearch.cacheOption('publisher', {
+        id: publisherId,
+        display: publisherDisplay,
+        raw: album.publisher,
+      });
+    }
+
+    const labelFormVal =
+      typeof album.label === 'string' ? album.label : album.label?.name_original || '';
+    const publisherFormVal =
+      typeof album.publisher === 'string' ? album.publisher : album.publisher?.name_original || '';
+
     form.patchValue({
       album_id: album.id,
       title_original: album.title_original,
-      title_translated: album.title_translated || '',
+      aliases: album.aliases ?? [],
       original_folder_name: album.original_folder_name,
-      release_year: album.release_year,
-      release_month: album.release_month,
-      release_day: album.release_day,
-      label: album.label || '',
-      publisher: album.publisher || '',
+      release_date_str: releaseDateStr,
+      label: labelFormVal,
+      publisher: publisherFormVal,
       storage_drive: album.storage_drive || '',
       relative_path: album.relative_path || '',
       event_id: album.event_id || null,
       franchise_id: album.franchise_id || null,
-      album_artist_id: album.album_artist?.name_original || null,
+      album_artist_id: album.album_artist?.id || album.album_artist?.name_original || null,
     });
 
     (album.discs ?? []).forEach((d) => this.discsOf(form).push(this.createDiscGroup(d)));
@@ -169,13 +222,19 @@ export class AlbumFormBuilderService {
   applyDraftFormValue(form: FormGroup, fVal: AlbumFormRawValue): void {
     this.clearArrays(form);
 
+    let draftDateStr = fVal.release_date_str || '';
+    if (!draftDateStr && fVal.release_year) {
+      const y = fVal.release_year.toString();
+      const m = fVal.release_month ? fVal.release_month.toString().padStart(2, '0') : 'XX';
+      const d = fVal.release_day ? fVal.release_day.toString().padStart(2, '0') : 'XX';
+      draftDateStr = `${y}/${m}/${d}`;
+    }
+
     form.patchValue({
       title_original: fVal.title_original || '',
-      title_translated: fVal.title_translated || '',
+      aliases: fVal.aliases ?? [],
       original_folder_name: fVal.original_folder_name || '',
-      release_year: fVal.release_year ?? null,
-      release_month: fVal.release_month ?? null,
-      release_day: fVal.release_day ?? null,
+      release_date_str: draftDateStr,
       label: fVal.label || '',
       publisher: fVal.publisher || '',
       storage_drive: fVal.storage_drive || '',

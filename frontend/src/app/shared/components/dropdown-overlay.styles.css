@@ -14,6 +14,12 @@
   padding: 0.35rem;
   box-sizing: border-box;
 }
+
+.options-overlay.open-up {
+  top: auto !important;
+  bottom: calc(100% + 4px) !important;
+}
+
 .options-overlay::-webkit-scrollbar {
   width: 6px;
 }

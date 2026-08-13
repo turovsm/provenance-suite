@@ -8,6 +8,8 @@ from src.infrastructure.db.models.music import (
     EventModel,
     ExternalLinkModel,
     FranchiseModel,
+    LabelModel,
+    PublisherModel,
     TrackArtistModel,
     TrackModel,
 )
@@ -19,6 +21,8 @@ __all__ = [
     "UserModel",
     "EventModel",
     "FranchiseModel",
+    "LabelModel",
+    "PublisherModel",
     "ArtistModel",
     "AlbumModel",
     "TrackModel",

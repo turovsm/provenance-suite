@@ -14,10 +14,10 @@ describe('AlbumPayloadMapperService', () => {
     const rawForm: AlbumFormRawValue = {
       title_original: 'Test Original',
       original_folder_name: 'Folder_01',
-      release_year: '2024',
-      release_month: '8',
-      release_day: '15',
+      release_date_str: '2024/08/15',
       album_artist_id: 'a8123456-1234-1234-1234-123456789abc',
+      event_id: 'b8123456-1234-1234-1234-123456789abc',
+      franchise_id: 'c8123456-1234-1234-1234-123456789abc',
       discs: [
         {
           disc_number: '1',
@@ -53,7 +53,11 @@ describe('AlbumPayloadMapperService', () => {
 
     expect(result.title_original).toBe('Test Original');
     expect(result.release_year).toBe(2024);
+    expect(result.release_month).toBe(8);
+    expect(result.release_day).toBe(15);
     expect(result.album_artist_id).toBe('a8123456-1234-1234-1234-123456789abc');
+    expect(result.event_id).toBe('b8123456-1234-1234-1234-123456789abc');
+    expect(result.franchise_id).toBe('c8123456-1234-1234-1234-123456789abc');
     expect(result.album_artist).toBeNull();
     expect(result.discs[0].tracks[0].duration_seconds).toBe(240);
     expect(result.discs[0].tracks[0].is_instrumental).toBe(true);
@@ -61,16 +65,20 @@ describe('AlbumPayloadMapperService', () => {
     expect(result.covers[0].cover_type).toBe('Front');
   });
 
-  it('maps plain artist string as new embedded album_artist payload when non-UUID', () => {
+  it('maps plain artist/event/franchise strings to null IDs while preserving names', () => {
     const rawForm: AlbumFormRawValue = {
       title_original: 'Independent Release',
       original_folder_name: 'Indie_01',
       album_artist_id: 'Custom Circle Name',
+      event_id: 'Comiket 70',
+      franchise_id: 'ぶらばん！',
     };
 
     const result = service.toIngestRequest(rawForm, []);
 
     expect(result.album_artist_id).toBeNull();
+    expect(result.event_id).toBeNull();
+    expect(result.franchise_id).toBeNull();
     expect(result.album_artist?.name_original).toBe('Custom Circle Name');
   });
 });

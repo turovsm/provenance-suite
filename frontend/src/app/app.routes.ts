@@ -31,6 +31,27 @@ export const routes: Routes = [
             (m) => m.AlbumGridComponent,
           ),
       },
+      {
+        path: 'events',
+        loadComponent: () =>
+          import('./features/events/components/event-list/event-list.component').then(
+            (m) => m.EventListComponent,
+          ),
+      },
+      {
+        path: 'entities',
+        loadComponent: () =>
+          import('./features/entities/components/entity-directory/entity-directory.component').then(
+            (m) => m.EntityDirectoryComponent,
+          ),
+      },
+      {
+        path: 'entities/:type/:id',
+        loadComponent: () =>
+          import('./features/entities/components/entity-detail/entity-detail.component').then(
+            (m) => m.EntityDetailComponent,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: 'login' },

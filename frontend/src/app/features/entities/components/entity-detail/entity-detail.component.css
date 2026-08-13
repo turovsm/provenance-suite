@@ -1,0 +1,180 @@
+.entity-detail-viewport {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  padding-bottom: 3.5rem;
+}
+
+.back-nav-bar {
+  display: flex;
+  align-items: center;
+}
+
+.back-link-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.back-link-btn:hover {
+  color: var(--accent-blue);
+}
+
+.hero-entity-card {
+  display: flex;
+  gap: 2rem;
+  padding: 2rem;
+  background-color: var(--bg-surface-glass);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 8px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.hero-avatar-frame {
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background-color: #000;
+  border: 1px solid var(--border-fine-glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artist-avatar {
+  border-radius: 50% !important;
+}
+
+.logo-avatar {
+  border-radius: 8px !important;
+}
+
+.hero-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Added fallback icon sizing for 140px hero frames */
+.fallback-icon {
+  font-size: 64px;
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.hero-meta-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.hero-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.aliases-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.alias-pill {
+  padding: 0.15rem 0.5rem;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.hero-description-box {
+  margin-top: 0.75rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.discography-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--accent-blue);
+  border-bottom: 1px solid var(--border-fine-glass);
+  padding-bottom: 0.65rem;
+}
+
+.section-header h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.albums-responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.action-btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-action-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.btn-edit {
+  background-color: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--accent-blue);
+}
+
+.btn-edit:hover {
+  background-color: rgba(56, 189, 248, 0.25);
+}
+
+.btn-delete {
+  background-color: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--accent-error);
+}
+
+.btn-delete:hover {
+  background-color: rgba(248, 113, 113, 0.22);
+}

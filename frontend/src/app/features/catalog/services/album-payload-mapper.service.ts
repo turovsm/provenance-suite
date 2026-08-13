@@ -31,24 +31,81 @@ function toNumberOrNull(value: unknown): number | null {
 
 @Injectable({ providedIn: 'root' })
 export class AlbumPayloadMapperService {
+  private parseFuzzyDateStr(
+    dateStr: string | null | undefined,
+    fallbackVal?: AlbumFormRawValue,
+  ): {
+    year: number | null;
+    month: number | null;
+    day: number | null;
+  } {
+    if (!dateStr || !dateStr.trim()) {
+      if (fallbackVal && fallbackVal.release_year) {
+        return {
+          year: toNumberOrNull(fallbackVal.release_year),
+          month: toNumberOrNull(fallbackVal.release_month),
+          day: toNumberOrNull(fallbackVal.release_day),
+        };
+      }
+      return { year: null, month: null, day: null };
+    }
+
+    const cleaned = dateStr.trim().replace(/[/.]/g, '-');
+    const parts = cleaned.split('-');
+    const yearNum = parseInt(parts[0], 10);
+    const year = !isNaN(yearNum) && yearNum >= 1800 && yearNum <= 2100 ? yearNum : null;
+
+    if (!year) {
+      return { year: null, month: null, day: null };
+    }
+
+    let month: number | null = null;
+    if (parts.length > 1 && parts[1].toLowerCase() !== 'xx') {
+      const mNum = parseInt(parts[1], 10);
+      if (!isNaN(mNum) && mNum >= 1 && mNum <= 12) {
+        month = mNum;
+      }
+    }
+
+    let day: number | null = null;
+    if (parts.length > 2 && parts[2].toLowerCase() !== 'xx') {
+      const dNum = parseInt(parts[2], 10);
+      if (!isNaN(dNum) && dNum >= 1 && dNum <= 31) {
+        day = dNum;
+      }
+    }
+
+    return { year, month, day };
+  }
+
   toIngestRequest(formVal: AlbumFormRawValue, covers: LocalCoverItem[]): AlbumIngestRequest {
-    const artistVal = formVal.album_artist_id;
-    const isArtistUuid = typeof artistVal === 'string' && UUID_PATTERN.test(artistVal);
+    const artistVal =
+      typeof formVal.album_artist_id === 'string' ? formVal.album_artist_id.trim() : null;
+    const isArtistUuid = artistVal ? UUID_PATTERN.test(artistVal) : false;
+
+    const eventVal = typeof formVal.event_id === 'string' ? formVal.event_id.trim() : null;
+    const isEventUuid = eventVal ? UUID_PATTERN.test(eventVal) : false;
+
+    const franchiseVal =
+      typeof formVal.franchise_id === 'string' ? formVal.franchise_id.trim() : null;
+    const isFranchiseUuid = franchiseVal ? UUID_PATTERN.test(franchiseVal) : false;
+
+    const { year, month, day } = this.parseFuzzyDateStr(formVal.release_date_str, formVal);
 
     return {
       album_id: formVal.album_id || null,
       title_original: formVal.title_original ?? '',
-      title_translated: formVal.title_translated || null,
+      aliases: formVal.aliases ?? [],
       original_folder_name: formVal.original_folder_name ?? '',
-      release_year: toNumberOrNull(formVal.release_year),
-      release_month: toNumberOrNull(formVal.release_month),
-      release_day: toNumberOrNull(formVal.release_day),
+      release_year: year,
+      release_month: month,
+      release_day: day,
       label: formVal.label || null,
       publisher: formVal.publisher || null,
       storage_drive: formVal.storage_drive || null,
       relative_path: formVal.relative_path || null,
-      event_id: formVal.event_id || null,
-      franchise_id: formVal.franchise_id || null,
+      event_id: isEventUuid ? eventVal : null,
+      franchise_id: isFranchiseUuid ? franchiseVal : null,
       album_artist_id: isArtistUuid ? artistVal : null,
       album_artist: !isArtistUuid && artistVal ? { name_original: artistVal } : null,
       discs: (formVal.discs ?? []).map((d) => this.mapDisc(d)),
@@ -79,7 +136,7 @@ export class AlbumPayloadMapperService {
     return {
       track_number: index + 1,
       title_original: t.title_original ?? '',
-      title_translated: t.title_translated || null,
+      aliases: t.aliases ?? [],
       duration_seconds: toNumberOrNull(t.duration_seconds),
       audio_codec: (t.audio_codec as AudioCodec) || null,
       video_codec: (t.video_codec as VideoCodec) || null,
@@ -90,7 +147,6 @@ export class AlbumPayloadMapperService {
       is_instrumental: Boolean(t.is_instrumental),
       artists: (t.artists ?? []).map((ta) => ({
         name_original: ta.name_original ?? '',
-        name_translated: ta.name_translated || null,
         role: ta.role ?? 'Composer',
       })),
     };

@@ -5,6 +5,8 @@ from typing import Any
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field
 
 from src.domain import (
+    MAX_ALIAS_LENGTH,
+    MAX_ALIASES_PER_ENTITY,
     AudioCodec,
     BitrateMode,
     ContainerFormat,
@@ -12,22 +14,28 @@ from src.domain import (
     MediaType,
     VideoCodec,
 )
-from src.presentation.schemas.entities import ArtistResponseSchema
+from src.presentation.schemas.entities import (
+    ArtistResponseSchema,
+    LabelResponseSchema,
+    PublisherResponseSchema,
+)
 
 
 class ArtistIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID | None = None
-    name_original: str = Field(..., min_length=1, max_length=512)
-    name_translated: str | None = Field(default=None, max_length=512)
+    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
     role: str = Field(default="Primary", max_length=64)
 
 
 class TrackIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     track_number: int = Field(..., ge=1)
-    title_original: str = Field(..., max_length=512)
-    title_translated: str | None = Field(default=None, max_length=512)
+    title_original: str = Field(..., max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
     duration_seconds: int | None = Field(default=None, ge=0)
     audio_codec: AudioCodec | None = None
     video_codec: VideoCodec | None = None
@@ -41,6 +49,7 @@ class TrackIngestSchema(BaseModel):
 
 class DiscIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     disc_number: int = Field(..., ge=1)
     media_type: MediaType
     container_format: ContainerFormat
@@ -55,6 +64,7 @@ class DiscIngestSchema(BaseModel):
 
 class ArchiveLinkIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     provider_name: str = Field(..., max_length=128)
     download_url: str = Field(..., max_length=2048)
     is_active: bool = True
@@ -62,6 +72,7 @@ class ArchiveLinkIngestSchema(BaseModel):
 
 class ArchiveIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     archive_name: str = Field(..., max_length=512)
     encryption_password: str = Field(default="", max_length=512)
     file_size_bytes: int | None = Field(default=None, ge=0)
@@ -71,22 +82,34 @@ class ArchiveIngestSchema(BaseModel):
 
 class ExternalLinkIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     site_name: str = Field(..., max_length=128)
     url: str = Field(..., max_length=2048)
 
 
 class CoverIngestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     image_data: Base64Bytes
     cover_type: str = Field(default="Front", max_length=64)
 
 
 class AlbumIngestRequestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     album_id: uuid.UUID | None = None
-    title_original: str = Field(..., max_length=512)
+    title_original: str = Field(..., max_length=MAX_ALIAS_LENGTH)
     original_folder_name: str = Field(..., max_length=1024)
-    title_translated: str | None = Field(default=None, max_length=512)
+    aliases: list[str] = Field(
+        default_factory=list,
+        max_length=MAX_ALIASES_PER_ENTITY,
+        description=(
+            "All non-official title variants: acronyms, romaji, translated titles, "
+            "regional release titles, etc."
+        ),
+    )
+    album_artist_aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
+    franchise_aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
     release_year: int | None = Field(default=None, ge=1800, le=2100)
     release_month: int | None = Field(default=None, ge=1, le=12)
     release_day: int | None = Field(default=None, ge=1, le=31)
@@ -106,6 +129,7 @@ class AlbumIngestRequestSchema(BaseModel):
 
 class CoverResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     storage_path: str
     thumbhash: str | None
@@ -116,6 +140,7 @@ class CoverResponseSchema(BaseModel):
 
 class AlbumIngestResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     album_id: uuid.UUID
     title_original: str
     total_discs: int
@@ -124,14 +149,15 @@ class AlbumIngestResponseSchema(BaseModel):
 
 class AlbumSummaryResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     title_original: str
-    title_translated: str | None
+    aliases: list[str] = Field(default_factory=list)
     release_year: int | None
     release_month: int | None
     release_day: int | None
-    label: str | None
-    publisher: str | None
+    label: LabelResponseSchema | None = None
+    publisher: PublisherResponseSchema | None = None
     original_folder_name: str
     album_artist: ArtistResponseSchema | None
     total_discs: int
@@ -140,18 +166,20 @@ class AlbumSummaryResponseSchema(BaseModel):
 
 class TrackArtistResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True, frozen=True)
+
     id: uuid.UUID
     name_original: str
-    name_translated: str | None
+    aliases: list[str] = Field(default_factory=list)
     role: str
 
 
 class TrackResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     track_number: int
     title_original: str
-    title_translated: str | None
+    aliases: list[str] = Field(default_factory=list)
     duration_seconds: int | None
     audio_codec: AudioCodec | None
     video_codec: VideoCodec | None = None
@@ -165,6 +193,7 @@ class TrackResponseSchema(BaseModel):
 
 class DiscResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     disc_number: int
     catalog_number: str | None
@@ -180,6 +209,7 @@ class DiscResponseSchema(BaseModel):
 
 class ArchiveLinkResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     provider_name: str
     download_url: str
@@ -188,6 +218,7 @@ class ArchiveLinkResponseSchema(BaseModel):
 
 class ArchiveResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     archive_name: str
     encryption_password: str
@@ -198,6 +229,7 @@ class ArchiveResponseSchema(BaseModel):
 
 class ExternalLinkResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     site_name: str
     url: str
@@ -205,6 +237,7 @@ class ExternalLinkResponseSchema(BaseModel):
 
 class AlbumChangelogResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     user_id: uuid.UUID | None
     action: str
@@ -214,14 +247,15 @@ class AlbumChangelogResponseSchema(BaseModel):
 
 class AlbumDetailResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     id: uuid.UUID
     title_original: str
-    title_translated: str | None
+    aliases: list[str] = Field(default_factory=list)
     release_year: int | None
     release_month: int | None
     release_day: int | None
-    label: str | None
-    publisher: str | None
+    label: LabelResponseSchema | None = None
+    publisher: PublisherResponseSchema | None = None
     storage_drive: str | None = None
     relative_path: str | None = None
     event_id: uuid.UUID | None = None
@@ -237,6 +271,7 @@ class AlbumDetailResponseSchema(BaseModel):
 
 class PaginatedAlbumsResponseSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
+
     items: list[AlbumSummaryResponseSchema]
     total_count: int
     limit: int

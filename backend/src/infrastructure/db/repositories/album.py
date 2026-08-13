@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import uuid
 from collections import Counter
 from datetime import date
 from typing import Any
 
 from redis.asyncio import Redis
-from sqlalchemy import func, select
+from sqlalchemy import String as SAString, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,8 +20,11 @@ from src.domain.entities.music import (
     Artist,
     Disc,
     ExternalLink,
+    Label,
+    Publisher,
     Track,
 )
+from src.domain.value_objects.aliases import normalize_aliases
 from src.infrastructure.db.models.music import (
     AlbumArchiveModel,
     AlbumChangelogModel,
@@ -31,6 +36,8 @@ from src.infrastructure.db.models.music import (
     EventModel,
     ExternalLinkModel,
     FranchiseModel,
+    LabelModel,
+    PublisherModel,
     TrackArtistModel,
     TrackModel,
 )
@@ -75,6 +82,27 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             diff[label] = cls._change_entry(old_str, new_str)
 
     @staticmethod
+    def _fmt_aliases(aliases: list[str] | None) -> str:
+        return ", ".join(aliases) if aliases else ""
+
+    @staticmethod
+    def _merge_aliases(existing: list[str] | None, incoming: list[str] | None) -> list[str]:
+        if not incoming:
+            return list(existing or [])
+        return normalize_aliases((existing or []) + incoming)
+
+    @staticmethod
+    def _parse_uuid(val: uuid.UUID | str | None) -> uuid.UUID | None:
+        if isinstance(val, uuid.UUID):
+            return val
+        if isinstance(val, str) and val.strip():
+            try:
+                return uuid.UUID(val.strip())
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
     def _fmt_duration(seconds: int | None) -> str:
         if seconds is None:
             return ""
@@ -93,25 +121,38 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
 
     def _diff_scalar_fields(self, model: AlbumModel, new_album: Album) -> dict[str, dict[str, Any]]:
         diff: dict[str, dict[str, Any]] = {}
-
         self._check_field(diff, "Title (Original)", model.title_original, new_album.title_original)
         self._check_field(
-            diff, "Title (Translated)", model.title_translated, new_album.title_translated
+            diff, "Aliases", self._fmt_aliases(model.aliases), self._fmt_aliases(new_album.aliases)
         )
-        self._check_field(diff, "Label", model.label, new_album.label)
-        self._check_field(diff, "Publisher", model.publisher, new_album.publisher)
+        old_label = model.label.name_original if model.label else ""
+        if isinstance(new_album.label, str):
+            new_label = new_album.label
+        elif hasattr(new_album.label, "name_original"):
+            new_label = new_album.label.name_original
+        else:
+            new_label = ""
+        self._check_field(diff, "Label", old_label, new_label)
+
+        old_publisher = model.publisher.name_original if model.publisher else ""
+        if isinstance(new_album.publisher, str):
+            new_publisher = new_album.publisher
+        elif hasattr(new_album.publisher, "name_original"):
+            new_publisher = new_album.publisher.name_original
+        else:
+            new_publisher = ""
+        self._check_field(diff, "Publisher", old_publisher, new_publisher)
+
         self._check_field(diff, "Storage Drive", model.storage_drive, new_album.storage_drive)
         self._check_field(diff, "Relative Path", model.relative_path, new_album.relative_path)
         self._check_field(
             diff, "Folder Name", model.original_folder_name, new_album.original_folder_name
         )
-
         old_date = self._format_date(model.release_year, model.release_month, model.release_day)
         new_date = self._format_date(
             new_album.release_year, new_album.release_month, new_album.release_day
         )
         self._check_field(diff, "Release Date", old_date, new_date)
-
         return diff
 
     def _diff_album_artist(
@@ -129,7 +170,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         diff: dict[str, dict[str, Any]] = {}
         old_discs = {d.disc_number: d for d in model.discs}
         new_discs = {d.disc_number: d for d in new_album.discs}
-
         for n in sorted(set(old_discs) | set(new_discs)):
             if n not in old_discs:
                 d = new_discs[n]
@@ -143,9 +183,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     f"{d.media_type}/{d.container_format}, {len(d.tracks)} track(s)", ""
                 )
                 continue
-
             old, new = old_discs[n], new_discs[n]
-            prefix = f"Disc {n} \u00b7 "
+            prefix = f"Disc {n} · "
             self._check_field(diff, prefix + "Media Type", old.media_type, new.media_type)
             self._check_field(
                 diff, prefix + "Container", old.container_format, new.container_format
@@ -191,23 +230,23 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         diff: dict[str, dict[str, Any]] = {}
         old_tracks = {(d.disc_number, t.track_number): t for d in model.discs for t in d.tracks}
         new_tracks = {(d.disc_number, t.track_number): t for d in new_album.discs for t in d.tracks}
-
         for key in sorted(set(old_tracks) | set(new_tracks)):
             disc_num, trk_num = key
             tag = f"D{disc_num}T{trk_num}"
-
             if key not in old_tracks:
                 diff[tag] = self._change_entry("", new_tracks[key].title_original)
                 continue
             if key not in new_tracks:
                 diff[tag] = self._change_entry(old_tracks[key].title_original, "")
                 continue
-
             old, new = old_tracks[key], new_tracks[key]
-            prefix = f"{tag} \u00b7 "
+            prefix = f"{tag} · "
             self._check_field(diff, prefix + "Title", old.title_original, new.title_original)
             self._check_field(
-                diff, prefix + "Title (Translated)", old.title_translated, new.title_translated
+                diff,
+                prefix + "Aliases",
+                self._fmt_aliases(old.aliases),
+                self._fmt_aliases(new.aliases),
             )
             self._check_field(
                 diff,
@@ -253,7 +292,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         diff: dict[str, dict[str, Any]] = {}
         old_archives = {a.archive_name: a for a in model.archives}
         new_archives = {a.archive_name: a for a in new_album.archives}
-
         for name in sorted(set(old_archives) | set(new_archives)):
             if name not in old_archives:
                 diff[f"Archive Volume (+{name})"] = {"type": "added", "new": name}
@@ -261,15 +299,13 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             if name not in new_archives:
                 diff[f"Archive Volume (-{name})"] = {"type": "removed", "old": name}
                 continue
-
             old, new = old_archives[name], new_archives[name]
-            prefix = f"Archive {name} \u00b7 "
+            prefix = f"Archive {name} · "
             self._check_field(
                 diff, prefix + "Password", old.encryption_password, new.encryption_password
             )
             self._check_field(diff, prefix + "File Size", old.file_size_bytes, new.file_size_bytes)
             self._check_field(diff, prefix + "SHA-256", old.hash_sha256, new.hash_sha256)
-
         old_links = {
             f"{a.archive_name} [{link.provider_name}]": link.download_url
             for a in model.archives
@@ -298,7 +334,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
 
         def summarize(types: list[str]) -> str:
             counts = Counter(t or "Other" for t in types)
-            return ", ".join(f"{t} \u00d7{n}" for t, n in sorted(counts.items()))
+            return ", ".join(f"{t} ×{n}" for t, n in sorted(counts.items()))
 
         old_summary = summarize([c.cover_type for c in model.covers])
         new_summary = summarize([c.cover_type for c in new_album.covers])
@@ -319,10 +355,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         diff.update(self._diff_external_links(model, new_album))
         diff.update(self._diff_archives_and_mirrors(model, new_album))
         diff.update(self._diff_covers(model, new_album))
-
         if not diff:
             diff["Metadata Sync"] = {"type": "updated", "old": "Identical", "new": "Re-saved"}
-
         return diff
 
     @staticmethod
@@ -344,72 +378,237 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         if keys:
             await self._redis.delete(*keys)
 
-    async def _resolve_album_artist_id(self, album: Album) -> uuid.UUID | None:
+    async def _find_artist_by_name_or_uuid(self, name_or_uuid_str: str) -> ArtistModel | None:
+        name_orig = name_or_uuid_str.strip()
+        try:
+            artist_uuid = uuid.UUID(name_orig)
+            stmt = select(ArtistModel).where(ArtistModel.id == artist_uuid)
+        except ValueError:
+            stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(name_orig))
+
+        res = await self._session.execute(stmt.limit(1))
+        return res.scalars().first()
+
+    async def _resolve_album_artist_id(
+        self, album: Album, album_artist_aliases: list[str] | None = None
+    ) -> uuid.UUID | None:
         artist_id = album.album_artist_id
         if artist_id:
-            check_stmt = select(ArtistModel.id).where(ArtistModel.id == artist_id)
+            check_stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
             res = await self._session.execute(check_stmt)
-            if not res.scalar_one_or_none():
+            found = res.scalars().first()
+            if not found:
                 artist_id = None
+            else:
+                if album_artist_aliases:
+                    found.aliases = self._merge_aliases(found.aliases, album_artist_aliases)
 
         if not artist_id and album.album_artist and album.album_artist.name_original:
             name_orig = album.album_artist.name_original.strip()
-            stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(name_orig)).limit(1)
-            res = await self._session.execute(stmt)
-            found = res.scalars().first()
+            found = await self._find_artist_by_name_or_uuid(name_orig)
+            incoming = album_artist_aliases or (
+                album.album_artist.aliases if album.album_artist else []
+            )
+
             if found:
                 artist_id = found.id
-                if album.album_artist.name_translated and not found.name_translated:
-                    found.name_translated = album.album_artist.name_translated
+                if incoming:
+                    found.aliases = self._merge_aliases(found.aliases, incoming)
             else:
                 new_a = ArtistModel(
                     id=uuid.uuid4(),
                     name_original=name_orig,
-                    name_translated=album.album_artist.name_translated,
+                    aliases=normalize_aliases(incoming),
                 )
                 self._session.add(new_a)
                 artist_id = new_a.id
-
         return artist_id
 
-    async def _validate_fk_ids(
-        self, event_id: uuid.UUID | None, franchise_id: uuid.UUID | None
-    ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
-        valid_event_id = event_id
-        if valid_event_id:
-            res = await self._session.execute(
-                select(EventModel.id).where(EventModel.id == valid_event_id)
-            )
-            if not res.scalar_one_or_none():
-                valid_event_id = None
+    async def _resolve_label_id(self, raw_label: uuid.UUID | str | None) -> uuid.UUID | None:
+        if not raw_label:
+            return None
+        label_uuid = self._parse_uuid(raw_label)
+        if label_uuid:
+            res = await self._session.execute(select(LabelModel).where(LabelModel.id == label_uuid))
+            found = res.scalars().first()
+            if found:
+                return label_uuid
 
-        valid_franchise_id = franchise_id
-        if valid_franchise_id:
-            res = await self._session.execute(
-                select(FranchiseModel.id).where(FranchiseModel.id == valid_franchise_id)
-            )
-            if not res.scalar_one_or_none():
-                valid_franchise_id = None
+        label_name = str(raw_label).strip()
+        if not label_name:
+            return None
 
-        return valid_event_id, valid_franchise_id
+        stmt = select(LabelModel).where(LabelModel.name_original.ilike(label_name)).limit(1)
+        res = await self._session.execute(stmt)
+        found = res.scalars().first()
+        if found:
+            return found.id
+
+        new_label = LabelModel(
+            id=uuid.uuid4(),
+            name_original=label_name,
+            aliases=[],
+        )
+        self._session.add(new_label)
+        await self._session.flush()
+        return new_label.id
+
+    async def _resolve_publisher_id(
+        self, raw_publisher: uuid.UUID | str | None
+    ) -> uuid.UUID | None:
+        if not raw_publisher:
+            return None
+        publisher_uuid = self._parse_uuid(raw_publisher)
+        if publisher_uuid:
+            res = await self._session.execute(
+                select(PublisherModel).where(PublisherModel.id == publisher_uuid)
+            )
+            found = res.scalars().first()
+            if found:
+                return publisher_uuid
+
+        publisher_name = str(raw_publisher).strip()
+        if not publisher_name:
+            return None
+
+        stmt = (
+            select(PublisherModel)
+            .where(PublisherModel.name_original.ilike(publisher_name))
+            .limit(1)
+        )
+        res = await self._session.execute(stmt)
+        found = res.scalars().first()
+        if found:
+            return found.id
+
+        new_publisher = PublisherModel(
+            id=uuid.uuid4(),
+            name_original=publisher_name,
+            aliases=[],
+        )
+        self._session.add(new_publisher)
+        await self._session.flush()
+        return new_publisher.id
+
+    async def _resolve_event_id(self, raw_event_id: uuid.UUID | str | None) -> uuid.UUID | None:
+        if not raw_event_id:
+            return None
+
+        event_uuid = self._parse_uuid(raw_event_id)
+        if event_uuid:
+            res = await self._session.execute(
+                select(EventModel.id).where(EventModel.id == event_uuid)
+            )
+            if res.scalar_one_or_none():
+                return event_uuid
+
+        event_name = str(raw_event_id).strip()
+        if not event_name:
+            return None
+
+        stmt = (
+            select(EventModel)
+            .where(
+                or_(
+                    EventModel.short_name.ilike(event_name),
+                    EventModel.full_name.ilike(event_name),
+                )
+            )
+            .limit(1)
+        )
+        res = await self._session.execute(stmt)
+        found = res.scalars().first()
+        if found:
+            return found.id
+
+        new_event = EventModel(
+            id=uuid.uuid4(),
+            short_name=event_name,
+            full_name=None,
+            status="HELD",
+        )
+        self._session.add(new_event)
+        await self._session.flush()
+        return new_event.id
+
+    async def _find_franchise_by_id(self, franchise_uuid: uuid.UUID) -> FranchiseModel | None:
+        stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_uuid)
+        res = await self._session.execute(stmt)
+        return res.scalars().first()
+
+    async def _find_franchise_by_name(self, name: str) -> FranchiseModel | None:
+        stmt = (
+            select(FranchiseModel)
+            .where(
+                or_(
+                    FranchiseModel.name_original.ilike(name),
+                    cast(FranchiseModel.aliases, SAString).ilike(f"%{name}%"),
+                )
+            )
+            .limit(1)
+        )
+        res = await self._session.execute(stmt)
+        return res.scalars().first()
+
+    @staticmethod
+    def _get_franchise_candidate_name(
+        raw_franchise_id: uuid.UUID | str | None, franchise_aliases: list[str] | None
+    ) -> str | None:
+        if isinstance(raw_franchise_id, str) and raw_franchise_id.strip():
+            return raw_franchise_id.strip()
+        if franchise_aliases:
+            return franchise_aliases[0].strip()
+        return None
+
+    async def _resolve_franchise_id(
+        self,
+        raw_franchise_id: uuid.UUID | str | None,
+        franchise_aliases: list[str] | None = None,
+    ) -> uuid.UUID | None:
+        if not raw_franchise_id and not franchise_aliases:
+            return None
+
+        franchise_uuid = self._parse_uuid(raw_franchise_id)
+        if franchise_uuid:
+            found = await self._find_franchise_by_id(franchise_uuid)
+            if found:
+                if franchise_aliases:
+                    found.aliases = self._merge_aliases(found.aliases, franchise_aliases)
+                return franchise_uuid
+
+        candidate_name = self._get_franchise_candidate_name(raw_franchise_id, franchise_aliases)
+        if not candidate_name:
+            return None
+
+        found = await self._find_franchise_by_name(candidate_name)
+        if found:
+            if franchise_aliases:
+                found.aliases = self._merge_aliases(found.aliases, franchise_aliases)
+            return found.id
+
+        new_franchise = FranchiseModel(
+            id=uuid.uuid4(),
+            name_original=candidate_name,
+            aliases=normalize_aliases(franchise_aliases),
+            franchise_type="Game",
+        )
+        self._session.add(new_franchise)
+        return new_franchise.id
 
     async def _process_track_artists(self, track_model: TrackModel, track: Track) -> None:
         for track_artist in track.artists:
-            stmt = (
-                select(ArtistModel)
-                .where(ArtistModel.name_original.ilike(track_artist.name_original.strip()))
-                .limit(1)
-            )
-            res = await self._session.execute(stmt)
-            artist_m = res.scalars().first()
+            name_orig = track_artist.name_original.strip()
+            artist_m = await self._find_artist_by_name_or_uuid(name_orig)
 
             if artist_m is None:
                 artist_m = ArtistModel(
                     id=track_artist.id or uuid.uuid4(),
-                    name_original=track_artist.name_original.strip(),
-                    name_translated=track_artist.name_translated,
+                    name_original=name_orig,
+                    aliases=normalize_aliases(track_artist.aliases),
                 )
                 self._session.add(artist_m)
+            elif track_artist.aliases:
+                artist_m.aliases = self._merge_aliases(artist_m.aliases, track_artist.aliases)
 
             t_role = getattr(track_artist, "role", "Composer") or "Composer"
             track_model.artist_associations.append(
@@ -439,7 +638,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     disc_id=d.id,
                     track_number=t.track_number,
                     title_original=t.title_original,
-                    title_translated=t.title_translated,
+                    aliases=t.aliases,
                     duration_seconds=t.duration_seconds,
                     audio_codec=str(t.audio_codec) if t.audio_codec else None,
                     video_codec=str(t.video_codec) if t.video_codec else None,
@@ -451,7 +650,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 )
                 await self._process_track_artists(track_model, t)
                 disc_model.tracks.append(track_model)
-
             album_model.discs.append(disc_model)
 
     @staticmethod
@@ -472,7 +670,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     cover_type=c.cover_type,
                 )
             )
-
         for arch in album.archives:
             arch_model = AlbumArchiveModel(
                 id=arch.id,
@@ -493,7 +690,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     )
                 )
             album_model.archives.append(arch_model)
-
         for el in album.external_links:
             album_model.external_links.append(
                 ExternalLinkModel(
@@ -503,7 +699,6 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     url=el.url,
                 )
             )
-
         album_model.changelogs.append(
             AlbumChangelogModel(
                 id=uuid.uuid4(),
@@ -514,13 +709,21 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             )
         )
 
-    async def save(self, album: Album, user_id: uuid.UUID | None = None) -> None:
+    async def save(
+        self,
+        album: Album,
+        user_id: uuid.UUID | None = None,
+        album_artist_aliases: list[str] | None = None,
+        franchise_aliases: list[str] | None = None,
+    ) -> None:
         stmt = (
             select(AlbumModel)
             .where(AlbumModel.id == album.id)
             .options(
                 selectinload(AlbumModel.covers),
                 selectinload(AlbumModel.album_artist),
+                selectinload(AlbumModel.label),
+                selectinload(AlbumModel.publisher),
                 selectinload(AlbumModel.discs)
                 .selectinload(DiscModel.tracks)
                 .selectinload(TrackModel.artist_associations)
@@ -531,10 +734,37 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             )
         )
         res = await self._session.execute(stmt)
-        model = res.scalar_one_or_none()
+        model = res.unique().scalar_one_or_none()
 
-        artist_id = await self._resolve_album_artist_id(album)
-        event_id, franchise_id = await self._validate_fk_ids(album.event_id, album.franchise_id)
+        artist_id = await self._resolve_album_artist_id(
+            album, album_artist_aliases=album_artist_aliases
+        )
+
+        if album.label_id:
+            raw_label: uuid.UUID | str | None = album.label_id
+        elif hasattr(album.label, "name_original"):
+            raw_label = album.label.name_original
+        elif isinstance(album.label, str):
+            raw_label = album.label
+        else:
+            raw_label = None
+        label_id = await self._resolve_label_id(raw_label)
+
+        if album.publisher_id:
+            raw_publisher: uuid.UUID | str | None = album.publisher_id
+        elif hasattr(album.publisher, "name_original"):
+            raw_publisher = album.publisher.name_original
+        elif isinstance(album.publisher, str):
+            raw_publisher = album.publisher
+        else:
+            raw_publisher = None
+        publisher_id = await self._resolve_publisher_id(raw_publisher)
+
+        event_id = await self._resolve_event_id(album.event_id)
+        franchise_id = await self._resolve_franchise_id(
+            album.franchise_id, franchise_aliases=franchise_aliases
+        )
+
         sort_date = self._compute_sort_date(
             album.release_year, album.release_month, album.release_day
         )
@@ -550,13 +780,13 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             model = AlbumModel(
                 id=album.id,
                 title_original=album.title_original,
-                title_translated=album.title_translated,
+                aliases=album.aliases,
                 release_year=album.release_year,
                 release_month=album.release_month,
                 release_day=album.release_day,
                 release_date_sort=sort_date,
-                label=album.label,
-                publisher=album.publisher,
+                label_id=label_id,
+                publisher_id=publisher_id,
                 event_id=event_id,
                 franchise_id=franchise_id,
                 album_artist_id=artist_id,
@@ -576,22 +806,20 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             changes_payload = self._compute_album_diff(
                 model, album, new_artist_id=artist_id, new_artist_name=new_artist_name
             )
-
             model.title_original = album.title_original
-            model.title_translated = album.title_translated
+            model.aliases = album.aliases
             model.release_year = album.release_year
             model.release_month = album.release_month
             model.release_day = album.release_day
             model.release_date_sort = sort_date
-            model.label = album.label
-            model.publisher = album.publisher
+            model.label_id = label_id
+            model.publisher_id = publisher_id
             model.event_id = event_id
             model.franchise_id = franchise_id
             model.album_artist_id = artist_id
             model.storage_drive = album.storage_drive
             model.relative_path = album.relative_path
             model.original_folder_name = album.original_folder_name
-
             model.discs.clear()
             model.covers.clear()
             model.archives.clear()
@@ -609,6 +837,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             .options(
                 selectinload(AlbumModel.covers),
                 selectinload(AlbumModel.album_artist),
+                selectinload(AlbumModel.label),
+                selectinload(AlbumModel.publisher),
                 selectinload(AlbumModel.discs)
                 .selectinload(DiscModel.tracks)
                 .selectinload(TrackModel.artist_associations)
@@ -618,12 +848,10 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 selectinload(AlbumModel.changelogs),
             )
         )
-
         result = await self._session.execute(stmt)
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         if not model:
             return None
-
         return self._to_domain_entity(model)
 
     async def search(
@@ -633,19 +861,16 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         offset: int = 0,
     ) -> tuple[list[Album], int]:
         base_stmt = select(AlbumModel)
-
         if query and query.strip():
             pattern = f"%{query.strip()}%"
             base_stmt = base_stmt.where(
                 AlbumModel.title_original.ilike(pattern)
-                | AlbumModel.title_translated.ilike(pattern)
                 | AlbumModel.original_folder_name.ilike(pattern)
+                | cast(AlbumModel.aliases, SAString).ilike(pattern)
             )
-
         subq = base_stmt.subquery()
         count_stmt = select(func.count()).select_from(subq)
         total_count = (await self._session.execute(count_stmt)).scalar_one()
-
         fetch_stmt = (
             base_stmt.order_by(AlbumModel.release_date_sort.desc().nulls_last())
             .offset(offset)
@@ -653,6 +878,8 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             .options(
                 selectinload(AlbumModel.covers),
                 selectinload(AlbumModel.album_artist),
+                selectinload(AlbumModel.label),
+                selectinload(AlbumModel.publisher),
                 selectinload(AlbumModel.discs)
                 .selectinload(DiscModel.tracks)
                 .selectinload(TrackModel.artist_associations)
@@ -662,18 +889,15 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 selectinload(AlbumModel.changelogs),
             )
         )
-
         result = await self._session.execute(fetch_stmt)
-        return [self._to_domain_entity(m) for m in result.scalars().all()], total_count
+        return [self._to_domain_entity(m) for m in result.unique().scalars().all()], total_count
 
     async def delete(self, album_id: uuid.UUID) -> bool:
         stmt = select(AlbumModel).where(AlbumModel.id == album_id)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
-
         if model is None:
             return False
-
         await self._session.delete(model)
         await self._invalidate_album_cache(album_id)
         return True
@@ -688,7 +912,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                     disc_id=t.disc_id,
                     track_number=t.track_number,
                     title_original=t.title_original,
-                    title_translated=t.title_translated,
+                    aliases=list(t.aliases or []),
                     duration_seconds=t.duration_seconds,
                     audio_codec=t.audio_codec,
                     video_codec=t.video_codec,
@@ -701,8 +925,10 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                         Artist(
                             id=assoc.artist.id,
                             name_original=assoc.artist.name_original,
-                            name_translated=assoc.artist.name_translated,
+                            aliases=list(assoc.artist.aliases or []),
                             role=assoc.role,
+                            image_path=assoc.artist.image_path,
+                            description=assoc.artist.description,
                             created_at=assoc.artist.created_at,
                         )
                         for assoc in t.artist_associations
@@ -734,8 +960,30 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             album_artist = Artist(
                 id=model.album_artist.id,
                 name_original=model.album_artist.name_original,
-                name_translated=model.album_artist.name_translated,
+                aliases=list(model.album_artist.aliases or []),
+                image_path=model.album_artist.image_path,
+                description=model.album_artist.description,
                 created_at=model.album_artist.created_at,
+            )
+
+        label_domain = None
+        if model.label:
+            label_domain = Label(
+                id=model.label.id,
+                name_original=model.label.name_original,
+                aliases=list(model.label.aliases or []),
+                image_path=model.label.image_path,
+                description=model.label.description,
+            )
+
+        publisher_domain = None
+        if model.publisher:
+            publisher_domain = Publisher(
+                id=model.publisher.id,
+                name_original=model.publisher.name_original,
+                aliases=list(model.publisher.aliases or []),
+                image_path=model.publisher.image_path,
+                description=model.publisher.description,
             )
 
         covers = [
@@ -800,13 +1048,15 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         return Album(
             id=model.id,
             title_original=model.title_original,
-            title_translated=model.title_translated,
+            aliases=list(model.aliases or []),
             release_year=model.release_year,
             release_month=model.release_month,
             release_day=model.release_day,
             release_date_sort=model.release_date_sort,
-            label=model.label,
-            publisher=model.publisher,
+            label_id=model.label_id,
+            publisher_id=model.publisher_id,
+            label=label_domain,
+            publisher=publisher_domain,
             event_id=model.event_id,
             franchise_id=model.franchise_id,
             album_artist_id=model.album_artist_id,

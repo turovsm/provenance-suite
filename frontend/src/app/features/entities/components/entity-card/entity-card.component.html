@@ -1,0 +1,76 @@
+<div
+  class="glass-entity-card"
+  role="button"
+  [attr.tabindex]="0"
+  (click)="handleCardClick()"
+  (keydown.enter)="handleCardClick()"
+>
+  <div class="card-top-row">
+    <div
+      class="avatar-frame"
+      [class.artist-avatar]="entity().entity_type === 'artist'"
+      [class.logo-avatar]="entity().entity_type !== 'artist'"
+    >
+      @if (entity().image_url && !hasImageError) {
+        <img
+          [src]="entity().image_url!"
+          [alt]="entity().name_original"
+          class="avatar-img"
+          (error)="onImageError()"
+        />
+      } @else {
+        <span class="material-symbols-outlined fallback-icon">
+          {{ getFallbackIcon() }}
+        </span>
+      }
+    </div>
+
+    <div class="card-header-meta">
+      <span [class]="'type-badge badge-' + entity().entity_type">
+        {{ entity().franchise_type || entity().entity_type }}
+      </span>
+
+      <h3 class="entity-title" [title]="entity().name_original">
+        {{ entity().name_original }}
+      </h3>
+    </div>
+  </div>
+
+  @if (entity().aliases && entity().aliases.length > 0) {
+    <p class="aliases-text" [title]="entity().aliases.join(', ')">
+      {{ entity().aliases.join(' · ') }}
+    </p>
+  }
+
+  @if (entity().description) {
+    <p class="description-snippet">
+      {{ entity().description }}
+    </p>
+  }
+
+  @if (isSuperuser()) {
+    <div class="card-admin-actions">
+      <button
+        type="button"
+        (click)="handleEdit($event)"
+        class="card-edit-btn"
+        [disabled]="isLoadingEdit()"
+        title="Edit Entity"
+      >
+        <span class="material-symbols-outlined action-icon">edit</span>
+        <span>Edit</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="handleDelete($event)"
+        class="card-delete-btn"
+        [disabled]="isLoadingEdit()"
+        title="Delete Entity"
+      >
+        <span class="material-symbols-outlined action-icon">delete</span>
+        <span>Delete</span>
+      </button>
+    </div>
+  }
+</div>

@@ -24,7 +24,7 @@
               [id]="'archive_name_' + aIdx"
               type="text"
               formControlName="archive_name"
-              placeholder="e.g. SPYS-0812.7z.001"
+              placeholder="e.g. HBMS-008.7z.001"
             />
           </div>
           <div class="field-group">
@@ -78,6 +78,8 @@
                 formControlName="download_url"
                 placeholder="HTTPS Download URL"
                 class="flex-3"
+                (input)="handleMirrorUrlChange(aIdx, lIdx, $event)"
+                (paste)="handleMirrorUrlChange(aIdx, lIdx, $event)"
               />
 
               <button type="button" (click)="removeArchiveLink(aIdx, lIdx)" class="icon-only-btn">
@@ -105,10 +107,17 @@
           <input
             type="text"
             formControlName="site_name"
-            placeholder="Authority (e.g. VGMdb / MusicBrainz)"
+            placeholder="Source (e.g. VGMdb / MusicBrainz)"
             class="flex-1"
           />
-          <input type="url" formControlName="url" placeholder="HTTPS Index URL" class="flex-3" />
+          <input
+            type="url"
+            formControlName="url"
+            placeholder="HTTPS Index URL (e.g. https://vgmdb.net/album/2978)"
+            class="flex-3"
+            (input)="handleExternalUrlChange(elIdx, $event)"
+            (paste)="handleExternalUrlChange(elIdx, $event)"
+          />
           <button type="button" (click)="removeExternalLink(elIdx)" class="remove-btn">
             <span class="material-symbols-outlined">delete</span>
           </button>

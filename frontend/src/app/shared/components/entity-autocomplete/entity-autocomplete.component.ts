@@ -16,7 +16,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
-import { AutocompleteOption, EntityType } from '../../models/autocomplete.model';
+import {
+  AutocompleteEntity,
+  AutocompleteOption,
+  EntityType,
+} from '../../models/autocomplete.model';
 import { EntitySearchService } from '../../services/entity-search.service';
 
 export type { AutocompleteOption, EntityType } from '../../models/autocomplete.model';
@@ -44,6 +48,7 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
   @Input() placeholder = 'Type to search master entities...';
   @Input() canCreate = true;
   @Input() dense = false;
+  @Input() bindValue: 'id' | 'display' = 'id';
 
   @Output() optionSelected = new EventEmitter<AutocompleteOption>();
 
@@ -92,6 +97,8 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
     if (!trimmed) return;
     const match = this.options().find((o) => o.display.trim().toLowerCase() === trimmed);
     if (match) {
+      const val = this.bindValue === 'display' ? match.display : match.id || match.display;
+      this.onChange(val);
       this.optionSelected.emit(match);
     }
   }
@@ -124,7 +131,20 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
   protected selectOption(option: AutocompleteOption): void {
     this.inputQuery.set(option.display);
     this.isOpen.set(false);
-    this.onChange(option.display);
+
+    this.entitySearch.cacheOption(this.entityType, option);
+
+    this.options.update((curr) => {
+      const exists = curr.some(
+        (o) =>
+          (o.id && option.id && o.id === option.id) ||
+          o.display.toLowerCase() === option.display.toLowerCase(),
+      );
+      return exists ? curr : [...curr, option];
+    });
+
+    const val = this.bindValue === 'display' ? option.display : option.id || option.display;
+    this.onChange(val);
     this.onTouched();
     this.optionSelected.emit(option);
   }
@@ -136,29 +156,81 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
     this.entitySearch.create(this.entityType, name).subscribe({
       next: (created) => {
         if (created) {
+          this.entitySearch.cacheOption(this.entityType, created);
+
+          this.options.update((curr) => {
+            const exists = curr.some(
+              (o) =>
+                (o.id && created.id && o.id === created.id) ||
+                o.display.toLowerCase() === created.display.toLowerCase(),
+            );
+            return exists ? curr : [...curr, created];
+          });
+
           this.selectOption(created);
         } else {
-          this.onChange(name);
+          const fallbackVal = name;
+          this.onChange(fallbackVal);
           this.onTouched();
           this.isOpen.set(false);
         }
+      },
+      error: () => {
+        const fallbackVal = name;
+        this.onChange(fallbackVal);
+        this.onTouched();
+        this.isOpen.set(false);
       },
     });
   }
 
   writeValue(value: unknown): void {
     if (typeof value === 'string') {
-      if (UUID_PATTERN.test(value)) {
-        this.resolveUuidDisplayName(value);
+      const trimmed = value.trim();
+      if (!trimmed) {
+        this.inputQuery.set('');
+        return;
+      }
+
+      if (UUID_PATTERN.test(trimmed)) {
+        this.resolveUuidDisplayName(trimmed);
       } else {
-        this.inputQuery.set(value);
+        this.inputQuery.set(trimmed);
+        const opt: AutocompleteOption = {
+          id: `${this.entityType}:${trimmed}`,
+          display: trimmed,
+          raw: trimmed,
+        };
+        this.entitySearch.cacheOption(this.entityType, opt);
+        this.options.update((curr) => {
+          const exists = curr.some((o) => o.display.toLowerCase() === trimmed.toLowerCase());
+          return exists ? curr : [...curr, opt];
+        });
       }
       return;
     }
 
     if (value && typeof value === 'object') {
-      const obj = value as { display?: string; name_original?: string; short_name?: string };
-      this.inputQuery.set(obj.display || obj.name_original || obj.short_name || '');
+      const obj = value as {
+        id?: string;
+        display?: string;
+        name_original?: string;
+        short_name?: string;
+      };
+      const displayStr = obj.display || obj.name_original || obj.short_name || '';
+      this.inputQuery.set(displayStr);
+      if (displayStr) {
+        const opt: AutocompleteOption = {
+          id: obj.id || `${this.entityType}:${displayStr}`,
+          display: displayStr,
+          raw: obj as unknown as AutocompleteEntity,
+        };
+        this.entitySearch.cacheOption(this.entityType, opt);
+        this.options.update((curr) => {
+          const exists = curr.some((o) => o.display.toLowerCase() === displayStr.toLowerCase());
+          return exists ? curr : [...curr, opt];
+        });
+      }
       return;
     }
 
@@ -169,13 +241,11 @@ export class EntityAutocompleteComponent implements OnInit, ControlValueAccessor
     this.entitySearch.resolveById(this.entityType, uuid).subscribe((found) => {
       if (found) {
         this.inputQuery.set(found.display);
-        this.onChange(found.display);
         if (this.entityType === 'artist') {
           this.optionSelected.emit(found);
         }
-      } else {
+      } else if (!this.inputQuery()) {
         this.inputQuery.set('');
-        this.onChange(null);
       }
     });
   }

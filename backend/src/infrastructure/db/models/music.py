@@ -13,6 +13,8 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    event,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,8 +33,17 @@ class EventModel(BaseInfrastructureModel):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     short_name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    original_start_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    original_end_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    start_date_sort: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_history: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    additional_dates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     status: Mapped[str] = mapped_column(String(32), default="HELD", nullable=False)
 
     albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="event")
@@ -43,10 +54,42 @@ class FranchiseModel(BaseInfrastructureModel):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name_original: Mapped[str] = mapped_column(String(512), nullable=False)
-    name_translated: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     franchise_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="franchise")
+
+
+class LabelModel(BaseInfrastructureModel):
+    __tablename__ = "labels"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name_original: Mapped[str] = mapped_column(String(512), nullable=False)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="label")
+
+
+class PublisherModel(BaseInfrastructureModel):
+    __tablename__ = "publishers"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name_original: Mapped[str] = mapped_column(String(512), nullable=False)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="publisher")
 
 
 class ArtistModel(BaseInfrastructureModel):
@@ -54,7 +97,11 @@ class ArtistModel(BaseInfrastructureModel):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name_original: Mapped[str] = mapped_column(String(512), nullable=False)
-    name_translated: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     track_associations: Mapped[list["TrackArtistModel"]] = relationship(
         "TrackArtistModel", back_populates="artist", cascade=CASCADE_DELETE_ORPHAN, lazy="selectin"
@@ -90,15 +137,19 @@ class AlbumModel(BaseInfrastructureModel):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title_original: Mapped[str] = mapped_column(String(512), nullable=False)
-    title_translated: Mapped[str | None] = mapped_column(String(512), nullable=True)
-
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     release_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     release_month: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     release_day: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     release_date_sort: Mapped[date | None] = mapped_column(Date, nullable=True)
-
-    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    publisher: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    label_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("labels.id", ondelete=ON_DELETE_SET_NULL), nullable=True
+    )
+    publisher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publishers.id", ondelete=ON_DELETE_SET_NULL), nullable=True
+    )
     event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("events.id", ondelete=ON_DELETE_SET_NULL), nullable=True
     )
@@ -108,7 +159,6 @@ class AlbumModel(BaseInfrastructureModel):
     album_artist_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("artists.id", ondelete=ON_DELETE_SET_NULL), nullable=True
     )
-
     storage_drive: Mapped[str | None] = mapped_column(String(64), nullable=True)
     relative_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     original_folder_name: Mapped[str] = mapped_column(String(1024), nullable=False)
@@ -117,8 +167,13 @@ class AlbumModel(BaseInfrastructureModel):
     franchise: Mapped["FranchiseModel | None"] = relationship(
         "FranchiseModel", back_populates="albums"
     )
+    label: Mapped["LabelModel | None"] = relationship(
+        "LabelModel", back_populates="albums", lazy="selectin"
+    )
+    publisher: Mapped["PublisherModel | None"] = relationship(
+        "PublisherModel", back_populates="albums", lazy="selectin"
+    )
     album_artist: Mapped["ArtistModel | None"] = relationship("ArtistModel", lazy="selectin")
-
     discs: Mapped[list["DiscModel"]] = relationship(
         "DiscModel", back_populates="album", cascade=CASCADE_DELETE_ORPHAN, lazy="selectin"
     )
@@ -196,7 +251,9 @@ class TrackModel(BaseInfrastructureModel):
     )
     track_number: Mapped[int] = mapped_column(Integer, nullable=False)
     title_original: Mapped[str] = mapped_column(String(512), nullable=False)
-    title_translated: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     audio_codec: Mapped[str | None] = mapped_column(String(64), nullable=True)
     video_codec: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -295,3 +352,29 @@ class AlbumChangelogModel(BaseInfrastructureModel):
         Index("idx_album_changelogs_album_id", album_id),
         Index("idx_album_changelogs_user_id", user_id),
     )
+
+
+ALIASES_TRGM_INDEX_DDL: tuple[tuple[str, str], ...] = (
+    ("albums", "idx_albums_aliases_trgm"),
+    ("artists", "idx_artists_aliases_trgm"),
+    ("franchises", "idx_franchises_aliases_trgm"),
+    ("labels", "idx_labels_aliases_trgm"),
+    ("publishers", "idx_publishers_aliases_trgm"),
+)
+
+
+@event.listens_for(BaseInfrastructureModel.metadata, "after_create")
+def _create_aliases_trgm_indexes(target, connection, **kw) -> None:
+    for table_name, index_name in ALIASES_TRGM_INDEX_DDL:
+        connection.execute(
+            text(
+                f"CREATE INDEX IF NOT EXISTS {index_name} "
+                f"ON {table_name} USING gin ((aliases::text) gin_trgm_ops)"
+            )
+        )
+
+
+@event.listens_for(BaseInfrastructureModel.metadata, "before_drop")
+def _drop_aliases_trgm_indexes(_target, connection, **_kw) -> None:
+    for _table_name, index_name in ALIASES_TRGM_INDEX_DDL:
+        connection.execute(text(f"DROP INDEX IF EXISTS {index_name}"))

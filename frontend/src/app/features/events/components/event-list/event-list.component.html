@@ -1,0 +1,213 @@
+<div class="catalog-grid-layout">
+  <header class="grid-control-bar">
+    <div class="control-row">
+      <div class="search-input-wrapper">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          [value]="state.searchQuery()"
+          (input)="handleSearchInput($event)"
+          placeholder="Search master events by short name or full name..."
+          class="telemetry-search-input"
+        />
+      </div>
+
+      <div class="header-right-cluster">
+        @if (authState.identity()?.is_superuser) {
+          <button (click)="openAddModal()" class="admin-add-btn" title="Create Event">
+            <span class="material-symbols-outlined btn-icon">event_available</span>
+            <span>Add Event</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="filter-toolbar">
+      <div class="status-chips-group">
+        <span class="filter-label">Status:</span>
+        @for (st of availableStatuses; track st) {
+          <button
+            type="button"
+            class="status-toggle-chip"
+            [class]="
+              'status-toggle-chip ' +
+              getStatusClass(st) +
+              (state.selectedStatuses().has(st) ? ' active' : ' inactive')
+            "
+            (click)="toggleStatusFilter(st)"
+          >
+            {{ st }}
+          </button>
+        }
+      </div>
+
+      <div class="date-bounds-group">
+        <span class="filter-label">Date Range:</span>
+        <input
+          type="text"
+          placeholder="yyyy/mm/dd"
+          [ngModel]="state.dateFrom()"
+          (ngModelChange)="handleDateFromChange($event)"
+          class="date-filter-input"
+          title="From Date"
+        />
+        <span class="range-separator">–</span>
+        <input
+          type="text"
+          placeholder="yyyy/mm/dd"
+          [ngModel]="state.dateTo()"
+          (ngModelChange)="handleDateToChange($event)"
+          class="date-filter-input"
+          title="To Date"
+        />
+
+        <button
+          type="button"
+          class="reset-filter-btn"
+          (click)="resetFilters()"
+          title="Reset Filters"
+        >
+          <span class="material-symbols-outlined icon-btn-sm">restart_alt</span>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  @if (state.error()) {
+    <div class="error-banner" role="alert">
+      <span class="material-symbols-outlined icon-alert">error</span>
+      <span>{{ state.error() }}</span>
+    </div>
+  }
+
+  <div class="glass-table-card table-scroll-container" [class.is-loading]="state.isLoading()">
+    @if (state.isLoading()) {
+      <div class="table-loading-bar" aria-label="Loading events"></div>
+    }
+
+    @if (!state.isLoading() && state.events().length === 0) {
+      <div class="empty-state-card">
+        <span class="material-symbols-outlined empty-icon">event_busy</span>
+        <h3>No Events Found</h3>
+        <p>No master convention or event records match your active query and filters.</p>
+      </div>
+    } @else if (state.events().length > 0) {
+      <table class="events-data-table">
+        <thead>
+          <tr>
+            <th class="col-name sortable-th" (click)="toggleSort('short_name')">
+              <span>Short Identifier</span>
+              @if (state.sortField() === 'short_name') {
+                <span class="material-symbols-outlined sort-icon">
+                  {{ state.sortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                </span>
+              }
+            </th>
+            <th class="col-fullname">Full Official Title</th>
+            <th class="col-date sortable-th" (click)="toggleSort('start_date')">
+              <span>Date Schedule</span>
+              @if (state.sortField() === 'start_date') {
+                <span class="material-symbols-outlined sort-icon">
+                  {{ state.sortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                </span>
+              }
+            </th>
+            <th class="col-status sortable-th" (click)="toggleSort('status')">
+              <span>Status</span>
+              @if (state.sortField() === 'status') {
+                <span class="material-symbols-outlined sort-icon">
+                  {{ state.sortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                </span>
+              }
+            </th>
+            @if (authState.identity()?.is_superuser) {
+              <th class="col-actions">Actions</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (ev of state.events(); track ev.id) {
+            <tr>
+              <td class="col-name">
+                <span class="event-short-tag">{{ ev.short_name }}</span>
+              </td>
+              <td class="col-fullname">
+                <span class="event-full-text">{{ ev.full_name || '—' }}</span>
+              </td>
+              <td class="col-date">
+                <code class="date-code">{{ formatEventDateRange(ev) }}</code>
+              </td>
+              <td class="col-status">
+                <span [class]="'status-pill ' + getStatusClass(ev.status)">
+                  {{ ev.status }}
+                </span>
+              </td>
+              @if (authState.identity()?.is_superuser) {
+                <td class="col-actions">
+                  <div class="table-actions-cluster">
+                    <button
+                      (click)="handleEditEvent(ev)"
+                      class="table-action-btn edit-btn"
+                      title="Edit Event"
+                    >
+                      <span class="material-symbols-outlined action-icon">edit</span>
+                    </button>
+                    <button
+                      (click)="handleDeleteEvent(ev)"
+                      class="table-action-btn delete-btn"
+                      title="Delete Event"
+                    >
+                      <span class="material-symbols-outlined action-icon">delete</span>
+                    </button>
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <footer class="pagination-control-bar">
+    <button
+      (click)="state.setPage(state.currentPage() - 1)"
+      [disabled]="state.currentPage() <= 1"
+      class="page-nav-btn"
+    >
+      <span class="material-symbols-outlined nav-arrow-icon">arrow_back</span>
+      <span>Previous</span>
+    </button>
+
+    <div class="page-meta-cluster">
+      <span class="page-telemetry-status">
+        Page {{ state.currentPage() }} of {{ state.totalPages() }} ({{ state.totalCount() }}
+        {{ state.totalCount() === 1 ? 'event' : 'events' }})
+      </span>
+
+      <div class="page-size-selector">
+        <app-custom-select
+          [options]="pageSizeOptions"
+          [ngModel]="state.pageSize().toString()"
+          (ngModelChange)="handlePageSizeChange($event)"
+          [dense]="true"
+          [openUp]="true"
+        />
+      </div>
+    </div>
+
+    <button
+      (click)="state.setPage(state.currentPage() + 1)"
+      [disabled]="state.currentPage() >= state.totalPages()"
+      class="page-nav-btn"
+    >
+      <span>Next</span>
+      <span class="material-symbols-outlined nav-arrow-icon">arrow_forward</span>
+    </button>
+  </footer>
+
+  @if (isAddModalOpen) {
+    <app-event-form-modal [eventToEdit]="eventToEdit()" (closed)="closeAddModal()" />
+  }
+</div>

@@ -1,13 +1,13 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ALBUM_REPOSITORY_PORT } from '../../../../core/tokens/album.token';
+import { AlbumDetailResponse } from '../../../../domain/models/music.model';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumStateEngine } from '../../state/album.state';
 import { AlbumCardComponent } from '../album-card/album-card.component';
 import { AlbumDetailDrawerComponent } from '../album-detail-drawer/album-detail-drawer.component';
 import { AlbumFormModalComponent } from '../album-form-modal/album-form-modal.component';
-import { AlbumDetailResponse } from '../../../../domain/models/music.model';
-import { ALBUM_REPOSITORY_PORT } from '../../../../core/tokens/album.token';
 
 @Component({
   selector: 'app-album-grid',
@@ -23,6 +23,7 @@ export class AlbumGridComponent implements OnInit, OnDestroy {
 
   protected isAddModalOpen = false;
   protected readonly albumToEdit = signal<AlbumDetailResponse | null>(null);
+  protected readonly loadingEditId = signal<string | null>(null);
 
   private readonly searchInput$ = new Subject<string>();
   private searchSubscription?: Subscription;
@@ -55,11 +56,20 @@ export class AlbumGridComponent implements OnInit, OnDestroy {
   }
 
   protected handleEditAlbum(albumId: string): void {
-    this.repo.getAlbumDetail(albumId).subscribe((detail) => {
-      if (detail) {
-        this.albumToEdit.set(detail);
-        this.isAddModalOpen = true;
-      }
+    if (this.loadingEditId()) return;
+    this.loadingEditId.set(albumId);
+
+    this.repo.getAlbumDetail(albumId).subscribe({
+      next: (detail) => {
+        this.loadingEditId.set(null);
+        if (detail) {
+          this.albumToEdit.set(detail);
+          this.isAddModalOpen = true;
+        }
+      },
+      error: () => {
+        this.loadingEditId.set(null);
+      },
     });
   }
 

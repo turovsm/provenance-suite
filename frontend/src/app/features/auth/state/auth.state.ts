@@ -77,7 +77,11 @@ export class AuthStateEngine {
         if (!profile) return;
         this.currentProfileSignal.set(profile);
         this.processingSignal.set(false);
-        void this.router.navigate(['/']);
+
+        const currentUrl = this.router.url;
+        if (currentUrl.includes('/login') || currentUrl.includes('/register')) {
+          void this.router.navigate(['/']);
+        }
       });
   }
 
