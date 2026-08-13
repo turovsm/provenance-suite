@@ -59,7 +59,7 @@
 
         @if (hero.description) {
           <div class="hero-description-box">
-            {{ hero.description }}
+            <app-markdown-renderer [content]="hero.description" />
           </div>
         }
       </div>

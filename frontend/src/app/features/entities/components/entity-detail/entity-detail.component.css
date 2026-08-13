@@ -65,6 +65,12 @@
   object-fit: cover;
 }
 
+/* Added fallback icon sizing for 140px hero frames */
+.fallback-icon {
+  font-size: 64px;
+  color: rgba(255, 255, 255, 0.22);
+}
+
 .hero-meta-cluster {
   display: flex;
   flex-direction: column;
@@ -107,10 +113,6 @@
   margin-top: 0.75rem;
   padding-top: 0.85rem;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 0.82rem;
-  color: var(--text-primary);
-  line-height: 1.5;
-  white-space: pre-line;
 }
 
 .discography-section {

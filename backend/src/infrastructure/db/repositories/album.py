@@ -424,16 +424,12 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
                 artist_id = new_a.id
         return artist_id
 
-    async def _resolve_label_id(
-        self, raw_label: uuid.UUID | str | None
-    ) -> uuid.UUID | None:
+    async def _resolve_label_id(self, raw_label: uuid.UUID | str | None) -> uuid.UUID | None:
         if not raw_label:
             return None
         label_uuid = self._parse_uuid(raw_label)
         if label_uuid:
-            res = await self._session.execute(
-                select(LabelModel).where(LabelModel.id == label_uuid)
-            )
+            res = await self._session.execute(select(LabelModel).where(LabelModel.id == label_uuid))
             found = res.scalars().first()
             if found:
                 return label_uuid
@@ -442,11 +438,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
         if not label_name:
             return None
 
-        stmt = (
-            select(LabelModel)
-            .where(LabelModel.name_original.ilike(label_name))
-            .limit(1)
-        )
+        stmt = select(LabelModel).where(LabelModel.name_original.ilike(label_name)).limit(1)
         res = await self._session.execute(stmt)
         found = res.scalars().first()
         if found:

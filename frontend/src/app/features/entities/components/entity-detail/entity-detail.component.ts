@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EntitySummary, EntityTypeTag } from '../../../../domain/models/music.model';
+import { MarkdownRendererComponent } from '../../../../shared/components/markdown-renderer/markdown-renderer.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumCardComponent } from '../../../catalog/components/album-card/album-card.component';
 import { AlbumDetailDrawerComponent } from '../../../catalog/components/album-detail-drawer/album-detail-drawer.component';
@@ -11,7 +12,12 @@ import { EntityFormModalComponent } from '../entity-form-modal/entity-form-modal
 @Component({
   selector: 'app-entity-detail',
   standalone: true,
-  imports: [AlbumCardComponent, AlbumDetailDrawerComponent, EntityFormModalComponent],
+  imports: [
+    AlbumCardComponent,
+    AlbumDetailDrawerComponent,
+    EntityFormModalComponent,
+    MarkdownRendererComponent,
+  ],
   styleUrls: ['./entity-detail.component.css'],
   templateUrl: './entity-detail.component.html',
 })

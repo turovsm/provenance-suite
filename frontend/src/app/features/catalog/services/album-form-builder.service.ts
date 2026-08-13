@@ -104,7 +104,7 @@ export class AlbumFormBuilderService {
 
   createArchiveLinkGroup(lnk?: ArchiveLinkSeed): FormGroup {
     return this.fb.group({
-      provider_name: [lnk?.provider_name || 'Mega', Validators.required],
+      provider_name: [lnk?.provider_name || '', Validators.required],
       download_url: [lnk?.download_url || '', Validators.required],
       is_active: [lnk?.is_active ?? true],
     });
@@ -130,7 +130,7 @@ export class AlbumFormBuilderService {
 
   createExternalLinkGroup(el?: ExternalLinkSeed): FormGroup {
     return this.fb.group({
-      site_name: [el?.site_name || 'VGMdb', Validators.required],
+      site_name: [el?.site_name || '', Validators.required],
       url: [el?.url || '', Validators.required],
     });
   }
