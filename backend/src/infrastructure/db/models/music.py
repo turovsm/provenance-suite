@@ -58,8 +58,38 @@ class FranchiseModel(BaseInfrastructureModel):
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     franchise_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="franchise")
+
+
+class LabelModel(BaseInfrastructureModel):
+    __tablename__ = "labels"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name_original: Mapped[str] = mapped_column(String(512), nullable=False)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="label")
+
+
+class PublisherModel(BaseInfrastructureModel):
+    __tablename__ = "publishers"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name_original: Mapped[str] = mapped_column(String(512), nullable=False)
+    aliases: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="publisher")
 
 
 class ArtistModel(BaseInfrastructureModel):
@@ -70,6 +100,8 @@ class ArtistModel(BaseInfrastructureModel):
     aliases: Mapped[list[str]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     track_associations: Mapped[list["TrackArtistModel"]] = relationship(
         "TrackArtistModel", back_populates="artist", cascade=CASCADE_DELETE_ORPHAN, lazy="selectin"
@@ -112,8 +144,12 @@ class AlbumModel(BaseInfrastructureModel):
     release_month: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     release_day: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     release_date_sort: Mapped[date | None] = mapped_column(Date, nullable=True)
-    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    publisher: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    label_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("labels.id", ondelete=ON_DELETE_SET_NULL), nullable=True
+    )
+    publisher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publishers.id", ondelete=ON_DELETE_SET_NULL), nullable=True
+    )
     event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("events.id", ondelete=ON_DELETE_SET_NULL), nullable=True
     )
@@ -130,6 +166,12 @@ class AlbumModel(BaseInfrastructureModel):
     event: Mapped["EventModel | None"] = relationship("EventModel", back_populates="albums")
     franchise: Mapped["FranchiseModel | None"] = relationship(
         "FranchiseModel", back_populates="albums"
+    )
+    label: Mapped["LabelModel | None"] = relationship(
+        "LabelModel", back_populates="albums", lazy="selectin"
+    )
+    publisher: Mapped["PublisherModel | None"] = relationship(
+        "PublisherModel", back_populates="albums", lazy="selectin"
     )
     album_artist: Mapped["ArtistModel | None"] = relationship("ArtistModel", lazy="selectin")
     discs: Mapped[list["DiscModel"]] = relationship(
@@ -316,6 +358,8 @@ ALIASES_TRGM_INDEX_DDL: tuple[tuple[str, str], ...] = (
     ("albums", "idx_albums_aliases_trgm"),
     ("artists", "idx_artists_aliases_trgm"),
     ("franchises", "idx_franchises_aliases_trgm"),
+    ("labels", "idx_labels_aliases_trgm"),
+    ("publishers", "idx_publishers_aliases_trgm"),
 )
 
 

@@ -104,7 +104,7 @@ export class AlbumFormBuilderService {
 
   createArchiveLinkGroup(lnk?: ArchiveLinkSeed): FormGroup {
     return this.fb.group({
-      provider_name: [lnk?.provider_name || 'Mega', Validators.required],
+      provider_name: [lnk?.provider_name || '', Validators.required],
       download_url: [lnk?.download_url || '', Validators.required],
       is_active: [lnk?.is_active ?? true],
     });
@@ -130,7 +130,7 @@ export class AlbumFormBuilderService {
 
   createExternalLinkGroup(el?: ExternalLinkSeed): FormGroup {
     return this.fb.group({
-      site_name: [el?.site_name || 'VGMdb', Validators.required],
+      site_name: [el?.site_name || '', Validators.required],
       url: [el?.url || '', Validators.required],
     });
   }
@@ -165,20 +165,34 @@ export class AlbumFormBuilderService {
         raw: album.album_artist as MasterArtist,
       });
     }
+
     if (album.label) {
+      const labelDisplay =
+        typeof album.label === 'string' ? album.label : album.label.name_original;
+      const labelId = typeof album.label === 'string' ? `label:${album.label}` : album.label.id;
       this.entitySearch.cacheOption('label', {
-        id: `label:${album.label}`,
-        display: album.label,
+        id: labelId,
+        display: labelDisplay,
         raw: album.label,
       });
     }
+
     if (album.publisher) {
+      const publisherDisplay =
+        typeof album.publisher === 'string' ? album.publisher : album.publisher.name_original;
+      const publisherId =
+        typeof album.publisher === 'string' ? `publisher:${album.publisher}` : album.publisher.id;
       this.entitySearch.cacheOption('publisher', {
-        id: `publisher:${album.publisher}`,
-        display: album.publisher,
+        id: publisherId,
+        display: publisherDisplay,
         raw: album.publisher,
       });
     }
+
+    const labelFormVal =
+      typeof album.label === 'string' ? album.label : album.label?.name_original || '';
+    const publisherFormVal =
+      typeof album.publisher === 'string' ? album.publisher : album.publisher?.name_original || '';
 
     form.patchValue({
       album_id: album.id,
@@ -186,8 +200,8 @@ export class AlbumFormBuilderService {
       aliases: album.aliases ?? [],
       original_folder_name: album.original_folder_name,
       release_date_str: releaseDateStr,
-      label: album.label || '',
-      publisher: album.publisher || '',
+      label: labelFormVal,
+      publisher: publisherFormVal,
       storage_drive: album.storage_drive || '',
       relative_path: album.relative_path || '',
       event_id: album.event_id || null,

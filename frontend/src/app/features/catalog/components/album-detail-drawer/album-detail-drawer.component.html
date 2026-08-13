@@ -55,14 +55,14 @@
               @if (album.label) {
                 <div class="meta-item">
                   <span class="meta-label">Label:</span>
-                  <span class="meta-value">{{ album.label }}</span>
+                  <span class="meta-value">{{ getLabelName(album.label) }}</span>
                 </div>
               }
 
               @if (album.publisher) {
                 <div class="meta-item">
                   <span class="meta-label">Publisher:</span>
-                  <span class="meta-value">{{ album.publisher }}</span>
+                  <span class="meta-value">{{ getPublisherName(album.publisher) }}</span>
                 </div>
               }
 

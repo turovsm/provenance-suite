@@ -1,37 +1,882 @@
 import uuid
-from collections.abc import Sequence
 from datetime import date
 from typing import Any, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import String as SAString, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.domain.value_objects.aliases import normalize_aliases
 from src.infrastructure.db.models.base import BaseInfrastructureModel
 from src.infrastructure.db.models.music import (
     AlbumModel,
     ArtistModel,
+    DiscModel,
     EventModel,
     FranchiseModel,
+    LabelModel,
+    PublisherModel,
+    TrackArtistModel,
+    TrackModel,
 )
 from src.infrastructure.db.session import get_async_database_session
+from src.infrastructure.storage.object_storage import MinioObjectStorageService
 from src.presentation.api.dependencies import get_current_active_user, get_current_superuser
 from src.presentation.schemas.entities import (
     ArtistCreateSchema,
     ArtistResponseSchema,
+    ArtistUpdateSchema,
+    EntitySummarySchema,
     EventCreateSchema,
     EventResponseSchema,
     EventUpdateSchema,
     FranchiseCreateSchema,
     FranchiseResponseSchema,
+    FranchiseUpdateSchema,
+    LabelCreateSchema,
+    LabelResponseSchema,
+    LabelUpdateSchema,
+    PaginatedEntitiesResponseSchema,
     PaginatedEventsResponseSchema,
+    PublisherCreateSchema,
+    PublisherResponseSchema,
+    PublisherUpdateSchema,
+)
+from src.presentation.schemas.music import (
+    AlbumSummaryResponseSchema,
+    CoverResponseSchema,
 )
 
 
 router = APIRouter(prefix="/entities", tags=["Master Entity Registry"])
 
 ModelT = TypeVar("ModelT", bound=BaseInfrastructureModel)
+
+
+def get_image_url(image_path: str | None) -> str | None:
+    if not image_path:
+        return None
+    return MinioObjectStorageService.get_public_url(image_path)
+
+
+def map_artist_response(model: ArtistModel) -> ArtistResponseSchema:
+    return ArtistResponseSchema(
+        id=model.id,
+        name_original=model.name_original,
+        aliases=list(model.aliases or []),
+        image_url=get_image_url(model.image_path),
+        description=model.description,
+        created_at=model.created_at,
+    )
+
+
+def map_franchise_response(model: FranchiseModel) -> FranchiseResponseSchema:
+    return FranchiseResponseSchema(
+        id=model.id,
+        name_original=model.name_original,
+        aliases=list(model.aliases or []),
+        franchise_type=model.franchise_type,
+        image_url=get_image_url(model.image_path),
+        description=model.description,
+        created_at=model.created_at,
+    )
+
+
+def map_label_response(model: LabelModel) -> LabelResponseSchema:
+    return LabelResponseSchema(
+        id=model.id,
+        name_original=model.name_original,
+        aliases=list(model.aliases or []),
+        image_url=get_image_url(model.image_path),
+        description=model.description,
+        created_at=model.created_at,
+    )
+
+
+def map_publisher_response(model: PublisherModel) -> PublisherResponseSchema:
+    return PublisherResponseSchema(
+        id=model.id,
+        name_original=model.name_original,
+        aliases=list(model.aliases or []),
+        image_url=get_image_url(model.image_path),
+        description=model.description,
+        created_at=model.created_at,
+    )
+
+
+def map_album_summary(album: AlbumModel) -> AlbumSummaryResponseSchema:
+    album_artist_dto = (
+        ArtistResponseSchema(
+            id=album.album_artist.id,
+            name_original=album.album_artist.name_original,
+            aliases=list(album.album_artist.aliases or []),
+            image_url=get_image_url(album.album_artist.image_path),
+            description=album.album_artist.description,
+            created_at=album.album_artist.created_at,
+        )
+        if album.album_artist
+        else None
+    )
+
+    label_dto = (
+        LabelResponseSchema(
+            id=album.label.id,
+            name_original=album.label.name_original,
+            aliases=list(album.label.aliases or []),
+            image_url=get_image_url(album.label.image_path),
+            description=album.label.description,
+            created_at=album.label.created_at,
+        )
+        if album.label
+        else None
+    )
+
+    publisher_dto = (
+        PublisherResponseSchema(
+            id=album.publisher.id,
+            name_original=album.publisher.name_original,
+            aliases=list(album.publisher.aliases or []),
+            image_url=get_image_url(album.publisher.image_path),
+            description=album.publisher.description,
+            created_at=album.publisher.created_at,
+        )
+        if album.publisher
+        else None
+    )
+
+    covers = [
+        CoverResponseSchema(
+            id=c.id,
+            storage_path=c.storage_path,
+            thumbhash=c.thumbhash,
+            url=MinioObjectStorageService.get_public_url(c.storage_path),
+            cover_type=c.cover_type,
+            created_at=c.created_at,
+        )
+        for c in album.covers
+    ]
+
+    return AlbumSummaryResponseSchema(
+        id=album.id,
+        title_original=album.title_original,
+        aliases=list(album.aliases or []),
+        release_year=album.release_year,
+        release_month=album.release_month,
+        release_day=album.release_day,
+        label=label_dto,
+        publisher=publisher_dto,
+        original_folder_name=album.original_folder_name,
+        album_artist=album_artist_dto,
+        total_discs=len(album.discs),
+        covers=covers,
+    )
+
+
+async def _process_image_upload(
+    storage_service: MinioObjectStorageService,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    image_data_bytes: bytes | None,
+) -> str | None:
+    if not image_data_bytes:
+        return None
+    return await storage_service.upload_entity_avatar(entity_type, entity_id, image_data_bytes)
+
+
+def _merge_aliases(existing: list[str] | None, incoming: list[str]) -> list[str]:
+    merged = list(existing or [])
+    seen = {a.casefold() for a in merged}
+    for alias in normalize_aliases(incoming):
+        if alias.casefold() not in seen:
+            merged.append(alias)
+            seen.add(alias.casefold())
+    return merged
+
+
+@router.get("", response_model=PaginatedEntitiesResponseSchema)
+async def list_unified_entities(
+    type: str = Query(
+        default="all",
+        description="Entity type filter: all, artist, franchise, label, publisher",
+    ),
+    query: str = Query(default=""),
+    limit: int = Query(default=24, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    q = query.strip()
+    items: list[EntitySummarySchema] = []
+
+    entity_targets = []
+    if type in ("all", "artist"):
+        entity_targets.append(("artist", ArtistModel))
+    if type in ("all", "franchise"):
+        entity_targets.append(("franchise", FranchiseModel))
+    if type in ("all", "label"):
+        entity_targets.append(("label", LabelModel))
+    if type in ("all", "publisher"):
+        entity_targets.append(("publisher", PublisherModel))
+
+    total_count = 0
+    for e_type, model_cls in entity_targets:
+        stmt = select(model_cls)
+        if q:
+            pattern = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    model_cls.name_original.ilike(pattern),
+                    cast(model_cls.aliases, SAString).ilike(pattern),
+                )
+            )
+
+        res_count = await session.execute(select(func.count()).select_from(stmt.subquery()))
+        total_count += res_count.scalar_one()
+
+        res_rows = await session.execute(stmt.order_by(model_cls.name_original))
+        rows = res_rows.scalars().all()
+
+        for row in rows:
+            items.append(
+                EntitySummarySchema(
+                    id=row.id,
+                    name_original=row.name_original,
+                    aliases=list(row.aliases or []),
+                    entity_type=e_type,
+                    image_url=get_image_url(row.image_path),
+                    description=row.description,
+                    franchise_type=getattr(row, "franchise_type", None),
+                    created_at=row.created_at,
+                )
+            )
+
+    items.sort(key=lambda x: x.name_original.lower())
+    paginated_items = items[offset : offset + limit]
+
+    return PaginatedEntitiesResponseSchema(
+        items=paginated_items,
+        total_count=total_count,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/artists", response_model=list[ArtistResponseSchema])
+async def search_artists(
+    query: str = Query(default=""),
+    limit: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(ArtistModel)
+    q = query.strip()
+    if q:
+        pattern = f"%{q}%"
+        stmt = stmt.where(
+            or_(
+                ArtistModel.name_original.ilike(pattern),
+                cast(ArtistModel.aliases, SAString).ilike(pattern),
+            )
+        )
+    stmt = stmt.order_by(ArtistModel.name_original).limit(limit)
+    res = await session.execute(stmt)
+    return [map_artist_response(a) for a in res.scalars().all()]
+
+
+@router.get("/artists/{artist_id}", response_model=ArtistResponseSchema)
+async def get_artist_detail(
+    artist_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
+    res = await session.execute(stmt)
+    artist = res.scalars().first()
+    if not artist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Artist with ID '{artist_id}' was not found.",
+        )
+    return map_artist_response(artist)
+
+
+@router.get("/artists/{artist_id}/discography")
+async def get_artist_discography(
+    artist_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    main_stmt = (
+        select(AlbumModel)
+        .where(AlbumModel.album_artist_id == artist_id)
+        .options(
+            selectinload(AlbumModel.covers),
+            selectinload(AlbumModel.album_artist),
+            selectinload(AlbumModel.label),
+            selectinload(AlbumModel.publisher),
+            selectinload(AlbumModel.discs),
+        )
+        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
+    )
+    main_res = await session.execute(main_stmt)
+    main_albums = [map_album_summary(a) for a in main_res.unique().scalars().all()]
+
+    contrib_stmt = (
+        select(AlbumModel)
+        .join(DiscModel, DiscModel.album_id == AlbumModel.id)
+        .join(TrackModel, TrackModel.disc_id == DiscModel.id)
+        .join(TrackArtistModel, TrackArtistModel.track_id == TrackModel.id)
+        .where(
+            TrackArtistModel.artist_id == artist_id,
+            or_(AlbumModel.album_artist_id.is_(None), AlbumModel.album_artist_id != artist_id),
+        )
+        .distinct()
+        .options(
+            selectinload(AlbumModel.covers),
+            selectinload(AlbumModel.album_artist),
+            selectinload(AlbumModel.label),
+            selectinload(AlbumModel.publisher),
+            selectinload(AlbumModel.discs),
+        )
+        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
+    )
+    contrib_res = await session.execute(contrib_stmt)
+    contribution_albums = [map_album_summary(a) for a in contrib_res.unique().scalars().all()]
+
+    return {
+        "artist_id": artist_id,
+        "main_albums": main_albums,
+        "contribution_albums": contribution_albums,
+    }
+
+
+@router.post("/artists", response_model=ArtistResponseSchema, status_code=status.HTTP_201_CREATED)
+async def create_artist(
+    payload: ArtistCreateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    clean_name = payload.name_original.strip()
+    stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(clean_name)).limit(1)
+    res = await session.execute(stmt)
+    existing = res.scalars().first()
+
+    artist_id = existing.id if existing else uuid.uuid4()
+    storage_service = MinioObjectStorageService()
+    image_path = await _process_image_upload(
+        storage_service, "artist", artist_id, payload.image_data
+    )
+
+    if existing:
+        existing.aliases = _merge_aliases(existing.aliases, payload.aliases)
+        if payload.description is not None:
+            existing.description = payload.description
+        if image_path:
+            existing.image_path = image_path
+        await session.commit()
+        await session.refresh(existing)
+        return map_artist_response(existing)
+
+    new_artist = ArtistModel(
+        id=artist_id,
+        name_original=clean_name,
+        aliases=normalize_aliases(payload.aliases),
+        description=payload.description,
+        image_path=image_path,
+    )
+    session.add(new_artist)
+    await session.commit()
+    await session.refresh(new_artist)
+    return map_artist_response(new_artist)
+
+
+@router.put("/artists/{artist_id}", response_model=ArtistResponseSchema)
+async def update_artist(
+    artist_id: uuid.UUID,
+    payload: ArtistUpdateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
+    res = await session.execute(stmt)
+    artist = res.scalars().first()
+    if not artist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artist not found.")
+
+    if payload.name_original is not None:
+        artist.name_original = payload.name_original.strip()
+    if payload.aliases is not None:
+        artist.aliases = normalize_aliases(payload.aliases)
+    if payload.description is not None:
+        artist.description = payload.description
+
+    if payload.image_data:
+        storage_service = MinioObjectStorageService()
+        artist.image_path = await storage_service.upload_entity_avatar(
+            "artist", artist_id, payload.image_data
+        )
+
+    await session.commit()
+    await session.refresh(artist)
+    return map_artist_response(artist)
+
+
+@router.delete("/artists/{artist_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_artist(
+    artist_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
+    res = await session.execute(stmt)
+    artist = res.scalars().first()
+    if not artist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artist not found.")
+
+    await session.delete(artist)
+    await session.commit()
+
+
+@router.get("/franchises", response_model=list[FranchiseResponseSchema])
+async def search_franchises(
+    query: str = Query(default=""),
+    limit: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(FranchiseModel)
+    q = query.strip()
+    if q:
+        pattern = f"%{q}%"
+        stmt = stmt.where(
+            or_(
+                FranchiseModel.name_original.ilike(pattern),
+                cast(FranchiseModel.aliases, SAString).ilike(pattern),
+            )
+        )
+    stmt = stmt.order_by(FranchiseModel.name_original).limit(limit)
+    res = await session.execute(stmt)
+    return [map_franchise_response(f) for f in res.scalars().all()]
+
+
+@router.get("/franchises/{franchise_id}", response_model=FranchiseResponseSchema)
+async def get_franchise_detail(
+    franchise_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_id)
+    res = await session.execute(stmt)
+    f = res.scalars().first()
+    if not f:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Franchise not found.")
+    return map_franchise_response(f)
+
+
+@router.get("/franchises/{franchise_id}/albums", response_model=list[AlbumSummaryResponseSchema])
+async def get_franchise_albums(
+    franchise_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = (
+        select(AlbumModel)
+        .where(AlbumModel.franchise_id == franchise_id)
+        .options(
+            selectinload(AlbumModel.covers),
+            selectinload(AlbumModel.album_artist),
+            selectinload(AlbumModel.label),
+            selectinload(AlbumModel.publisher),
+            selectinload(AlbumModel.discs),
+        )
+        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
+    )
+    res = await session.execute(stmt)
+    return [map_album_summary(a) for a in res.unique().scalars().all()]
+
+
+@router.post(
+    "/franchises",
+    response_model=FranchiseResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_franchise(
+    payload: FranchiseCreateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    clean_name = payload.name_original.strip()
+    stmt = select(FranchiseModel).where(FranchiseModel.name_original.ilike(clean_name)).limit(1)
+    res = await session.execute(stmt)
+    existing = res.scalars().first()
+
+    f_id = existing.id if existing else uuid.uuid4()
+    storage_service = MinioObjectStorageService()
+    image_path = await _process_image_upload(storage_service, "franchise", f_id, payload.image_data)
+
+    if existing:
+        existing.aliases = _merge_aliases(existing.aliases, payload.aliases)
+        existing.franchise_type = payload.franchise_type
+        if payload.description is not None:
+            existing.description = payload.description
+        if image_path:
+            existing.image_path = image_path
+        await session.commit()
+        await session.refresh(existing)
+        return map_franchise_response(existing)
+
+    new_f = FranchiseModel(
+        id=f_id,
+        name_original=clean_name,
+        aliases=normalize_aliases(payload.aliases),
+        franchise_type=payload.franchise_type,
+        description=payload.description,
+        image_path=image_path,
+    )
+    session.add(new_f)
+    await session.commit()
+    await session.refresh(new_f)
+    return map_franchise_response(new_f)
+
+
+@router.put("/franchises/{franchise_id}", response_model=FranchiseResponseSchema)
+async def update_franchise(
+    franchise_id: uuid.UUID,
+    payload: FranchiseUpdateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_id)
+    res = await session.execute(stmt)
+    f = res.scalars().first()
+    if not f:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Franchise not found.")
+
+    if payload.name_original is not None:
+        f.name_original = payload.name_original.strip()
+    if payload.aliases is not None:
+        f.aliases = normalize_aliases(payload.aliases)
+    if payload.franchise_type is not None:
+        f.franchise_type = payload.franchise_type
+    if payload.description is not None:
+        f.description = payload.description
+
+    if payload.image_data:
+        storage_service = MinioObjectStorageService()
+        f.image_path = await storage_service.upload_entity_avatar(
+            "franchise", franchise_id, payload.image_data
+        )
+
+    await session.commit()
+    await session.refresh(f)
+    return map_franchise_response(f)
+
+
+@router.delete("/franchises/{franchise_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_franchise(
+    franchise_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_id)
+    res = await session.execute(stmt)
+    f = res.scalars().first()
+    if not f:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Franchise not found.")
+
+    await session.delete(f)
+    await session.commit()
+
+
+@router.get("/labels", response_model=list[LabelResponseSchema])
+async def search_labels(
+    query: str = Query(default=""),
+    limit: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(LabelModel)
+    q = query.strip()
+    if q:
+        pattern = f"%{q}%"
+        stmt = stmt.where(
+            or_(
+                LabelModel.name_original.ilike(pattern),
+                cast(LabelModel.aliases, SAString).ilike(pattern),
+            )
+        )
+    stmt = stmt.order_by(LabelModel.name_original).limit(limit)
+    res = await session.execute(stmt)
+    return [map_label_response(lbl) for lbl in res.scalars().all()]
+
+
+@router.get("/labels/{label_id}", response_model=LabelResponseSchema)
+async def get_label_detail(
+    label_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(LabelModel).where(LabelModel.id == label_id)
+    res = await session.execute(stmt)
+    lbl = res.scalars().first()
+    if not lbl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found.")
+    return map_label_response(lbl)
+
+
+@router.get("/labels/{label_id}/albums", response_model=list[AlbumSummaryResponseSchema])
+async def get_label_albums(
+    label_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = (
+        select(AlbumModel)
+        .where(AlbumModel.label_id == label_id)
+        .options(
+            selectinload(AlbumModel.covers),
+            selectinload(AlbumModel.album_artist),
+            selectinload(AlbumModel.label),
+            selectinload(AlbumModel.publisher),
+            selectinload(AlbumModel.discs),
+        )
+        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
+    )
+    res = await session.execute(stmt)
+    return [map_album_summary(a) for a in res.unique().scalars().all()]
+
+
+@router.post("/labels", response_model=LabelResponseSchema, status_code=status.HTTP_201_CREATED)
+async def create_label(
+    payload: LabelCreateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    clean_name = payload.name_original.strip()
+    stmt = select(LabelModel).where(LabelModel.name_original.ilike(clean_name)).limit(1)
+    res = await session.execute(stmt)
+    existing = res.scalars().first()
+
+    l_id = existing.id if existing else uuid.uuid4()
+    storage_service = MinioObjectStorageService()
+    image_path = await _process_image_upload(storage_service, "label", l_id, payload.image_data)
+
+    if existing:
+        existing.aliases = _merge_aliases(existing.aliases, payload.aliases)
+        if payload.description is not None:
+            existing.description = payload.description
+        if image_path:
+            existing.image_path = image_path
+        await session.commit()
+        await session.refresh(existing)
+        return map_label_response(existing)
+
+    new_l = LabelModel(
+        id=l_id,
+        name_original=clean_name,
+        aliases=normalize_aliases(payload.aliases),
+        description=payload.description,
+        image_path=image_path,
+    )
+    session.add(new_l)
+    await session.commit()
+    await session.refresh(new_l)
+    return map_label_response(new_l)
+
+
+@router.put("/labels/{label_id}", response_model=LabelResponseSchema)
+async def update_label(
+    label_id: uuid.UUID,
+    payload: LabelUpdateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(LabelModel).where(LabelModel.id == label_id)
+    res = await session.execute(stmt)
+    lbl = res.scalars().first()
+    if not lbl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found.")
+
+    if payload.name_original is not None:
+        lbl.name_original = payload.name_original.strip()
+    if payload.aliases is not None:
+        lbl.aliases = normalize_aliases(payload.aliases)
+    if payload.description is not None:
+        lbl.description = payload.description
+
+    if payload.image_data:
+        storage_service = MinioObjectStorageService()
+        lbl.image_path = await storage_service.upload_entity_avatar(
+            "label", label_id, payload.image_data
+        )
+
+    await session.commit()
+    await session.refresh(lbl)
+    return map_label_response(lbl)
+
+
+@router.delete("/labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_label(
+    label_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(LabelModel).where(LabelModel.id == label_id)
+    res = await session.execute(stmt)
+    lbl = res.scalars().first()
+    if not lbl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found.")
+
+    await session.delete(lbl)
+    await session.commit()
+
+
+@router.get("/publishers", response_model=list[PublisherResponseSchema])
+async def search_publishers(
+    query: str = Query(default=""),
+    limit: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(PublisherModel)
+    q = query.strip()
+    if q:
+        pattern = f"%{q}%"
+        stmt = stmt.where(
+            or_(
+                PublisherModel.name_original.ilike(pattern),
+                cast(PublisherModel.aliases, SAString).ilike(pattern),
+            )
+        )
+    stmt = stmt.order_by(PublisherModel.name_original).limit(limit)
+    res = await session.execute(stmt)
+    return [map_publisher_response(p) for p in res.scalars().all()]
+
+
+@router.get("/publishers/{publisher_id}", response_model=PublisherResponseSchema)
+async def get_publisher_detail(
+    publisher_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = select(PublisherModel).where(PublisherModel.id == publisher_id)
+    res = await session.execute(stmt)
+    p = res.scalars().first()
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publisher not found.")
+    return map_publisher_response(p)
+
+
+@router.get("/publishers/{publisher_id}/albums", response_model=list[AlbumSummaryResponseSchema])
+async def get_publisher_albums(
+    publisher_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _user=Depends(get_current_active_user),
+):
+    stmt = (
+        select(AlbumModel)
+        .where(AlbumModel.publisher_id == publisher_id)
+        .options(
+            selectinload(AlbumModel.covers),
+            selectinload(AlbumModel.album_artist),
+            selectinload(AlbumModel.label),
+            selectinload(AlbumModel.publisher),
+            selectinload(AlbumModel.discs),
+        )
+        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
+    )
+    res = await session.execute(stmt)
+    return [map_album_summary(a) for a in res.unique().scalars().all()]
+
+
+@router.post(
+    "/publishers",
+    response_model=PublisherResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_publisher(
+    payload: PublisherCreateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    clean_name = payload.name_original.strip()
+    stmt = select(PublisherModel).where(PublisherModel.name_original.ilike(clean_name)).limit(1)
+    res = await session.execute(stmt)
+    existing = res.scalars().first()
+
+    p_id = existing.id if existing else uuid.uuid4()
+    storage_service = MinioObjectStorageService()
+    image_path = await _process_image_upload(storage_service, "publisher", p_id, payload.image_data)
+
+    if existing:
+        existing.aliases = _merge_aliases(existing.aliases, payload.aliases)
+        if payload.description is not None:
+            existing.description = payload.description
+        if image_path:
+            existing.image_path = image_path
+        await session.commit()
+        await session.refresh(existing)
+        return map_publisher_response(existing)
+
+    new_p = PublisherModel(
+        id=p_id,
+        name_original=clean_name,
+        aliases=normalize_aliases(payload.aliases),
+        description=payload.description,
+        image_path=image_path,
+    )
+    session.add(new_p)
+    await session.commit()
+    await session.refresh(new_p)
+    return map_publisher_response(new_p)
+
+
+@router.put("/publishers/{publisher_id}", response_model=PublisherResponseSchema)
+async def update_publisher(
+    publisher_id: uuid.UUID,
+    payload: PublisherUpdateSchema,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(PublisherModel).where(PublisherModel.id == publisher_id)
+    res = await session.execute(stmt)
+    p = res.scalars().first()
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publisher not found.")
+
+    if payload.name_original is not None:
+        p.name_original = payload.name_original.strip()
+    if payload.aliases is not None:
+        p.aliases = normalize_aliases(payload.aliases)
+    if payload.description is not None:
+        p.description = payload.description
+
+    if payload.image_data:
+        storage_service = MinioObjectStorageService()
+        p.image_path = await storage_service.upload_entity_avatar(
+            "publisher", publisher_id, payload.image_data
+        )
+
+    await session.commit()
+    await session.refresh(p)
+    return map_publisher_response(p)
+
+
+@router.delete("/publishers/{publisher_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_publisher(
+    publisher_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_database_session),
+    _superuser=Depends(get_current_superuser),
+):
+    stmt = select(PublisherModel).where(PublisherModel.id == publisher_id)
+    res = await session.execute(stmt)
+    p = res.scalars().first()
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publisher not found.")
+
+    await session.delete(p)
+    await session.commit()
 
 
 def normalize_date_string(d: str | None) -> str | None:
@@ -78,120 +923,6 @@ def compute_event_sort_date(d: str | None, is_end_bound: bool = False) -> date |
         return _construct_date_with_fallback(y, m, d_num, is_end_bound)
     except ValueError:
         return None
-
-
-async def _search_master_entities(
-    session: AsyncSession,
-    model_cls: type[ModelT],
-    query: str,
-    limit: int,
-    search_columns: list[Any],
-    order_column: Any,
-) -> Sequence[ModelT]:
-    stmt = select(model_cls)
-    q = query.strip()
-    if q:
-        pattern = f"%{q}%"
-        stmt = stmt.where(or_(*[col.ilike(pattern) for col in search_columns]))
-    stmt = stmt.order_by(order_column).limit(limit)
-    result = await session.execute(stmt)
-    return result.scalars().all()
-
-
-async def _get_distinct_album_attribute(
-    session: AsyncSession,
-    column: Any,
-    query: str,
-    limit: int = 20,
-) -> list[str]:
-    stmt = select(column).where(column.is_not(None)).distinct()
-    q = query.strip()
-    if q:
-        stmt = stmt.where(column.ilike(f"%{q}%"))
-    stmt = stmt.order_by(column).limit(limit)
-    res = await session.execute(stmt)
-    return [r for r in res.scalars().all() if r]
-
-
-def _merge_aliases(existing: list[str] | None, incoming: list[str]) -> list[str]:
-    merged = list(existing or [])
-    seen = {a.casefold() for a in merged}
-    for alias in normalize_aliases(incoming):
-        if alias.casefold() not in seen:
-            merged.append(alias)
-            seen.add(alias.casefold())
-    return merged
-
-
-async def _get_or_create_named_entity(
-    session: AsyncSession,
-    model_cls: type[ModelT],
-    name_original: str,
-    incoming_aliases: list[str],
-    **extra_fields: Any,
-) -> ModelT:
-    clean_name = name_original.strip()
-    aliases = normalize_aliases(incoming_aliases)
-
-    stmt = select(model_cls).where(model_cls.name_original.ilike(clean_name)).limit(1)
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
-
-    if existing:
-        existing.aliases = _merge_aliases(existing.aliases, aliases)
-        await session.commit()
-        await session.refresh(existing)
-        return existing
-
-    new_entity = model_cls(
-        id=uuid.uuid4(),
-        name_original=clean_name,
-        aliases=aliases,
-        **extra_fields,
-    )
-    session.add(new_entity)
-    await session.commit()
-    await session.refresh(new_entity)
-    return new_entity
-
-
-@router.get("/artists", response_model=list[ArtistResponseSchema])
-async def search_artists(
-    query: str = Query(default="", description="Search query for artist name or alias"),
-    limit: int = Query(default=20, ge=1, le=100),
-    session: AsyncSession = Depends(get_async_database_session),
-    _user=Depends(get_current_active_user),
-):
-    return await _search_master_entities(
-        session=session,
-        model_cls=ArtistModel,
-        query=query,
-        limit=limit,
-        search_columns=[
-            cast(ArtistModel.id, SAString),
-            ArtistModel.name_original,
-            cast(ArtistModel.aliases, SAString),
-        ],
-        order_column=ArtistModel.name_original,
-    )
-
-
-@router.post(
-    "/artists",
-    response_model=ArtistResponseSchema,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_artist(
-    payload: ArtistCreateSchema,
-    session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
-):
-    return await _get_or_create_named_entity(
-        session=session,
-        model_cls=ArtistModel,
-        name_original=payload.name_original,
-        incoming_aliases=payload.aliases,
-    )
 
 
 def _apply_event_filters(
@@ -289,11 +1020,7 @@ async def get_event_detail(
     return event
 
 
-@router.post(
-    "/events",
-    response_model=EventResponseSchema,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/events", response_model=EventResponseSchema, status_code=status.HTTP_201_CREATED)
 async def create_event(
     payload: EventCreateSchema,
     session: AsyncSession = Depends(get_async_database_session),
@@ -390,61 +1117,3 @@ async def delete_event(
 
     await session.delete(event)
     await session.commit()
-
-
-@router.get("/franchises", response_model=list[FranchiseResponseSchema])
-async def search_franchises(
-    query: str = Query(default=""),
-    limit: int = Query(default=20, ge=1, le=100),
-    session: AsyncSession = Depends(get_async_database_session),
-    _user=Depends(get_current_active_user),
-):
-    return await _search_master_entities(
-        session=session,
-        model_cls=FranchiseModel,
-        query=query,
-        limit=limit,
-        search_columns=[
-            cast(FranchiseModel.id, SAString),
-            FranchiseModel.name_original,
-            cast(FranchiseModel.aliases, SAString),
-        ],
-        order_column=FranchiseModel.name_original,
-    )
-
-
-@router.post(
-    "/franchises",
-    response_model=FranchiseResponseSchema,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_franchise(
-    payload: FranchiseCreateSchema,
-    session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
-):
-    return await _get_or_create_named_entity(
-        session=session,
-        model_cls=FranchiseModel,
-        name_original=payload.name_original,
-        incoming_aliases=payload.aliases,
-        franchise_type=payload.franchise_type,
-    )
-
-
-@router.get("/labels", response_model=list[str])
-async def get_distinct_labels(
-    query: str = Query(default=""),
-    session: AsyncSession = Depends(get_async_database_session),
-    _user=Depends(get_current_active_user),
-):
-    return await _get_distinct_album_attribute(session, AlbumModel.label, query)
-
-
-@router.get("/publishers", response_model=list[str])
-async def get_distinct_publishers(
-    query: str = Query(default=""),
-    session: AsyncSession = Depends(get_async_database_session),
-    _user=Depends(get_current_active_user),
-):
-    return await _get_distinct_album_attribute(session, AlbumModel.publisher, query)

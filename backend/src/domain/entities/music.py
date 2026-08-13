@@ -35,6 +35,32 @@ class Franchise:
     name_original: str
     aliases: list[str] = field(default_factory=list)
     franchise_type: str = "Game"
+    image_path: str | None = None
+    description: str | None = None
+
+    def __post_init__(self) -> None:
+        self.aliases = normalize_aliases(self.aliases)
+
+
+@dataclass(slots=True)
+class Label:
+    id: uuid.UUID
+    name_original: str
+    aliases: list[str] = field(default_factory=list)
+    image_path: str | None = None
+    description: str | None = None
+
+    def __post_init__(self) -> None:
+        self.aliases = normalize_aliases(self.aliases)
+
+
+@dataclass(slots=True)
+class Publisher:
+    id: uuid.UUID
+    name_original: str
+    aliases: list[str] = field(default_factory=list)
+    image_path: str | None = None
+    description: str | None = None
 
     def __post_init__(self) -> None:
         self.aliases = normalize_aliases(self.aliases)
@@ -46,6 +72,8 @@ class Artist:
     name_original: str
     aliases: list[str] = field(default_factory=list)
     role: str = "Primary"
+    image_path: str | None = None
+    description: str | None = None
     created_at: datetime | None = None
 
     def __post_init__(self) -> None:
@@ -147,8 +175,10 @@ class Album:
     release_month: int | None = None
     release_day: int | None = None
     release_date_sort: date | None = None
-    label: str | None = None
-    publisher: str | None = None
+    label_id: uuid.UUID | None = None
+    publisher_id: uuid.UUID | None = None
+    label: Label | str | None = None
+    publisher: Publisher | str | None = None
     event_id: uuid.UUID | None = None
     franchise_id: uuid.UUID | None = None
     album_artist_id: uuid.UUID | None = None

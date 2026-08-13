@@ -4,8 +4,11 @@ import {
   AlbumChangeEntry,
   AlbumDetailResponse,
   ArtistDetailResponse,
+  MasterLabel,
+  MasterPublisher,
   TrackDetailResponse,
 } from '../../../../domain/models/music.model';
+import { AlbumStateEngine } from '../../state/album.state';
 
 export interface TrackCreditGroup {
   role: string;
@@ -21,7 +24,6 @@ const ROLE_CLASS_MAP: Record<string, string> = {
   lyricist: 'role-lyricist',
   mixer: 'role-mixer',
 };
-import { AlbumStateEngine } from '../../state/album.state';
 
 @Component({
   selector: 'app-album-detail-drawer',
@@ -76,6 +78,16 @@ export class AlbumDetailDrawerComponent {
     if (m && d) return `${y}/${m}/${d}`;
     if (m) return `${y}/${m}`;
     return y;
+  }
+
+  protected getLabelName(label: MasterLabel | string | null): string {
+    if (!label) return '';
+    return typeof label === 'string' ? label : label.name_original;
+  }
+
+  protected getPublisherName(publisher: MasterPublisher | string | null): string {
+    if (!publisher) return '';
+    return typeof publisher === 'string' ? publisher : publisher.name_original;
   }
 
   protected groupTrackCredits(track: TrackDetailResponse): TrackCreditGroup[] {

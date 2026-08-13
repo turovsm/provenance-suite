@@ -78,6 +78,8 @@
                 formControlName="download_url"
                 placeholder="HTTPS Download URL"
                 class="flex-3"
+                (input)="handleMirrorUrlChange(aIdx, lIdx, $event)"
+                (paste)="handleMirrorUrlChange(aIdx, lIdx, $event)"
               />
 
               <button type="button" (click)="removeArchiveLink(aIdx, lIdx)" class="icon-only-btn">
@@ -113,6 +115,8 @@
             formControlName="url"
             placeholder="HTTPS Index URL (e.g. https://vgmdb.net/album/2978)"
             class="flex-3"
+            (input)="handleExternalUrlChange(elIdx, $event)"
+            (paste)="handleExternalUrlChange(elIdx, $event)"
           />
           <button type="button" (click)="removeExternalLink(elIdx)" class="remove-btn">
             <span class="material-symbols-outlined">delete</span>

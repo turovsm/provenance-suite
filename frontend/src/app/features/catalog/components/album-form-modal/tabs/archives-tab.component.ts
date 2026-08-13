@@ -1,5 +1,6 @@
 import { Component, Input, inject } from '@angular/core';
-import { FormArray, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { resolveDomainName } from '../../../../../shared/utils/domain-resolver';
 import { AlbumFormBuilderService } from '../../../services/album-form-builder.service';
 
 @Component({
@@ -41,5 +42,69 @@ export class ArchivesTabComponent {
 
   protected removeExternalLink(index: number): void {
     this.externalLinks.removeAt(index);
+  }
+
+  protected handleMirrorUrlChange(archiveIndex: number, linkIndex: number, event?: Event): void {
+    const linkGroup = this.getArchiveLinks(archiveIndex).at(linkIndex) as FormGroup;
+    const urlControl = linkGroup.get('download_url');
+    const providerControl = linkGroup.get('provider_name');
+
+    if (!providerControl || !urlControl) return;
+
+    let url = urlControl.value || '';
+
+    if (event) {
+      if (event.type === 'paste') {
+        const clipboardEvent = event as ClipboardEvent;
+        const pastedText = clipboardEvent.clipboardData?.getData('text');
+        if (pastedText) {
+          url = pastedText;
+        }
+      } else if (event.target) {
+        url = (event.target as HTMLInputElement).value || url;
+      }
+    }
+
+    const resolved = resolveDomainName(url, 'cloud');
+    if (!resolved) return;
+
+    const currentProvider = providerControl.value?.trim() || '';
+
+    if (!currentProvider || currentProvider !== resolved) {
+      providerControl.setValue(resolved);
+      providerControl.markAsDirty();
+    }
+  }
+
+  protected handleExternalUrlChange(linkIndex: number, event?: Event): void {
+    const linkGroup = this.externalLinks.at(linkIndex) as FormGroup;
+    const urlControl = linkGroup.get('url');
+    const siteControl = linkGroup.get('site_name');
+
+    if (!siteControl || !urlControl) return;
+
+    let url = urlControl.value || '';
+
+    if (event) {
+      if (event.type === 'paste') {
+        const clipboardEvent = event as ClipboardEvent;
+        const pastedText = clipboardEvent.clipboardData?.getData('text');
+        if (pastedText) {
+          url = pastedText;
+        }
+      } else if (event.target) {
+        url = (event.target as HTMLInputElement).value || url;
+      }
+    }
+
+    const resolved = resolveDomainName(url, 'index');
+    if (!resolved) return;
+
+    const currentSite = siteControl.value?.trim() || '';
+
+    if (!currentSite || currentSite !== resolved) {
+      siteControl.setValue(resolved);
+      siteControl.markAsDirty();
+    }
   }
 }

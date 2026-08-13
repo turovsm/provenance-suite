@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import { EntitySearchService } from './entity-search.service';
 import { ALBUM_REPOSITORY_PORT, AlbumRepositoryPort } from '../../core/tokens/album.token';
+import { EntitySearchService } from './entity-search.service';
 
 describe('EntitySearchService', () => {
   let service: EntitySearchService;
@@ -14,7 +14,33 @@ describe('EntitySearchService', () => {
       getAlbumDetail: vi.fn(),
       ingestAlbum: vi.fn(),
       deleteAlbum: vi.fn(),
+      fetchEntities: vi.fn(),
       searchArtists: vi.fn(),
+      getArtistDetail: vi.fn(),
+      getArtistDiscography: vi.fn(),
+      createArtist: vi.fn(),
+      createArtistFull: vi.fn(),
+      updateArtist: vi.fn(),
+      deleteArtist: vi.fn(),
+      searchFranchises: vi.fn(),
+      getFranchiseDetail: vi.fn(),
+      getFranchiseAlbums: vi.fn(),
+      createFranchise: vi.fn(),
+      createFranchiseFull: vi.fn(),
+      updateFranchise: vi.fn(),
+      deleteFranchise: vi.fn(),
+      searchLabels: vi.fn(),
+      getLabelDetail: vi.fn(),
+      getLabelAlbums: vi.fn(),
+      createLabel: vi.fn(),
+      updateLabel: vi.fn(),
+      deleteLabel: vi.fn(),
+      searchPublishers: vi.fn(),
+      getPublisherDetail: vi.fn(),
+      getPublisherAlbums: vi.fn(),
+      createPublisher: vi.fn(),
+      updatePublisher: vi.fn(),
+      deletePublisher: vi.fn(),
       fetchEvents: vi.fn(),
       searchEvents: vi.fn(),
       getEventDetail: vi.fn(),
@@ -22,11 +48,8 @@ describe('EntitySearchService', () => {
       createEventFull: vi.fn(),
       updateEvent: vi.fn(),
       deleteEvent: vi.fn(),
-      searchFranchises: vi.fn(),
       getLabels: vi.fn(),
       getPublishers: vi.fn(),
-      createArtist: vi.fn(),
-      createFranchise: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -51,9 +74,9 @@ describe('EntitySearchService', () => {
     expect(repoSpy.searchArtists).toHaveBeenCalledWith('Shanghai');
   });
 
-  it('resolves master entity by ID via search matching', () => {
-    repoSpy.searchArtists.mockReturnValue(
-      of([{ id: 'target-uuid', name_original: 'ZUN', aliases: [] }]),
+  it('resolves master entity by ID via detail lookup', () => {
+    repoSpy.getArtistDetail.mockReturnValue(
+      of({ id: 'target-uuid', name_original: 'ZUN', aliases: [] }),
     );
 
     service.resolveById('artist', 'target-uuid').subscribe((match) => {
@@ -63,11 +86,14 @@ describe('EntitySearchService', () => {
   });
 
   it('returns autocomplete option for free-text label/publisher entity creation', () => {
+    repoSpy.createLabel.mockReturnValue(
+      of({ id: 'label:Independent', name_original: 'Independent', aliases: [] }),
+    );
+
     service.create('label', 'Independent').subscribe((res) => {
       expect(res).not.toBeNull();
       expect(res?.display).toBe('Independent');
-      expect(res?.id).toBe('label:Independent');
     });
-    expect(repoSpy.createArtist).not.toHaveBeenCalled();
+    expect(repoSpy.createLabel).toHaveBeenCalledWith({ name_original: 'Independent' });
   });
 });

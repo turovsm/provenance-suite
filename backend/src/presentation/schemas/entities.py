@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Base64Bytes, BaseModel, ConfigDict, Field
 
 from src.domain import MAX_ALIAS_LENGTH, MAX_ALIASES_PER_ENTITY
 
@@ -10,11 +10,18 @@ class ArtistCreateSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
-    aliases: list[str] = Field(
-        default_factory=list,
-        max_length=MAX_ALIASES_PER_ENTITY,
-        description="Alternative names: romanizations, former names, circle names, etc.",
-    )
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class ArtistUpdateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str | None = Field(default=None, min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] | None = Field(default=None, max_length=MAX_ALIASES_PER_ENTITY)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
 
 
 class ArtistResponseSchema(BaseModel):
@@ -23,7 +30,121 @@ class ArtistResponseSchema(BaseModel):
     id: uuid.UUID
     name_original: str
     aliases: list[str] = Field(default_factory=list)
+    image_url: str | None = None
+    description: str | None = None
     created_at: datetime | None = None
+
+
+class FranchiseCreateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
+    franchise_type: str = Field(default="Game", max_length=128)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class FranchiseUpdateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str | None = Field(default=None, min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] | None = Field(default=None, max_length=MAX_ALIASES_PER_ENTITY)
+    franchise_type: str | None = Field(default=None, max_length=128)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class FranchiseResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True, frozen=True)
+
+    id: uuid.UUID
+    name_original: str
+    aliases: list[str] = Field(default_factory=list)
+    franchise_type: str
+    image_url: str | None = None
+    description: str | None = None
+    created_at: datetime | None = None
+
+
+class LabelCreateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class LabelUpdateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str | None = Field(default=None, min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] | None = Field(default=None, max_length=MAX_ALIASES_PER_ENTITY)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class LabelResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True, frozen=True)
+
+    id: uuid.UUID
+    name_original: str
+    aliases: list[str] = Field(default_factory=list)
+    image_url: str | None = None
+    description: str | None = None
+    created_at: datetime | None = None
+
+
+class PublisherCreateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class PublisherUpdateSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name_original: str | None = Field(default=None, min_length=1, max_length=MAX_ALIAS_LENGTH)
+    aliases: list[str] | None = Field(default=None, max_length=MAX_ALIASES_PER_ENTITY)
+    description: str | None = None
+    image_data: Base64Bytes | None = None
+
+
+class PublisherResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True, frozen=True)
+
+    id: uuid.UUID
+    name_original: str
+    aliases: list[str] = Field(default_factory=list)
+    image_url: str | None = None
+    description: str | None = None
+    created_at: datetime | None = None
+
+
+class EntitySummarySchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    name_original: str
+    aliases: list[str] = Field(default_factory=list)
+    entity_type: str  # "artist", "franchise", "label", "publisher"
+    image_url: str | None = None
+    description: str | None = None
+    franchise_type: str | None = None
+    created_at: datetime | None = None
+
+
+class PaginatedEntitiesResponseSchema(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: list[EntitySummarySchema]
+    total_count: int
+    limit: int
+    offset: int
 
 
 class EventDateRangeSchema(BaseModel):
@@ -83,20 +204,3 @@ class PaginatedEventsResponseSchema(BaseModel):
     total_count: int
     limit: int
     offset: int
-
-
-class FranchiseCreateSchema(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    name_original: str = Field(..., min_length=1, max_length=MAX_ALIAS_LENGTH)
-    aliases: list[str] = Field(default_factory=list, max_length=MAX_ALIASES_PER_ENTITY)
-    franchise_type: str = Field(default="Game", max_length=128)
-
-
-class FranchiseResponseSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True, frozen=True)
-
-    id: uuid.UUID
-    name_original: str
-    aliases: list[str] = Field(default_factory=list)
-    franchise_type: str
