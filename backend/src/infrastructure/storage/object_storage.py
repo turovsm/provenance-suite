@@ -74,8 +74,9 @@ class MinioObjectStorageService:
         hash_bytes = thumbhash.rgba_to_thumb_hash(tw, th, img_thumb.tobytes())
         return base64.b64encode(bytes(hash_bytes)).decode("ascii")
 
-    def _normalize_cover_image(self, data: bytes, max_dim: int = 500) -> tuple[bytes, str]:
+    def _normalize_cover_image(self, data: bytes, max_dim: int | None = None) -> tuple[bytes, str]:
         self._verify_magic_bytes(data)
+        target_dim = max_dim or settings.COVER_IMAGE_MAX_DIMENSION
 
         img = Image.open(io.BytesIO(data))
         img_rgba = img.convert("RGBA")
@@ -83,24 +84,35 @@ class MinioObjectStorageService:
 
         img_rgb = img.convert("RGB")
         width, height = img_rgb.size
-        if width > max_dim or height > max_dim:
-            img_rgb.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        if width > target_dim or height > target_dim:
+            img_rgb.thumbnail((target_dim, target_dim), Image.Resampling.LANCZOS)
 
         buffer = io.BytesIO()
-        img_rgb.save(buffer, format="JPEG", quality=85, optimize=True)
+        img_rgb.save(
+            buffer,
+            format="JPEG",
+            quality=settings.IMAGE_JPEG_QUALITY,
+            optimize=True,
+        )
         return buffer.getvalue(), thumb_hash_str
 
-    def _normalize_entity_image(self, data: bytes, max_dim: int = 800) -> bytes:
+    def _normalize_entity_image(self, data: bytes, max_dim: int | None = None) -> bytes:
         self._verify_magic_bytes(data)
+        target_dim = max_dim or settings.ENTITY_IMAGE_MAX_DIMENSION
 
         img = Image.open(io.BytesIO(data))
         img_rgb = img.convert("RGB")
         width, height = img_rgb.size
-        if width > max_dim or height > max_dim:
-            img_rgb.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        if width > target_dim or height > target_dim:
+            img_rgb.thumbnail((target_dim, target_dim), Image.Resampling.LANCZOS)
 
         buffer = io.BytesIO()
-        img_rgb.save(buffer, format="JPEG", quality=85, optimize=True)
+        img_rgb.save(
+            buffer,
+            format="JPEG",
+            quality=settings.IMAGE_JPEG_QUALITY,
+            optimize=True,
+        )
         return buffer.getvalue()
 
     async def upload_cover(self, object_key: str, data: bytes) -> tuple[str, str]:

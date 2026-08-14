@@ -69,15 +69,19 @@ class JwtTokenManager:
             raise TokenSerializationError("Failed to serialize cryptographic token pair.") from e
 
     def decode_and_verify_token(
-        self, token: str, expected_type: str = "access", leeway: int = 30
+        self,
+        token: str,
+        expected_type: str = "access",
+        leeway: int | None = None,
     ) -> dict[str, Any]:
+        leeway_seconds = leeway if leeway is not None else settings.JWT_LEEWAY_SECONDS
         try:
             payload = decode(
                 token,
                 self._secret_key,
                 algorithms=[self._algorithm],
                 options={"require": ["exp", "iat", "sub", "jti"]},
-                leeway=leeway,
+                leeway=leeway_seconds,
             )
             if payload.get("type") != expected_type:
                 raise TokenVerificationError(
