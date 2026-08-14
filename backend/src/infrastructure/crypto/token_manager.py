@@ -68,13 +68,16 @@ class JwtTokenManager:
         except PyJWTError as e:
             raise TokenSerializationError("Failed to serialize cryptographic token pair.") from e
 
-    def decode_and_verify_token(self, token: str, expected_type: str = "access") -> dict[str, Any]:
+    def decode_and_verify_token(
+        self, token: str, expected_type: str = "access", leeway: int = 30
+    ) -> dict[str, Any]:
         try:
             payload = decode(
                 token,
                 self._secret_key,
                 algorithms=[self._algorithm],
                 options={"require": ["exp", "iat", "sub", "jti"]},
+                leeway=leeway,
             )
             if payload.get("type") != expected_type:
                 raise TokenVerificationError(
