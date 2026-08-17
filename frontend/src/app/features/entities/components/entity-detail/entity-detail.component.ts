@@ -1,10 +1,16 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EntitySummary, EntityTypeTag } from '../../../../domain/models/music.model';
+import { ALBUM_REPOSITORY_PORT } from '../../../../core/tokens/album.token';
+import {
+  AlbumDetailResponse,
+  EntitySummary,
+  EntityTypeTag,
+} from '../../../../domain/models/music.model';
 import { MarkdownRendererComponent } from '../../../../shared/components/markdown-renderer/markdown-renderer.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumCardComponent } from '../../../catalog/components/album-card/album-card.component';
 import { AlbumDetailDrawerComponent } from '../../../catalog/components/album-detail-drawer/album-detail-drawer.component';
+import { AlbumFormModalComponent } from '../../../catalog/components/album-form-modal/album-form-modal.component';
 import { AlbumStateEngine } from '../../../catalog/state/album.state';
 import { EntityStateEngine } from '../../state/entity.state';
 import { EntityFormModalComponent } from '../entity-form-modal/entity-form-modal.component';
@@ -15,6 +21,7 @@ import { EntityFormModalComponent } from '../entity-form-modal/entity-form-modal
   imports: [
     AlbumCardComponent,
     AlbumDetailDrawerComponent,
+    AlbumFormModalComponent,
     EntityFormModalComponent,
     MarkdownRendererComponent,
   ],
@@ -27,10 +34,15 @@ export class EntityDetailComponent implements OnInit, OnDestroy {
   protected readonly authState = inject(AuthStateEngine);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly repo = inject(ALBUM_REPOSITORY_PORT);
 
   protected entityType = signal<string>('artist');
   protected entityId = signal<string>('');
   protected isEditModalOpen = false;
+
+  protected isAlbumModalOpen = false;
+  protected readonly albumToEdit = signal<AlbumDetailResponse | null>(null);
+  protected readonly loadingAlbumEditId = signal<string | null>(null);
 
   readonly currentEntity = computed(() => {
     const type = this.entityType();
@@ -144,6 +156,44 @@ export class EntityDetailComponent implements OnInit, OnDestroy {
 
   protected handleSelectAlbum(albumId: string): void {
     this.albumState.selectAlbum(albumId);
+  }
+
+  protected handleEditAlbum(albumId: string): void {
+    if (this.loadingAlbumEditId()) return;
+    this.loadingAlbumEditId.set(albumId);
+
+    this.repo.getAlbumDetail(albumId).subscribe({
+      next: (detail) => {
+        this.loadingAlbumEditId.set(null);
+        if (detail) {
+          this.albumToEdit.set(detail);
+          this.isAlbumModalOpen = true;
+        }
+      },
+      error: () => {
+        this.loadingAlbumEditId.set(null);
+      },
+    });
+  }
+
+  protected handleDeleteAlbum(albumId: string): void {
+    this.albumState.deleteAlbum(albumId, () => {
+      this.refreshEntityData();
+    });
+  }
+
+  protected closeAlbumModal(): void {
+    this.isAlbumModalOpen = false;
+    this.albumToEdit.set(null);
+    this.refreshEntityData();
+  }
+
+  private refreshEntityData(): void {
+    const type = this.entityType();
+    const id = this.entityId();
+    if (type && id) {
+      this.state.loadEntityDetail(type, id);
+    }
   }
 
   protected openEditModal(): void {

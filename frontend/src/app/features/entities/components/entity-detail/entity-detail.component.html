@@ -78,7 +78,10 @@
                 <app-album-card
                   [album]="album"
                   [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                  [isLoadingEdit]="loadingAlbumEditId() === album.id"
                   (cardClicked)="handleSelectAlbum($event)"
+                  (editRequested)="handleEditAlbum($event)"
+                  (deleteRequested)="handleDeleteAlbum($event)"
                 />
               }
             </div>
@@ -98,7 +101,10 @@
                 <app-album-card
                   [album]="album"
                   [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                  [isLoadingEdit]="loadingAlbumEditId() === album.id"
                   (cardClicked)="handleSelectAlbum($event)"
+                  (editRequested)="handleEditAlbum($event)"
+                  (deleteRequested)="handleDeleteAlbum($event)"
                 />
               }
             </div>
@@ -117,13 +123,20 @@
               <app-album-card
                 [album]="album"
                 [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                [isLoadingEdit]="loadingAlbumEditId() === album.id"
                 (cardClicked)="handleSelectAlbum($event)"
+                (editRequested)="handleEditAlbum($event)"
+                (deleteRequested)="handleDeleteAlbum($event)"
               />
             }
           </div>
         </section>
       }
     }
+  }
+
+  @if (isAlbumModalOpen) {
+    <app-album-form-modal [albumToEdit]="albumToEdit()" (closed)="closeAlbumModal()" />
   }
 
   @if (isEditModalOpen) {
