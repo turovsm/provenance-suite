@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import String as SAString, cast, func, or_, select
+from sqlalchemy import Text, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -227,7 +227,7 @@ async def list_unified_entities(
             stmt = stmt.where(
                 or_(
                     model_cls.name_original.ilike(pattern),
-                    cast(model_cls.aliases, SAString).ilike(pattern),
+                    cast(model_cls.aliases, Text).ilike(pattern),
                 )
             )
 
@@ -276,7 +276,7 @@ async def search_artists(
         stmt = stmt.where(
             or_(
                 ArtistModel.name_original.ilike(pattern),
-                cast(ArtistModel.aliases, SAString).ilike(pattern),
+                cast(ArtistModel.aliases, Text).ilike(pattern),
             )
         )
     stmt = stmt.order_by(ArtistModel.name_original).limit(limit)
@@ -452,7 +452,7 @@ async def search_franchises(
         stmt = stmt.where(
             or_(
                 FranchiseModel.name_original.ilike(pattern),
-                cast(FranchiseModel.aliases, SAString).ilike(pattern),
+                cast(FranchiseModel.aliases, Text).ilike(pattern),
             )
         )
     stmt = stmt.order_by(FranchiseModel.name_original).limit(limit)
@@ -603,7 +603,7 @@ async def search_labels(
         stmt = stmt.where(
             or_(
                 LabelModel.name_original.ilike(pattern),
-                cast(LabelModel.aliases, SAString).ilike(pattern),
+                cast(LabelModel.aliases, Text).ilike(pattern),
             )
         )
     stmt = stmt.order_by(LabelModel.name_original).limit(limit)
@@ -746,7 +746,7 @@ async def search_publishers(
         stmt = stmt.where(
             or_(
                 PublisherModel.name_original.ilike(pattern),
-                cast(PublisherModel.aliases, SAString).ilike(pattern),
+                cast(PublisherModel.aliases, Text).ilike(pattern),
             )
         )
     stmt = stmt.order_by(PublisherModel.name_original).limit(limit)

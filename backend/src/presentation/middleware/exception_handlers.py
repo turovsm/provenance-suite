@@ -106,7 +106,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             for err in exc.errors()
         ]
         return create_error_response(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             code="VALIDATION_FAILED",
             message="Inbound request payload failed structural schema validation.",
             details=formatted_errors,

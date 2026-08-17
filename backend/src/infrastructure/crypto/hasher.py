@@ -11,9 +11,9 @@ from src.config import settings
 class PasswordHasherEngine:
     def __init__(self) -> None:
         self._hasher = PasswordHasher(
-            time_cost=3,
-            memory_cost=65536,
-            parallelism=4,
+            time_cost=settings.ARGON2_TIME_COST,
+            memory_cost=settings.ARGON2_MEMORY_COST_KIB,
+            parallelism=settings.ARGON2_PARALLELISM,
             hash_len=32,
             salt_len=16,
         )

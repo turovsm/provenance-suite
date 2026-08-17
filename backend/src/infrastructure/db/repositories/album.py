@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 from redis.asyncio import Redis
-from sqlalchemy import String as SAString, cast, func, or_, select
+from sqlalchemy import Text, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -542,7 +542,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             .where(
                 or_(
                     FranchiseModel.name_original.ilike(name),
-                    cast(FranchiseModel.aliases, SAString).ilike(f"%{name}%"),
+                    cast(FranchiseModel.aliases, Text).ilike(f"%{name}%"),
                 )
             )
             .limit(1)
@@ -866,7 +866,7 @@ class SqlAlchemyAlbumRepository(AlbumRepository):
             base_stmt = base_stmt.where(
                 AlbumModel.title_original.ilike(pattern)
                 | AlbumModel.original_folder_name.ilike(pattern)
-                | cast(AlbumModel.aliases, SAString).ilike(pattern)
+                | cast(AlbumModel.aliases, Text).ilike(pattern)
             )
         subq = base_stmt.subquery()
         count_stmt = select(func.count()).select_from(subq)

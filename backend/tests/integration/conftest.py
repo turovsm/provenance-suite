@@ -119,7 +119,7 @@ def _atexit_drop_db() -> None:
 atexit.register(_atexit_drop_db)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with test_engine.connect() as connection:
         transaction = await connection.begin()

@@ -70,7 +70,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         if content_length and int(content_length) > settings.MAX_UPLOAD_SIZE_BYTES:
             max_mb = settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)
             return _error_response(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 code="PAYLOAD_TOO_LARGE",
                 message=f"Payload exceeds maximum size cap of {max_mb} MB.",
             )

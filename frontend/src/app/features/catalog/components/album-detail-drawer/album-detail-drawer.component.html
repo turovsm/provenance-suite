@@ -72,9 +72,9 @@
               </div>
             </div>
 
-            @if (album.external_links.length > 0) {
+            @if (sortedExternalLinks().length > 0) {
               <div class="external-links-row">
-                @for (ext of album.external_links; track ext.id) {
+                @for (ext of sortedExternalLinks(); track ext.id) {
                   <a [href]="ext.url" target="_blank" rel="noopener" class="ext-link-chip">
                     <span>{{ ext.site_name }}</span>
                     <span class="material-symbols-outlined icon-external">open_in_new</span>
