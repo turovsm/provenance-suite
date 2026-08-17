@@ -3,32 +3,74 @@
     auto_https off
 }
 
-:80 {
-    encode gzip zstd
-
+(security_headers) {
     header {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), vr=()"
+
+        Cross-Origin-Opener-Policy "same-origin"
+        Cross-Origin-Resource-Policy "same-origin"
+        Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self';"
+
+        -Server
+        -X-Powered-By
+        -X-Runtime
+        -X-Version
+
+        defer
+    }
+}
+
+:80 {
+    encode gzip zstd
+    import security_headers
+
+    request_body {
+        max_size 10MB
     }
 
     handle /api/* {
-        reverse_proxy backend:8000
+        reverse_proxy backend:8000 {
+            header_down -Server
+            header_down -X-Powered-By
+        }
     }
 
-    handle /docs* {
-        reverse_proxy backend:8000
-    }
+    handle /docs* /openapi.json {
+        @blocked_external {
+            not remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1
+        }
+        respond @blocked_external "Access Denied" 403 {
+            close
+        }
 
-    handle /openapi.json {
-        reverse_proxy backend:8000
+        reverse_proxy backend:8000 {
+            header_down -Server
+            header_down -X-Powered-By
+        }
     }
 
     handle /provenance-covers/* {
-        reverse_proxy minio:9000
+        header {
+            Cache-Control "public, max-age=31536000, immutable"
+            Cross-Origin-Resource-Policy "cross-origin"
+            defer
+        }
+
+        reverse_proxy minio:9000 {
+            header_down -Server
+            header_down -X-Amz-Bucket-Region
+            header_down -X-Amz-Request-Id
+            header_down -x-minio-deployment-id
+        }
     }
 
     handle {
-        reverse_proxy frontend:80
+        reverse_proxy frontend:80 {
+            header_down -Server
+            header_down -X-Powered-By
+        }
     }
 }

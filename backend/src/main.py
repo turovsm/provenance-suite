@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import anyio
 import redis.asyncio as aioredis
 from fastapi import Depends, FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,7 +42,7 @@ async def lifespan(_app_instance: FastAPI) -> AsyncGenerator[None, None]:
     try:
         logger.info("Initializing MinIO bucket storage policy...")
         storage_service = MinioObjectStorageService()
-        storage_service.ensure_bucket_and_policy()
+        await anyio.to_thread.run_sync(storage_service.ensure_bucket_and_policy)
     except Exception as exc:
         logger.warning("MinIO initialization warning: %s", exc)
 
@@ -64,7 +65,7 @@ register_exception_handlers(app)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:4200", "http://localhost:4200"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

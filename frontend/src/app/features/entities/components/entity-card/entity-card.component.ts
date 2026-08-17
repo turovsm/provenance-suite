@@ -1,5 +1,6 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { EntitySummary } from '../../../../domain/models/music.model';
+import { stripMarkdown } from '../../../../shared/utils/markdown-cleaner';
 
 @Component({
   selector: 'app-entity-card',
@@ -17,6 +18,10 @@ export class EntityCardComponent {
   readonly deleteRequested = output<EntitySummary>();
 
   protected hasImageError = false;
+
+  protected readonly cleanDescription = computed(() => {
+    return stripMarkdown(this.entity().description);
+  });
 
   protected onImageError(): void {
     this.hasImageError = true;

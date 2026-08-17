@@ -1,5 +1,5 @@
 import { DatePipe, KeyValuePipe, NgClass } from '@angular/common';
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal, computed } from '@angular/core';
 import {
   AlbumChangeEntry,
   AlbumDetailResponse,
@@ -63,6 +63,14 @@ export class AlbumDetailDrawerComponent {
   protected toggleInspector(tab: 'cue' | 'log' | 'accuraterip' | 'changelog'): void {
     this.activeInspectorTab.set(this.activeInspectorTab() === tab ? null : tab);
   }
+
+  protected readonly sortedExternalLinks = computed(() => {
+    const album = this.state.selectedAlbumDetail();
+    if (!album?.external_links) return [];
+    return [...album.external_links].sort((a, b) =>
+      (a.site_name || '').localeCompare(b.site_name || ''),
+    );
+  });
 
   protected getCoverUrl(album: AlbumDetailResponse): string | null {
     if (!album.covers || album.covers.length === 0) return null;

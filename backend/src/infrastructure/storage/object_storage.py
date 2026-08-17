@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -74,34 +75,39 @@ class MinioObjectStorageService:
         hash_bytes = thumbhash.rgba_to_thumb_hash(tw, th, img_thumb.tobytes())
         return base64.b64encode(bytes(hash_bytes)).decode("ascii")
 
-    def _normalize_cover_image(self, data: bytes, max_dim: int = 500) -> tuple[bytes, str]:
-        self._verify_magic_bytes(data)
-
-        img = Image.open(io.BytesIO(data))
-        img_rgba = img.convert("RGBA")
-        thumb_hash_str = self._generate_thumbhash(img_rgba)
-
+    @staticmethod
+    def _resize_and_compress_jpeg(img: Image.Image, target_dim: int) -> bytes:
         img_rgb = img.convert("RGB")
         width, height = img_rgb.size
-        if width > max_dim or height > max_dim:
-            img_rgb.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        if width > target_dim or height > target_dim:
+            img_rgb.thumbnail((target_dim, target_dim), Image.Resampling.LANCZOS)
 
         buffer = io.BytesIO()
-        img_rgb.save(buffer, format="JPEG", quality=85, optimize=True)
-        return buffer.getvalue(), thumb_hash_str
-
-    def _normalize_entity_image(self, data: bytes, max_dim: int = 800) -> bytes:
-        self._verify_magic_bytes(data)
-
-        img = Image.open(io.BytesIO(data))
-        img_rgb = img.convert("RGB")
-        width, height = img_rgb.size
-        if width > max_dim or height > max_dim:
-            img_rgb.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
-
-        buffer = io.BytesIO()
-        img_rgb.save(buffer, format="JPEG", quality=85, optimize=True)
+        img_rgb.save(
+            buffer,
+            format="JPEG",
+            quality=settings.IMAGE_JPEG_QUALITY,
+            optimize=True,
+        )
         return buffer.getvalue()
+
+    def _normalize_cover_image(self, data: bytes, max_dim: int | None = None) -> tuple[bytes, str]:
+        self._verify_magic_bytes(data)
+        target_dim = max_dim or settings.COVER_IMAGE_MAX_DIMENSION
+
+        with Image.open(io.BytesIO(data)) as img:
+            img_rgba = img.convert("RGBA")
+            thumb_hash_str = self._generate_thumbhash(img_rgba)
+            processed_bytes = self._resize_and_compress_jpeg(img, target_dim)
+
+        return processed_bytes, thumb_hash_str
+
+    def _normalize_entity_image(self, data: bytes, max_dim: int | None = None) -> bytes:
+        self._verify_magic_bytes(data)
+        target_dim = max_dim or settings.ENTITY_IMAGE_MAX_DIMENSION
+
+        with Image.open(io.BytesIO(data)) as img:
+            return self._resize_and_compress_jpeg(img, target_dim)
 
     async def upload_cover(self, object_key: str, data: bytes) -> tuple[str, str]:
         def _upload() -> tuple[str, str]:
@@ -138,6 +144,31 @@ class MinioObjectStorageService:
 
         return await anyio.to_thread.run_sync(_upload)
 
+    async def upload_backup_file(
+        self, object_key: str, file_path: str, content_type: str = "application/octet-stream"
+    ) -> str:
+        def _upload() -> str:
+            self.ensure_backup_bucket()
+            self._client.fput_object(
+                bucket_name=settings.BACKUP_BUCKET_NAME,
+                object_name=object_key,
+                file_path=file_path,
+                content_type=content_type,
+            )
+            return object_key
+
+        return await anyio.to_thread.run_sync(_upload)
+
+    async def list_backup_objects(self, prefix: str) -> list[str]:
+        def _list() -> list[str]:
+            self.ensure_backup_bucket()
+            objects = self._client.list_objects(
+                bucket_name=settings.BACKUP_BUCKET_NAME, prefix=prefix, recursive=True
+            )
+            return [obj.object_name for obj in objects if obj.object_name]
+
+        return await anyio.to_thread.run_sync(_list)
+
     @staticmethod
     def get_public_url(object_key: str) -> str:
         base = settings.MINIO_PUBLIC_BASE_URL.rstrip("/")
@@ -163,6 +194,17 @@ class MinioObjectStorageService:
             return object_key
 
         return await anyio.to_thread.run_sync(_upload)
+
+    async def download_backup_file(self, object_key: str, file_path: str | Path) -> None:
+        def _download() -> None:
+            self.ensure_backup_bucket()
+            self._client.fget_object(
+                bucket_name=settings.BACKUP_BUCKET_NAME,
+                object_name=object_key,
+                file_path=str(file_path),
+            )
+
+        await anyio.to_thread.run_sync(_download)
 
     async def prune_backups(self, prefix: str, keep: int) -> list[str]:
         def _prune() -> list[str]:
