@@ -1,105 +1,181 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: provenance_postgres
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: provenance-minio
     restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    command: server /data --console-address ":9001"
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - provenance-net
+
+  minio-init:
+    image: minio/mc:RELEASE.2024-05-09T17-04-24Z
+    container_name: provenance-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadminpassword}; do
+        echo 'Waiting for MinIO...';
+        sleep 1;
+      done;
+      /usr/bin/mc mb --ignore-existing local/${MINIO_BUCKET_NAME:-provenance-covers};
+      /usr/bin/mc mb --ignore-existing local/${BACKUP_BUCKET_NAME:-provenance-backups};
+      /usr/bin/mc anonymous set download local/${MINIO_BUCKET_NAME:-provenance-covers};
+      echo 'MinIO buckets initialized successfully.';
+      exit 0;
+      "
+    networks:
+      - provenance-net
+
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    container_name: provenance-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-provenance_vault}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATABASE: ${POSTGRES_DB:-provenance_vault}
+      WALG_S3_PREFIX: s3://${BACKUP_BUCKET_NAME:-provenance-backups}/wal-g
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-minioadminpassword}
+      AWS_ENDPOINT: http://minio:9000
+      AWS_S3_FORCE_PATH_STYLE: "true"
+      AWS_REGION: us-east-1
+      WALG_COMPRESSION_METHOD: ${WALG_COMPRESSION_METHOD:-zstd}
+    command: >
+      postgres
+      -c wal_level=replica
+      -c archive_mode=on
+      -c archive_command='wal-g wal-push %p'
+      -c archive_timeout=60
+      -c max_wal_senders=10
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-provenance_vault}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - provenance-net
 
   redis:
     image: redis:7.2-alpine
-    container_name: provenance_redis
+    container_name: provenance-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 5
-
-  minio:
-    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
-    container_name: provenance_minio
-    restart: unless-stopped
-    ports:
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadminpassword}
-      MINIO_API_CORS_ALLOW_ORIGIN: "*"
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    networks:
+      - provenance-net
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: provenance_backend
+    container_name: provenance-backend
     restart: unless-stopped
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
-    env_file: ./backend/.env
+    env_file:
+      - ./backend/.env
     environment:
-      POSTGRES_HOST: db
+      POSTGRES_HOST: postgres
       REDIS_HOST: redis
       MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_BASE_URL: http://localhost:${APP_PORT:-8088}/${MINIO_BUCKET_NAME:-provenance-covers}
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       minio:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    networks:
+      - provenance-net
 
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: provenance_worker
+    container_name: provenance-worker
     restart: unless-stopped
-    command: arq src.infrastructure.worker.tasks.WorkerSettings
-    env_file: ./backend/.env
+    command: ["arq", "src.infrastructure.worker.tasks.WorkerSettings"]
+    env_file:
+      - ./backend/.env
     environment:
-      POSTGRES_HOST: db
+      POSTGRES_HOST: postgres
       REDIS_HOST: redis
       MINIO_ENDPOINT: minio:9000
+      WALG_S3_PREFIX: s3://${BACKUP_BUCKET_NAME:-provenance-backups}/wal-g
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-minioadminpassword}
+      AWS_ENDPOINT: http://minio:9000
+      AWS_S3_FORCE_PATH_STYLE: "true"
+      AWS_REGION: us-east-1
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATABASE: ${POSTGRES_DB:-provenance_vault}
+    volumes:
+      - backup_temp_data:/tmp/provenance_backups
+      - postgres_data:/var/lib/postgresql/data:ro
     depends_on:
-      backend:
-        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - provenance-net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: provenance_frontend
+    container_name: provenance-frontend
     restart: unless-stopped
     depends_on:
       - backend
+    networks:
+      - provenance-net
 
   caddy:
     image: caddy:2.8-alpine
-    container_name: provenance_caddy
+    container_name: provenance-caddy
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8088}:80"
@@ -111,6 +187,8 @@ services:
       - backend
       - frontend
       - minio
+    networks:
+      - provenance-net
 
 volumes:
   postgres_data:
@@ -119,7 +197,13 @@ volumes:
     driver: local
   minio_data:
     driver: local
+  backup_temp_data:
+    driver: local
   caddy_data:
     driver: local
   caddy_config:
     driver: local
+
+networks:
+  provenance-net:
+    driver: bridge

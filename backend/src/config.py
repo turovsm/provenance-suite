@@ -84,11 +84,21 @@ class AppSettings(BaseSettings):
     RATE_LIMIT_MUTATION_PER_MIN: int = Field(default=30)
     RATE_LIMIT_READ_PER_MIN: int = Field(default=300)
 
-    # Logging & Backups
+    # Logging
     LOG_LEVEL: str = Field(default="INFO")
+
+    # Backup & Disaster Recovery Architecture (Hybrid Strategy)
     BACKUP_BUCKET_NAME: str = Field(default="provenance-backups")
-    BACKUP_RETENTION_COUNT: int = Field(default=14)
-    BACKUP_CRON_HOUR: int = Field(default=3)
+    BACKUP_TMP_DIR: str = Field(default="/tmp/provenance_backups")
+    BACKUP_LOGICAL_RETENTION_COUNT: int = Field(
+        default=8, description="Retain 8 logical dumps (4 months of bi-weekly fail-safes)"
+    )
+    WALG_BASE_BACKUP_RETENTION_COUNT: int = Field(
+        default=4, description="Retain 4 full weekly physical snapshots"
+    )
+    WALG_COMPRESSION_METHOD: str = Field(
+        default="zstd", description="Compression algorithm for WAL-G: zstd, lz4, or gzip"
+    )
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -115,6 +125,10 @@ class AppSettings(BaseSettings):
         if self.REDIS_PASSWORD:
             return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+    @property
+    def walg_s3_prefix(self) -> str:
+        return f"s3://{self.BACKUP_BUCKET_NAME}/wal-g"
 
 
 settings = AppSettings()
