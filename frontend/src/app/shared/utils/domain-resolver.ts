@@ -31,6 +31,8 @@ const EXTERNAL_INDEX_MAPPINGS: DomainMapping[] = [
   { patterns: ['cdjapan.co.jp'], name: 'CDJapan' },
   { patterns: ['mora.jp'], name: 'Mora' },
   { patterns: ['ototoy.jp'], name: 'Ototoy' },
+  { patterns: ['tanocstore.net'], name: 'TANO*C STORE' },
+  { patterns: ['rateyourmusic.com'], name: 'Rate Your Music' },
   { patterns: ['tower.jp', 'tower.com'], name: 'Tower Records' },
   { patterns: ['suruga-ya.jp', 'suruga-ya.com'], name: 'Suruga' },
   { patterns: ['hololivepro.com'], name: 'HololivePro' },
