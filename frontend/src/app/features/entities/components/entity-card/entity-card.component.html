@@ -42,9 +42,9 @@
     </p>
   }
 
-  @if (entity().description) {
+  @if (cleanDescription()) {
     <p class="description-snippet">
-      {{ entity().description }}
+      {{ cleanDescription() }}
     </p>
   }
 
