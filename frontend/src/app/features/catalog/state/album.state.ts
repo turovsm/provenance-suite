@@ -128,7 +128,7 @@ export class AlbumStateEngine {
       });
   }
 
-  deleteAlbum(albumId: string): void {
+  deleteAlbum(albumId: string, onSuccess?: () => void): void {
     this.repo
       .deleteAlbum(albumId)
       .pipe(
@@ -144,6 +144,7 @@ export class AlbumStateEngine {
           this.clearSelectedAlbum();
         }
         this.queryCatalog();
+        if (onSuccess) onSuccess();
       });
   }
 }
