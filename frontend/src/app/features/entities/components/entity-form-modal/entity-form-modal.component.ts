@@ -105,7 +105,7 @@ export class EntityFormModalComponent implements OnChanges {
     }
 
     const raw = this.form.getRawValue();
-    const entityType = raw.entity_type;
+    const entityType = this.entityToEdit ? this.entityToEdit.entity_type : raw.entity_type;
 
     if (this.entityToEdit) {
       const id = this.entityToEdit.id;

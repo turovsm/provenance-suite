@@ -53,6 +53,7 @@ export class CustomSelectComponent implements ControlValueAccessor {
 
   protected readonly selectedValue = signal<string | null>(null);
   protected readonly isOpen = signal<boolean>(false);
+  protected readonly isDisabled = signal<boolean>(false);
 
   @HostBinding('class.open-select') get isSelectOpen() {
     return this.isOpen();
@@ -75,6 +76,7 @@ export class CustomSelectComponent implements ControlValueAccessor {
   private onTouched: OnTouchedFn = () => undefined;
 
   toggleOpen(): void {
+    if (this.isDisabled()) return;
     const opening = !this.isOpen();
     this.isOpen.set(opening);
     if (opening) {
@@ -85,6 +87,7 @@ export class CustomSelectComponent implements ControlValueAccessor {
   }
 
   selectOption(opt: SelectOption): void {
+    if (this.isDisabled()) return;
     this.selectedValue.set(opt.value);
     this.onChange(opt.value);
     this.onTouched();
@@ -108,5 +111,12 @@ export class CustomSelectComponent implements ControlValueAccessor {
 
   registerOnTouched(fn: OnTouchedFn): void {
     this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.isDisabled.set(isDisabled);
+    if (isDisabled) {
+      this.isOpen.set(false);
+    }
   }
 }
