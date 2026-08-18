@@ -1,124 +1,129 @@
 # Provenance Suite
 
-A digital asset cataloging and music preservation system built for detailed metadata tracking, rip verification, and storage provenance across physical and digital releases.
+A web application for cataloging music collections, physical CD/DVD/BD rips, artwork scans, and archival backups.
 
 ---
 
-## Architectural Summary
+## Overview
 
-The system is built on **Clean Architecture and Domain-Driven Design (DDD)** principles, strictly isolating domain logic from framework and storage concerns:
+Provenance Suite tracks albums across physical and digital formats, preserving metadata such as track credits, cue sheets, AccurateRip verification summaries, rip logs, and storage locations.
 
-* **Backend Core**: Python 3.11 with FastAPI, SQLAlchemy 2.0 (asyncpg), PostgreSQL, and Alembic migrations.
-* **Authentication**: JWT access tokens with single-use rotating refresh token families stored in Redis, protected by Argon2id password hashing with pepper injection and non-existent account verification timing equalization.
-* **Object Storage**: MinIO (S3-compatible) image pipeline generating Lanczos-resampled 500px web covers and Base64 ThumbHash strings on upload.
-* **Background Worker**: ARQ worker running scheduled nightly PostgreSQL custom-format (`pg_dump -Fc`) backups to private storage with automated 14-day retention pruning.
-* **Frontend Application**: Angular 19+ standalone component tree built on reactive Signals, featuring automatic request correlation tracking and non-blocking JWT refresh retry queuing.
-* **Reverse Proxy Gateway**: Caddy server handling unified TLS termination and sub-path routing (`/api/*`, `/provenance-covers/*`, `/*`).
-
----
-
-## System Requirements
-
-* **Python**: 3.11+
-* **Node.js**: 22+ & npm 10+
-* **Package Manager**: [`uv`](https://github.com/astral-sh/uv) (for Python virtual environment management)
-* **Containers**: Docker & Docker Compose
+* **Backend**: FastAPI (Python 3.11), PostgreSQL 16, Redis 7.2, SQLAlchemy (asyncpg), Alembic
+* **Background Worker**: ARQ for scheduled database dumps and background file hashing
+* **Storage**: MinIO for album art, scans, and database snapshots
+* **Frontend**: Angular 19 (TypeScript)
+* **Reverse Proxy**: Caddy
 
 ---
 
-## Quickstart (Development Setup)
+## Requirements
+
+* Python 3.11+
+* Node.js 22+ & npm
+* [`uv`](https://github.com/astral-sh/uv) (Python package manager)
+* Docker and Docker Compose
+
+---
+
+## Development Setup
 
 ### 1. Environment Configuration
 
-Copy default configuration files into place:
+Copy the example environment file:
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-### 2. Workspace Installation
+### 2. Install Dependencies
 
-Install dependencies across both backend and frontend layers:
+Install Python virtual environment packages and frontend node modules:
 
 ```bash
 make install
 ```
 
-### 3. Spin Up Infrastructure Services
+### 3. Start Database and Storage Services
 
-Launch PostgreSQL 16, Redis 7.2, and MinIO object storage:
+Start local PostgreSQL, Redis, and MinIO containers:
 
 ```bash
 make db-up
 ```
 
-### 4. Execute Schema Migrations
+### 4. Run Database Migrations
 
-Apply database schema to head:
+Apply current database migrations:
 
 ```bash
 make db-migrate
 ```
 
-### 5. Seed Initial Superuser Account
+### 5. Create Admin Account
 
-Generate an admin account with a randomized password:
+Seed an initial superuser account:
 
 ```bash
 make db-seed-admin
 ```
 
-### 6. Run Application Components
+### 6. Run Application
 
-In separate terminal sessions:
+Run the backend API, background worker, and frontend dev server in separate terminals:
 
 ```bash
-make run-backend    # API server running on http://localhost:8000
-make run-worker     # ARQ background task process
-make run-frontend   # Angular UI running on http://localhost:4200
+make run-backend    # API server at http://localhost:8000
+make run-worker     # Background task worker
+make run-frontend   # Web interface at http://localhost:4200
 ```
 
-Interactive OpenAPI documentation is accessible at `http://localhost:8000/docs`.
+API documentation is available at `http://localhost:8000/docs`.
 
 ---
 
-## Testing & Quality Assurance
+## Tests and Linting
 
-Execute the complete backend and frontend test suites:
+Run test suites:
 
 ```bash
 # Run all tests
 make test
 
-# Run backend tests only (pytest)
-make test-backend
+# Run backend unit tests
+make test-backend-unit
 
-# Run frontend tests only (Vitest)
+# Run frontend tests
 make test-frontend
 ```
 
-Code formatting and static analysis:
+Run code linters and formatters:
 
 ```bash
-# Lint codebases
+# Check linting (ruff, ng lint)
 make lint
 
-# Format codebases
+# Auto-format code
 make format
 ```
 
 ---
 
-## Production Deployment
+## Production Setup
 
-To run the complete system behind Caddy in production mode:
+To run all services containerized behind Caddy:
 
 ```bash
-# Build production container images
+# Build Docker images
 make prod-build
 
-# Launch all production containers in detached mode
+# Start containers in background
 make prod-up
 ```
 
-The system will be accessible on port `8088` by default. `APP_PORT` can be configured in `.env` file.
+The application will be available at `http://localhost:8088` (or the port defined in `backend/.env`).
+
+Stop production containers:
+
+```bash
+make prod-down
+```
