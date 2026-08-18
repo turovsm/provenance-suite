@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -130,7 +131,7 @@ class MinioObjectStorageService:
         def _upload() -> str:
             self.ensure_bucket_and_policy()
             processed_data = self._normalize_entity_image(data)
-            object_key = f"entities/{entity_type}/{entity_id}.jpg"
+            object_key = f"entities/{entity_type}/{entity_id}_{uuid.uuid4().hex[:8]}.jpg"
             data_stream = io.BytesIO(processed_data)
 
             self._client.put_object(

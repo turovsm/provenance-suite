@@ -411,11 +411,16 @@ async def update_artist(
     if payload.description is not None:
         artist.description = payload.description
 
-    if payload.image_data:
+    if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        artist.image_path = await storage_service.upload_entity_avatar(
-            "artist", artist_id, payload.image_data
-        )
+        if artist.image_path:
+            await storage_service.delete_cover(artist.image_path)
+        if len(payload.image_data) > 0:
+            artist.image_path = await storage_service.upload_entity_avatar(
+                "artist", artist_id, payload.image_data
+            )
+        else:
+            artist.image_path = None
 
     await session.commit()
     await session.refresh(artist)
@@ -562,11 +567,16 @@ async def update_franchise(
     if payload.description is not None:
         f.description = payload.description
 
-    if payload.image_data:
+    if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        f.image_path = await storage_service.upload_entity_avatar(
-            "franchise", franchise_id, payload.image_data
-        )
+        if f.image_path:
+            await storage_service.delete_cover(f.image_path)
+        if len(payload.image_data) > 0:
+            f.image_path = await storage_service.upload_entity_avatar(
+                "franchise", franchise_id, payload.image_data
+            )
+        else:
+            f.image_path = None
 
     await session.commit()
     await session.refresh(f)
@@ -705,11 +715,16 @@ async def update_label(
     if payload.description is not None:
         lbl.description = payload.description
 
-    if payload.image_data:
+    if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        lbl.image_path = await storage_service.upload_entity_avatar(
-            "label", label_id, payload.image_data
-        )
+        if lbl.image_path:
+            await storage_service.delete_cover(lbl.image_path)
+        if len(payload.image_data) > 0:
+            lbl.image_path = await storage_service.upload_entity_avatar(
+                "label", label_id, payload.image_data
+            )
+        else:
+            lbl.image_path = None
 
     await session.commit()
     await session.refresh(lbl)
@@ -852,11 +867,16 @@ async def update_publisher(
     if payload.description is not None:
         p.description = payload.description
 
-    if payload.image_data:
+    if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        p.image_path = await storage_service.upload_entity_avatar(
-            "publisher", publisher_id, payload.image_data
-        )
+        if p.image_path:
+            await storage_service.delete_cover(p.image_path)
+        if len(payload.image_data) > 0:
+            p.image_path = await storage_service.upload_entity_avatar(
+                "publisher", publisher_id, payload.image_data
+            )
+        else:
+            p.image_path = None
 
     await session.commit()
     await session.refresh(p)
