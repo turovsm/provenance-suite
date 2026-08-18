@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main, dev ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
@@ -19,8 +26,29 @@ env:
   ENVIRONMENT: testing
 
 jobs:
+  changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
   backend:
     name: Backend
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -60,6 +88,9 @@ jobs:
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/pyproject.toml"
 
       - name: Install dependencies
         run: |
@@ -79,6 +110,8 @@ jobs:
 
   frontend:
     name: Frontend
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -102,3 +135,24 @@ jobs:
 
       - name: Unit tests
         run: npx ng test --watch=false
+
+  ci-status:
+    name: CI Status Gate
+    needs: [changes, backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify build outcomes
+        run: |
+          backend_status="${{ needs.backend.result }}"
+          frontend_status="${{ needs.frontend.result }}"
+          
+          echo "Backend Job Status:  $backend_status"
+          echo "Frontend Job Status: $frontend_status"
+          
+          if [ "$backend_status" = "failure" ] || [ "$frontend_status" = "failure" ]; then
+            echo "CI pipeline failed."
+            exit 1
+          fi
+          
+          echo "All active build checks succeeded."
