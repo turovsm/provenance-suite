@@ -3,10 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { EventDateRange, MasterEvent } from '../../../../domain/models/music.model';
-import {
-  CustomSelectComponent,
-  SelectOption,
-} from '../../../../shared/components/custom-select/custom-select.component';
+import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
+import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { EventStateEngine } from '../../state/event.state';
 import { EventFormModalComponent } from '../event-form-modal/event-form-modal.component';
@@ -22,7 +20,7 @@ const PAGE_SIZE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-event-list',
   standalone: true,
-  imports: [EventFormModalComponent, FormsModule, CustomSelectComponent],
+  imports: [EventFormModalComponent, FormsModule, PaginationBarComponent],
   styleUrls: ['./event-list.component.css'],
   templateUrl: './event-list.component.html',
 })
@@ -87,10 +85,8 @@ export class EventListComponent implements OnInit, OnDestroy {
     this.state.setDateRange(this.state.dateFrom(), value);
   }
 
-  protected handlePageSizeChange(value: string | null): void {
-    if (value) {
-      this.state.setPageSize(Number(value));
-    }
+  protected handlePageSizeChange(size: number): void {
+    this.state.setPageSize(size);
   }
 
   protected resetFilters(): void {

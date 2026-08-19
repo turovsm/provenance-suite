@@ -53,24 +53,57 @@
 
         <div class="field-group">
           <span class="field-label">ENTITY AVATAR / LOGO</span>
-          <div class="avatar-upload-row">
-            <div class="avatar-preview-box">
+          <div
+            class="avatar-uploader-card"
+            [class.drag-active]="isDraggingOver()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+          >
+            <div
+              class="avatar-preview-frame"
+              [class.artist-avatar]="form.get('entity_type')?.value === 'artist'"
+            >
               @if (imagePreviewUrl()) {
-                <img [src]="imagePreviewUrl()!" alt="Avatar Preview" class="preview-img" />
+                <img [src]="imagePreviewUrl()!" alt="Avatar Preview" class="avatar-img" />
               } @else {
-                <span class="material-symbols-outlined fallback-icon">add_a_photo</span>
+                <span class="material-symbols-outlined avatar-fallback-icon">
+                  {{ getFallbackIcon() }}
+                </span>
               }
             </div>
 
-            <label class="upload-trigger-btn">
-              <span class="material-symbols-outlined icon-chip">upload_file</span>
-              <span>Upload Image</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                (change)="handleFileSelected($event)"
-              />
-            </label>
+            <div class="avatar-drop-zone">
+              <div class="drop-primary-line">
+                <span class="material-symbols-outlined drop-icon">cloud_upload</span>
+                <span class="drop-main-text">Drag & drop image here</span>
+              </div>
+            </div>
+
+            <div class="avatar-actions-cluster">
+              <label class="upload-btn" title="Choose file from disk">
+                <span class="material-symbols-outlined btn-icon">
+                  {{ imagePreviewUrl() ? 'sync' : 'add_photo_alternate' }}
+                </span>
+                <span>{{ imagePreviewUrl() ? 'Replace' : 'Browse' }}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  (change)="handleFileSelected($event)"
+                />
+              </label>
+
+              @if (imagePreviewUrl()) {
+                <button
+                  type="button"
+                  (click)="removeImage()"
+                  class="delete-btn"
+                  title="Remove image"
+                >
+                  <span class="material-symbols-outlined btn-icon">delete</span>
+                </button>
+              }
+            </div>
           </div>
         </div>
 
