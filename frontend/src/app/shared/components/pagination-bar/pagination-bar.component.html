@@ -1,0 +1,40 @@
+<footer class="pagination-control-bar">
+  <button
+    type="button"
+    (click)="pageChange.emit(currentPage() - 1)"
+    [disabled]="currentPage() <= 1"
+    class="page-nav-btn"
+  >
+    <span class="material-symbols-outlined nav-arrow-icon">arrow_back</span>
+    <span>Previous</span>
+  </button>
+
+  <div class="page-meta-cluster">
+    <span class="page-telemetry-status">
+      Page {{ currentPage() }} of {{ totalPages() }} ({{ totalCount() }}
+      {{ totalCount() === 1 ? itemLabel() : itemPluralLabel() || itemLabel() + 's' }})
+    </span>
+
+    @if (pageSizeOptions().length > 0) {
+      <div class="page-size-selector">
+        <app-custom-select
+          [options]="pageSizeOptions()"
+          [ngModel]="pageSize().toString()"
+          (ngModelChange)="handlePageSizeChange($event)"
+          [dense]="true"
+          [openUp]="true"
+        />
+      </div>
+    }
+  </div>
+
+  <button
+    type="button"
+    (click)="pageChange.emit(currentPage() + 1)"
+    [disabled]="currentPage() >= totalPages()"
+    class="page-nav-btn"
+  >
+    <span>Next</span>
+    <span class="material-symbols-outlined nav-arrow-icon">arrow_forward</span>
+  </button>
+</footer>

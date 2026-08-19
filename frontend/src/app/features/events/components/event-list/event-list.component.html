@@ -1,4 +1,4 @@
-<div class="catalog-grid-layout">
+<div class="events-layout">
   <header class="grid-control-bar">
     <div class="control-row">
       <div class="search-input-wrapper">
@@ -170,42 +170,17 @@
     }
   </div>
 
-  <footer class="pagination-control-bar">
-    <button
-      (click)="state.setPage(state.currentPage() - 1)"
-      [disabled]="state.currentPage() <= 1"
-      class="page-nav-btn"
-    >
-      <span class="material-symbols-outlined nav-arrow-icon">arrow_back</span>
-      <span>Previous</span>
-    </button>
-
-    <div class="page-meta-cluster">
-      <span class="page-telemetry-status">
-        Page {{ state.currentPage() }} of {{ state.totalPages() }} ({{ state.totalCount() }}
-        {{ state.totalCount() === 1 ? 'event' : 'events' }})
-      </span>
-
-      <div class="page-size-selector">
-        <app-custom-select
-          [options]="pageSizeOptions"
-          [ngModel]="state.pageSize().toString()"
-          (ngModelChange)="handlePageSizeChange($event)"
-          [dense]="true"
-          [openUp]="true"
-        />
-      </div>
-    </div>
-
-    <button
-      (click)="state.setPage(state.currentPage() + 1)"
-      [disabled]="state.currentPage() >= state.totalPages()"
-      class="page-nav-btn"
-    >
-      <span>Next</span>
-      <span class="material-symbols-outlined nav-arrow-icon">arrow_forward</span>
-    </button>
-  </footer>
+  <app-pagination-bar
+    [currentPage]="state.currentPage()"
+    [totalPages]="state.totalPages()"
+    [totalCount]="state.totalCount()"
+    [pageSize]="state.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    itemLabel="event"
+    itemPluralLabel="events"
+    (pageChange)="state.setPage($event)"
+    (pageSizeChange)="handlePageSizeChange($event)"
+  />
 
   @if (isAddModalOpen) {
     <app-event-form-modal [eventToEdit]="eventToEdit()" (closed)="closeAddModal()" />

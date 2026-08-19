@@ -3,16 +3,29 @@ import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ALBUM_REPOSITORY_PORT } from '../../../../core/tokens/album.token';
 import { AlbumDetailResponse } from '../../../../domain/models/music.model';
+import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
+import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumStateEngine } from '../../state/album.state';
 import { AlbumCardComponent } from '../album-card/album-card.component';
 import { AlbumDetailDrawerComponent } from '../album-detail-drawer/album-detail-drawer.component';
 import { AlbumFormModalComponent } from '../album-form-modal/album-form-modal.component';
 
+const PAGE_SIZE_OPTIONS: SelectOption[] = [
+  { label: '24 / page', value: '24' },
+  { label: '48 / page', value: '48' },
+  { label: '96 / page', value: '96' },
+];
+
 @Component({
   selector: 'app-album-grid',
   standalone: true,
-  imports: [AlbumCardComponent, AlbumFormModalComponent, AlbumDetailDrawerComponent],
+  imports: [
+    AlbumCardComponent,
+    AlbumFormModalComponent,
+    AlbumDetailDrawerComponent,
+    PaginationBarComponent,
+  ],
   styleUrls: ['./album-grid.component.css'],
   templateUrl: './album-grid.component.html',
 })
@@ -21,6 +34,7 @@ export class AlbumGridComponent implements OnInit, OnDestroy {
   protected readonly authState = inject(AuthStateEngine);
   private readonly repo = inject(ALBUM_REPOSITORY_PORT);
 
+  protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
   protected isAddModalOpen = false;
   protected readonly albumToEdit = signal<AlbumDetailResponse | null>(null);
   protected readonly loadingEditId = signal<string | null>(null);
@@ -49,6 +63,10 @@ export class AlbumGridComponent implements OnInit, OnDestroy {
 
   protected handlePageChange(newPage: number): void {
     this.state.setPage(newPage);
+  }
+
+  protected handlePageSizeChange(size: number): void {
+    this.state.setPageSize(size);
   }
 
   protected handleSelectAlbum(albumId: string): void {

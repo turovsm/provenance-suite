@@ -34,6 +34,7 @@ export class AlbumStateEngine {
   readonly error = computed(() => this.errorSignal());
   readonly searchQuery = computed(() => this.searchQuerySignal());
   readonly currentPage = computed(() => this.pageSignal());
+  readonly pageSize = computed(() => this.pageSizeSignal());
 
   readonly selectedAlbumDetail = computed(() => this.selectedAlbumDetailSignal());
 
@@ -52,6 +53,12 @@ export class AlbumStateEngine {
   setPage(page: number): void {
     if (page < 1 || page > this.totalPages()) return;
     this.pageSignal.set(page);
+    this.queryCatalog();
+  }
+
+  setPageSize(size: number): void {
+    this.pageSizeSignal.set(size);
+    this.pageSignal.set(1);
     this.queryCatalog();
   }
 

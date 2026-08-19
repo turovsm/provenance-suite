@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { EntitySummary } from '../../../../domain/models/music.model';
+import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
+import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { EntityStateEngine } from '../../state/entity.state';
 import { EntityCardComponent } from '../entity-card/entity-card.component';
@@ -16,10 +18,16 @@ const TYPE_TABS = [
   { label: 'Publishers', value: 'publisher' },
 ];
 
+const PAGE_SIZE_OPTIONS: SelectOption[] = [
+  { label: '24 / page', value: '24' },
+  { label: '48 / page', value: '48' },
+  { label: '96 / page', value: '96' },
+];
+
 @Component({
   selector: 'app-entity-directory',
   standalone: true,
-  imports: [EntityCardComponent, EntityFormModalComponent],
+  imports: [EntityCardComponent, EntityFormModalComponent, PaginationBarComponent],
   styleUrls: ['./entity-directory.component.css'],
   templateUrl: './entity-directory.component.html',
 })
@@ -29,6 +37,7 @@ export class EntityDirectoryComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
 
   protected readonly typeTabs = TYPE_TABS;
+  protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
   protected isAddModalOpen = false;
   protected readonly entityToEdit = signal<EntitySummary | null>(null);
 
@@ -60,6 +69,10 @@ export class EntityDirectoryComponent implements OnInit, OnDestroy {
 
   protected handlePageChange(newPage: number): void {
     this.state.setPage(newPage);
+  }
+
+  protected handlePageSizeChange(size: number): void {
+    this.state.setPageSize(size);
   }
 
   protected handleSelectEntity(entity: EntitySummary): void {
