@@ -116,53 +116,197 @@
   box-shadow: 0 0 0 3px var(--border-focus-glow);
 }
 
-.avatar-upload-row {
+.avatar-uploader-card {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
+  padding: 0.85rem 1rem;
+  background-color: rgba(255, 255, 255, 0.015);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
-.avatar-preview-box {
-  width: 72px;
-  height: 72px;
+.avatar-uploader-card.drag-active {
+  border-color: var(--accent-blue) !important;
+  border-style: solid;
+  background-color: rgba(56, 189, 248, 0.06);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.15);
+}
+
+.avatar-preview-frame {
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   border-radius: 6px;
   overflow: hidden;
-  background-color: #000;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
+  background-color: #040407;
+  border: 1px solid var(--border-fine-glass);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.preview-img {
+.avatar-preview-frame.artist-avatar {
+  border-radius: 50% !important;
+}
+
+.avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+.avatar-fallback-icon {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.avatar-drop-zone {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.drop-primary-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.drop-icon {
+  font-size: 18px;
+  color: var(--accent-blue);
+}
+
+.drop-main-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.avatar-actions-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.upload-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  background-color: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 4px;
+  color: var(--accent-blue);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.upload-btn:hover {
+  background-color: rgba(56, 189, 248, 0.2);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+}
+
+.upload-btn input[type='file'] {
+  display: none !important;
+}
+
+.delete-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 4px;
+  color: var(--accent-error);
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.delete-btn:hover {
+  background-color: rgba(248, 113, 113, 0.2);
+  border-color: var(--accent-error);
+  color: #ffffff;
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.drop-hint-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .upload-trigger-btn {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
   background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.25);
   border-radius: 4px;
   color: var(--accent-blue);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 500;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .upload-trigger-btn:hover {
-  background: rgba(56, 189, 248, 0.18);
+  background: rgba(56, 189, 248, 0.2);
   border-color: var(--accent-blue);
+  color: #ffffff;
 }
 
 .upload-trigger-btn input[type='file'] {
   display: none !important;
+}
+
+.icon-chip {
+  font-size: 15px;
+}
+
+.remove-avatar-btn {
+  cursor: pointer;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 4px;
+  color: var(--accent-error);
+  font-size: 0.7rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.remove-avatar-btn:hover {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: var(--accent-error);
+}
+
+.remove-icon {
+  font-size: 14px;
 }
 
 .modal-footer {
