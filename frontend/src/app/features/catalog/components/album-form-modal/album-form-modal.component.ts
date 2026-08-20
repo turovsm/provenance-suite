@@ -15,6 +15,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { AlbumDetailResponse } from '../../../../domain/models/music.model';
+import { ModalShellComponent } from '../../../../shared/components/modal-shell/modal-shell.component';
 import { FormTab } from '../../models/album-form.model';
 import { AlbumDraftService } from '../../services/album-draft.service';
 import { AlbumFormBuilderService } from '../../services/album-form-builder.service';
@@ -35,6 +36,7 @@ import { DiscsTabComponent } from './tabs/discs-tab.component';
     DiscsTabComponent,
     CoversTabComponent,
     ArchivesTabComponent,
+    ModalShellComponent,
   ],
   providers: [CoverListService],
   styleUrls: ['./album-form-modal.component.css'],

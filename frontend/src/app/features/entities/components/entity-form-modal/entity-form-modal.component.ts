@@ -16,6 +16,7 @@ import {
   CustomSelectComponent,
   SelectOption,
 } from '../../../../shared/components/custom-select/custom-select.component';
+import { ModalShellComponent } from '../../../../shared/components/modal-shell/modal-shell.component';
 import { EntityStateEngine } from '../../state/entity.state';
 
 const ENTITY_TYPE_OPTIONS: SelectOption[] = [
@@ -28,7 +29,12 @@ const ENTITY_TYPE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-entity-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, CustomSelectComponent, AliasesChipInputComponent],
+  imports: [
+    ReactiveFormsModule,
+    CustomSelectComponent,
+    AliasesChipInputComponent,
+    ModalShellComponent,
+  ],
   styleUrls: ['./entity-form-modal.component.css'],
   templateUrl: './entity-form-modal.component.html',
 })

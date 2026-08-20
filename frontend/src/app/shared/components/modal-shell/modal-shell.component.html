@@ -1,0 +1,34 @@
+<div
+  class="modal-backdrop"
+  role="button"
+  tabindex="0"
+  (click)="handleBackdropClick($event)"
+  (keydown.enter)="handleBackdropClick($event)"
+>
+  <div
+    class="glass-modal-panel"
+    [style.max-width]="maxWidth()"
+    [style.max-height]="maxHeight()"
+    [style.height]="height()"
+    (click)="$event.stopPropagation()"
+    (keydown)="$event.stopPropagation()"
+    role="dialog"
+    aria-modal="true"
+  >
+    <header class="modal-header">
+      <div class="modal-title-group">
+        @if (icon()) {
+          <span class="material-symbols-outlined header-icon">{{ icon() }}</span>
+        }
+        <h2>{{ title() }}</h2>
+      </div>
+      <button type="button" (click)="close()" class="close-btn" title="Close Modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <ng-content select="[modal-nav]" />
+
+    <ng-content />
+  </div>
+</div>
