@@ -1,136 +1,113 @@
-<div class="modal-backdrop">
-  <div class="glass-modal-panel">
-    <header class="modal-header">
-      <div class="modal-title-group">
-        <span class="material-symbols-outlined header-icon">
-          {{ entityToEdit ? 'edit_note' : 'add_circle' }}
-        </span>
-        <h2>{{ entityToEdit ? 'Edit Master Entity' : 'Create Master Entity' }}</h2>
+<app-modal-shell
+  [title]="entityToEdit ? 'Edit Master Entity' : 'Create Master Entity'"
+  [icon]="entityToEdit ? 'edit_note' : 'add_circle'"
+  maxWidth="620px"
+  maxHeight="88vh"
+  (closed)="closeModal()"
+>
+  <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
+    <div class="form-scroll-area">
+      <div class="field-group">
+        <span class="field-label">ENTITY TYPE</span>
+        <app-custom-select
+          formControlName="entity_type"
+          [options]="entityTypeOptions"
+          [dense]="true"
+        />
       </div>
-      <button type="button" (click)="closeModal()" class="close-btn" title="Close Modal">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </header>
 
-    <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
-      <div class="form-scroll-area">
-        <div class="field-group">
-          <span class="field-label">ENTITY TYPE</span>
-          <app-custom-select
-            formControlName="entity_type"
-            [options]="entityTypeOptions"
-            [dense]="true"
-          />
-        </div>
+      <div class="field-group">
+        <label for="entity_name_original">ORIGINAL NAME *</label>
+        <input
+          id="entity_name_original"
+          type="text"
+          formControlName="name_original"
+          placeholder="e.g. 上海アリス幻樂団 / ZIZZ STUDIO / Lantis"
+          required
+        />
+      </div>
 
+      @if (form.get('entity_type')?.value === 'franchise') {
         <div class="field-group">
-          <label for="entity_name_original">ORIGINAL NAME *</label>
+          <label for="franchise_type">FRANCHISE CATEGORY</label>
           <input
-            id="entity_name_original"
+            id="franchise_type"
             type="text"
-            formControlName="name_original"
-            placeholder="e.g. 上海アリス幻樂団 / ZIZZ STUDIO / Lantis"
-            required
+            formControlName="franchise_type"
+            placeholder="e.g. Game, Visual Novel, Anime"
           />
         </div>
+      }
 
-        @if (form.get('entity_type')?.value === 'franchise') {
-          <div class="field-group">
-            <label for="franchise_type">FRANCHISE CATEGORY</label>
-            <input
-              id="franchise_type"
-              type="text"
-              formControlName="franchise_type"
-              placeholder="e.g. Game, Visual Novel, Anime"
-            />
-          </div>
-        }
+      <div class="field-group">
+        <span class="field-label">ALIASES (Press Enter to add)</span>
+        <app-aliases-chip-input formControlName="aliases" />
+      </div>
 
-        <div class="field-group">
-          <span class="field-label">ALIASES (Press Enter to add)</span>
-          <app-aliases-chip-input formControlName="aliases" />
-        </div>
+      <div class="field-group">
+        <span class="field-label">ENTITY AVATAR / LOGO</span>
+        <div
+          class="avatar-uploader-card"
+          [class.drag-active]="isDraggingOver()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <app-entity-avatar
+            [imageUrl]="imagePreviewUrl()"
+            name="Avatar Preview"
+            [entityType]="form.get('entity_type')?.value || 'artist'"
+            size="md"
+          />
 
-        <div class="field-group">
-          <span class="field-label">ENTITY AVATAR / LOGO</span>
-          <div
-            class="avatar-uploader-card"
-            [class.drag-active]="isDraggingOver()"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onDrop($event)"
-          >
-            <div
-              class="avatar-preview-frame"
-              [class.artist-avatar]="form.get('entity_type')?.value === 'artist'"
-            >
-              @if (imagePreviewUrl()) {
-                <img [src]="imagePreviewUrl()!" alt="Avatar Preview" class="avatar-img" />
-              } @else {
-                <span class="material-symbols-outlined avatar-fallback-icon">
-                  {{ getFallbackIcon() }}
-                </span>
-              }
-            </div>
-
-            <div class="avatar-drop-zone">
-              <div class="drop-primary-line">
-                <span class="material-symbols-outlined drop-icon">cloud_upload</span>
-                <span class="drop-main-text">Drag & drop image here</span>
-              </div>
-            </div>
-
-            <div class="avatar-actions-cluster">
-              <label class="upload-btn" title="Choose file from disk">
-                <span class="material-symbols-outlined btn-icon">
-                  {{ imagePreviewUrl() ? 'sync' : 'add_photo_alternate' }}
-                </span>
-                <span>{{ imagePreviewUrl() ? 'Replace' : 'Browse' }}</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  (change)="handleFileSelected($event)"
-                />
-              </label>
-
-              @if (imagePreviewUrl()) {
-                <button
-                  type="button"
-                  (click)="removeImage()"
-                  class="delete-btn"
-                  title="Remove image"
-                >
-                  <span class="material-symbols-outlined btn-icon">delete</span>
-                </button>
-              }
+          <div class="avatar-drop-zone">
+            <div class="drop-primary-line">
+              <span class="material-symbols-outlined drop-icon">cloud_upload</span>
+              <span class="drop-main-text">Drag & drop image here</span>
             </div>
           </div>
-        </div>
 
-        <div class="field-group">
-          <label for="entity_description">BIOGRAPHY / DESCRIPTION (Markdown supported)</label>
-          <textarea
-            id="entity_description"
-            formControlName="description"
-            rows="5"
-            class="code-textarea"
-            placeholder="Detailed description, circle history, or franchise overview..."
-          ></textarea>
+          <div class="avatar-actions-cluster">
+            <label class="upload-btn" title="Choose file from disk">
+              <span class="material-symbols-outlined btn-icon">
+                {{ imagePreviewUrl() ? 'sync' : 'add_photo_alternate' }}
+              </span>
+              <span>{{ imagePreviewUrl() ? 'Replace' : 'Browse' }}</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                (change)="handleFileSelected($event)"
+              />
+            </label>
+
+            @if (imagePreviewUrl()) {
+              <button type="button" (click)="removeImage()" class="delete-btn" title="Remove image">
+                <span class="material-symbols-outlined btn-icon">delete</span>
+              </button>
+            }
+          </div>
         </div>
       </div>
 
-      <footer class="modal-footer">
-        <div class="footer-btn-group">
-          <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
-          <button
-            type="submit"
-            [disabled]="state.isSubmitting() || form.invalid"
-            class="submit-btn"
-          >
-            <span>{{ entityToEdit ? 'Update Entity' : 'Save Entity' }}</span>
-          </button>
-        </div>
-      </footer>
-    </form>
-  </div>
-</div>
+      <div class="field-group">
+        <label for="entity_description">BIOGRAPHY / DESCRIPTION (Markdown supported)</label>
+        <textarea
+          id="entity_description"
+          formControlName="description"
+          rows="5"
+          class="code-textarea"
+          placeholder="Detailed description, circle history, or franchise overview..."
+        ></textarea>
+      </div>
+    </div>
+
+    <footer class="modal-footer">
+      <div class="footer-btn-group">
+        <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
+        <button type="submit" [disabled]="state.isSubmitting() || form.invalid" class="submit-btn">
+          <span>{{ entityToEdit ? 'Update Entity' : 'Save Entity' }}</span>
+        </button>
+      </div>
+    </footer>
+  </form>
+</app-modal-shell>

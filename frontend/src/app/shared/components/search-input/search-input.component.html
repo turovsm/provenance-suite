@@ -1,0 +1,15 @@
+<div class="search-input-wrapper">
+  <span class="material-symbols-outlined search-icon">search</span>
+  <input
+    type="text"
+    [value]="query()"
+    (input)="onInput($event)"
+    [placeholder]="placeholder()"
+    class="telemetry-search-input"
+  />
+  @if (query()) {
+    <button type="button" (click)="clear()" class="clear-btn" title="Clear search">
+      <span class="material-symbols-outlined clear-icon">close</span>
+    </button>
+  }
+</div>

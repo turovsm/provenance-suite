@@ -1,9 +1,12 @@
-import { Component, computed, input, output } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
+import { Component, computed, effect, input, output, signal, untracked } from '@angular/core';
 import { AlbumSummary } from '../../../../domain/models/music.model';
+import { CardActionsComponent } from '../../../../shared/components/card-actions/card-actions.component';
 
 @Component({
   selector: 'app-album-card',
   standalone: true,
+  imports: [CardActionsComponent, NgOptimizedImage],
   styleUrls: ['./album-card.component.css'],
   templateUrl: './album-card.component.html',
 })
@@ -16,7 +19,16 @@ export class AlbumCardComponent {
   readonly editRequested = output<string>();
   readonly cardClicked = output<string>();
 
-  protected hasImageError = false;
+  protected readonly hasImageError = signal<boolean>(false);
+
+  constructor() {
+    effect(() => {
+      this.coverUrl();
+      untracked(() => {
+        this.hasImageError.set(false);
+      });
+    });
+  }
 
   protected readonly coverUrl = computed(() => {
     const covers = this.album().covers;
@@ -41,7 +53,7 @@ export class AlbumCardComponent {
   });
 
   protected onImageError(): void {
-    this.hasImageError = true;
+    this.hasImageError.set(true);
   }
 
   protected handleCardClick(): void {
@@ -49,16 +61,12 @@ export class AlbumCardComponent {
     this.cardClicked.emit(this.album().id);
   }
 
-  protected handleEdit(event: MouseEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
+  protected handleEdit(): void {
     if (this.isLoadingEdit()) return;
     this.editRequested.emit(this.album().id);
   }
 
-  protected handleDelete(event: MouseEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
+  protected handleDelete(): void {
     if (this.isLoadingEdit()) return;
     if (confirm(`Remove "${this.album().title_original}" from archive?`)) {
       this.deleteRequested.emit(this.album().id);

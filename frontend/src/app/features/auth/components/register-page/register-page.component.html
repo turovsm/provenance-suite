@@ -68,12 +68,7 @@
         />
       </div>
 
-      @if (localValidationError || state.authenticationError()) {
-        <div class="error-banner" role="alert">
-          <span class="material-symbols-outlined icon-alert">error</span>
-          <span>{{ localValidationError || state.authenticationError() }}</span>
-        </div>
-      }
+      <app-error-banner [message]="localValidationError || state.authenticationError()" />
 
       <button
         type="submit"

@@ -1,5 +1,5 @@
 import { DatePipe, KeyValuePipe, NgClass } from '@angular/common';
-import { Component, HostListener, inject, signal, computed } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import {
   AlbumChangeEntry,
   AlbumDetailResponse,
@@ -8,6 +8,7 @@ import {
   MasterPublisher,
   TrackDetailResponse,
 } from '../../../../domain/models/music.model';
+import { CopyButtonComponent } from '../../../../shared/components/copy-button/copy-button.component';
 import { AlbumStateEngine } from '../../state/album.state';
 
 export interface TrackCreditGroup {
@@ -28,7 +29,7 @@ const ROLE_CLASS_MAP: Record<string, string> = {
 @Component({
   selector: 'app-album-detail-drawer',
   standalone: true,
-  imports: [DatePipe, KeyValuePipe, NgClass],
+  imports: [DatePipe, KeyValuePipe, NgClass, CopyButtonComponent],
   styleUrls: ['./album-detail-drawer.component.css'],
   templateUrl: './album-detail-drawer.component.html',
 })
@@ -39,7 +40,6 @@ export class AlbumDetailDrawerComponent {
   protected readonly activeInspectorTab = signal<
     'cue' | 'log' | 'accuraterip' | 'changelog' | null
   >(null);
-  protected readonly copiedField = signal<string | null>(null);
 
   protected readonly expandedChangelogId = signal<string | null>(null);
 
@@ -149,18 +149,6 @@ export class AlbumDetailDrawerComponent {
   protected selectDisc(index: number): void {
     this.activeDiscIndex.set(index);
     this.activeInspectorTab.set(null);
-  }
-
-  protected copyToClipboard(text: string, fieldIdentifier: string): void {
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-      this.copiedField.set(fieldIdentifier);
-      setTimeout(() => {
-        if (this.copiedField() === fieldIdentifier) {
-          this.copiedField.set(null);
-        }
-      }, 2000);
-    });
   }
 
   protected formatDuration(totalSeconds: number | null): string {

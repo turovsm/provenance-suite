@@ -1,170 +1,158 @@
-<div class="modal-backdrop">
-  <div class="glass-modal-panel">
-    <header class="modal-header">
-      <div class="modal-title-group">
-        <span class="material-symbols-outlined header-icon">
-          {{ eventToEdit ? 'edit_note' : 'event' }}
-        </span>
-        <h2>{{ eventToEdit ? 'Edit Master Event' : 'Create Master Event' }}</h2>
+<app-modal-shell
+  [title]="eventToEdit ? 'Edit Master Event' : 'Create Master Event'"
+  [icon]="eventToEdit ? 'edit_note' : 'event'"
+  maxWidth="600px"
+  maxHeight="85vh"
+  (closed)="closeModal()"
+>
+  <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
+    <div class="form-scroll-area">
+      <div class="field-group">
+        <label for="event_short_name">SHORT NAME * (e.g. C104, M3-56)</label>
+        <input
+          id="event_short_name"
+          type="text"
+          formControlName="short_name"
+          placeholder="e.g. C104"
+          required
+        />
       </div>
-      <button type="button" (click)="closeModal()" class="close-btn" title="Close Modal">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </header>
 
-    <form [formGroup]="form" (ngSubmit)="handleSubmit()" class="modal-form">
-      <div class="form-scroll-area">
-        <div class="field-group">
-          <label for="event_short_name">SHORT NAME * (e.g. C104, M3-56)</label>
+      <div class="field-group">
+        <label for="event_full_name">FULL OFFICIAL NAME</label>
+        <input
+          id="event_full_name"
+          type="text"
+          formControlName="full_name"
+          placeholder="e.g. Comic Market 104"
+        />
+      </div>
+
+      <div class="form-row">
+        <div class="field-group flex-1">
+          <label for="event_start_date">PRIMARY START DATE</label>
           <input
-            id="event_short_name"
+            id="event_start_date"
             type="text"
-            formControlName="short_name"
-            placeholder="e.g. C104"
-            required
+            placeholder="yyyy/mm/dd"
+            formControlName="start_date"
           />
+          @if (form.get('start_date')?.invalid && form.get('start_date')?.touched) {
+            <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
+          }
         </div>
 
-        <div class="field-group">
-          <label for="event_full_name">FULL OFFICIAL NAME</label>
+        <div class="field-group flex-1">
+          <label for="event_end_date">PRIMARY END DATE</label>
           <input
-            id="event_full_name"
+            id="event_end_date"
             type="text"
-            formControlName="full_name"
-            placeholder="e.g. Comic Market 104"
+            placeholder="yyyy/mm/dd"
+            formControlName="end_date"
           />
-        </div>
-
-        <div class="form-row">
-          <div class="field-group flex-1">
-            <label for="event_start_date">PRIMARY START DATE</label>
-            <input
-              id="event_start_date"
-              type="text"
-              placeholder="yyyy/mm/dd"
-              formControlName="start_date"
-            />
-            @if (form.get('start_date')?.invalid && form.get('start_date')?.touched) {
-              <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
-            }
-          </div>
-
-          <div class="field-group flex-1">
-            <label for="event_end_date">PRIMARY END DATE</label>
-            <input
-              id="event_end_date"
-              type="text"
-              placeholder="yyyy/mm/dd"
-              formControlName="end_date"
-            />
-            @if (form.get('end_date')?.invalid && form.get('end_date')?.touched) {
-              <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
-            }
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="field-group flex-1">
-            <label for="event_orig_start_date">ORIGINAL START DATE</label>
-            <input
-              id="event_orig_start_date"
-              type="text"
-              placeholder="yyyy/mm/dd"
-              formControlName="original_start_date"
-            />
-            @if (
-              form.get('original_start_date')?.invalid && form.get('original_start_date')?.touched
-            ) {
-              <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
-            }
-          </div>
-
-          <div class="field-group flex-1">
-            <label for="event_orig_end_date">ORIGINAL END DATE</label>
-            <input
-              id="event_orig_end_date"
-              type="text"
-              placeholder="yyyy/mm/dd"
-              formControlName="original_end_date"
-            />
-            @if (form.get('original_end_date')?.invalid && form.get('original_end_date')?.touched) {
-              <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
-            }
-          </div>
-        </div>
-
-        <div class="sub-section-box">
-          <div class="sub-section-header">
-            <span class="sub-section-title">Rescheduling Timeline History</span>
-            <button type="button" class="add-sub-btn" (click)="addHistoryStep()">
-              <span class="material-symbols-outlined icon-btn-sm">add</span>
-              <span class="add-btn-text">Add History Step</span>
-            </button>
-          </div>
-
-          <div class="sub-array-list">
-            @for (step of dateHistoryArray.controls; track step; let i = $index) {
-              <div [formGroup]="$any(step)" class="form-row align-center">
-                <span class="step-index-tag">Step #{{ i + 1 }}</span>
-                <div class="field-group flex-1">
-                  <input type="text" placeholder="yyyy/mm/dd" formControlName="start_date" />
-                </div>
-                <div class="field-group flex-1">
-                  <input type="text" placeholder="yyyy/mm/dd" formControlName="end_date" />
-                </div>
-                <button type="button" class="icon-only-btn" (click)="removeHistoryStep(i)">
-                  <span class="material-symbols-outlined">remove_circle_outline</span>
-                </button>
-              </div>
-            }
-          </div>
-        </div>
-
-        <div class="sub-section-box">
-          <div class="sub-section-header">
-            <span class="sub-section-title">Additional / Multi-Session Dates</span>
-            <button type="button" class="add-sub-btn" (click)="addAdditionalDate()">
-              <span class="material-symbols-outlined icon-btn-sm">add</span>
-              <span class="add-btn-text">Add Session Date</span>
-            </button>
-          </div>
-
-          <div class="sub-array-list">
-            @for (session of additionalDatesArray.controls; track session; let i = $index) {
-              <div [formGroup]="$any(session)" class="form-row align-center">
-                <span class="step-index-tag">Session #{{ i + 1 }}</span>
-                <div class="field-group flex-1">
-                  <input type="text" placeholder="yyyy/mm/dd" formControlName="start_date" />
-                </div>
-                <div class="field-group flex-1">
-                  <input type="text" placeholder="yyyy/mm/dd" formControlName="end_date" />
-                </div>
-                <button type="button" class="icon-only-btn" (click)="removeAdditionalDate(i)">
-                  <span class="material-symbols-outlined">remove_circle_outline</span>
-                </button>
-              </div>
-            }
-          </div>
-        </div>
-
-        <div class="field-group">
-          <span class="field-label">EVENT STATUS</span>
-          <app-custom-select formControlName="status" [options]="statusOptions" [openUp]="true" />
+          @if (form.get('end_date')?.invalid && form.get('end_date')?.touched) {
+            <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
+          }
         </div>
       </div>
 
-      <footer class="modal-footer">
-        <div class="footer-btn-group">
-          <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
-          <button
-            type="submit"
-            [disabled]="state.isSubmitting() || form.invalid"
-            class="submit-btn"
-          >
-            <span>{{ eventToEdit ? 'Update Event' : 'Save Event' }}</span>
+      <div class="form-row">
+        <div class="field-group flex-1">
+          <label for="event_orig_start_date">ORIGINAL START DATE</label>
+          <input
+            id="event_orig_start_date"
+            type="text"
+            placeholder="yyyy/mm/dd"
+            formControlName="original_start_date"
+          />
+          @if (
+            form.get('original_start_date')?.invalid && form.get('original_start_date')?.touched
+          ) {
+            <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
+          }
+        </div>
+
+        <div class="field-group flex-1">
+          <label for="event_orig_end_date">ORIGINAL END DATE</label>
+          <input
+            id="event_orig_end_date"
+            type="text"
+            placeholder="yyyy/mm/dd"
+            formControlName="original_end_date"
+          />
+          @if (form.get('original_end_date')?.invalid && form.get('original_end_date')?.touched) {
+            <span class="inline-error">Invalid date format (e.g. 1987/04/XX)</span>
+          }
+        </div>
+      </div>
+
+      <div class="sub-section-box">
+        <div class="sub-section-header">
+          <span class="sub-section-title">Rescheduling Timeline History</span>
+          <button type="button" class="add-sub-btn" (click)="addHistoryStep()">
+            <span class="material-symbols-outlined icon-btn-sm">add</span>
+            <span class="add-btn-text">Add History Step</span>
           </button>
         </div>
-      </footer>
-    </form>
-  </div>
-</div>
+
+        <div class="sub-array-list">
+          @for (step of dateHistoryArray.controls; track step; let i = $index) {
+            <div [formGroup]="$any(step)" class="form-row align-center">
+              <span class="step-index-tag">Step #{{ i + 1 }}</span>
+              <div class="field-group flex-1">
+                <input type="text" placeholder="yyyy/mm/dd" formControlName="start_date" />
+              </div>
+              <div class="field-group flex-1">
+                <input type="text" placeholder="yyyy/mm/dd" formControlName="end_date" />
+              </div>
+              <button type="button" class="icon-only-btn" (click)="removeHistoryStep(i)">
+                <span class="material-symbols-outlined">remove_circle_outline</span>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="sub-section-box">
+        <div class="sub-section-header">
+          <span class="sub-section-title">Additional / Multi-Session Dates</span>
+          <button type="button" class="add-sub-btn" (click)="addAdditionalDate()">
+            <span class="material-symbols-outlined icon-btn-sm">add</span>
+            <span class="add-btn-text">Add Session Date</span>
+          </button>
+        </div>
+
+        <div class="sub-array-list">
+          @for (session of additionalDatesArray.controls; track session; let i = $index) {
+            <div [formGroup]="$any(session)" class="form-row align-center">
+              <span class="step-index-tag">Session #{{ i + 1 }}</span>
+              <div class="field-group flex-1">
+                <input type="text" placeholder="yyyy/mm/dd" formControlName="start_date" />
+              </div>
+              <div class="field-group flex-1">
+                <input type="text" placeholder="yyyy/mm/dd" formControlName="end_date" />
+              </div>
+              <button type="button" class="icon-only-btn" (click)="removeAdditionalDate(i)">
+                <span class="material-symbols-outlined">remove_circle_outline</span>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="field-group">
+        <span class="field-label">EVENT STATUS</span>
+        <app-custom-select formControlName="status" [options]="statusOptions" [openUp]="true" />
+      </div>
+    </div>
+
+    <footer class="modal-footer">
+      <div class="footer-btn-group">
+        <button type="button" (click)="closeModal()" class="cancel-btn">Cancel</button>
+        <button type="submit" [disabled]="state.isSubmitting() || form.invalid" class="submit-btn">
+          <span>{{ eventToEdit ? 'Update Event' : 'Save Event' }}</span>
+        </button>
+      </div>
+    </footer>
+  </form>
+</app-modal-shell>

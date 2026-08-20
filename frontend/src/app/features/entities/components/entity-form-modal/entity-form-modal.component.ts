@@ -16,6 +16,8 @@ import {
   CustomSelectComponent,
   SelectOption,
 } from '../../../../shared/components/custom-select/custom-select.component';
+import { EntityAvatarComponent } from '../../../../shared/components/entity-avatar/entity-avatar.component';
+import { ModalShellComponent } from '../../../../shared/components/modal-shell/modal-shell.component';
 import { EntityStateEngine } from '../../state/entity.state';
 
 const ENTITY_TYPE_OPTIONS: SelectOption[] = [
@@ -28,7 +30,13 @@ const ENTITY_TYPE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-entity-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, CustomSelectComponent, AliasesChipInputComponent],
+  imports: [
+    ReactiveFormsModule,
+    CustomSelectComponent,
+    AliasesChipInputComponent,
+    ModalShellComponent,
+    EntityAvatarComponent,
+  ],
   styleUrls: ['./entity-form-modal.component.css'],
   templateUrl: './entity-form-modal.component.html',
 })
@@ -146,22 +154,6 @@ export class EntityFormModalComponent implements OnChanges, OnDestroy {
     this.revokeBlobUrlIfPresent();
     this.imagePreviewUrl.set(null);
     this.base64ImageData = '';
-  }
-
-  protected getFallbackIcon(): string {
-    const type = this.form.get('entity_type')?.value;
-    switch (type) {
-      case 'artist':
-        return 'person';
-      case 'franchise':
-        return 'sports_esports';
-      case 'label':
-        return 'album';
-      case 'publisher':
-        return 'domain';
-      default:
-        return 'folder_shared';
-    }
   }
 
   protected closeModal(): void {

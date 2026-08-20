@@ -1,15 +1,10 @@
 <div class="catalog-grid-layout">
   <header class="grid-control-bar">
-    <div class="search-input-wrapper">
-      <span class="material-symbols-outlined search-icon">search</span>
-      <input
-        type="text"
-        [value]="state.searchQuery()"
-        (input)="handleSearchInput($event)"
-        placeholder="Search by title, artist, or folder..."
-        class="telemetry-search-input"
-      />
-    </div>
+    <app-search-input
+      [value]="state.searchQuery()"
+      placeholder="Search by title, artist, or folder..."
+      (searchChange)="handleSearchChange($event)"
+    />
 
     <div class="header-right-cluster">
       @if (authState.identity()?.is_superuser) {
@@ -21,12 +16,7 @@
     </div>
   </header>
 
-  @if (state.error()) {
-    <div class="error-banner" role="alert">
-      <span class="material-symbols-outlined icon-alert">error</span>
-      <span>{{ state.error() }}</span>
-    </div>
-  }
+  <app-error-banner [message]="state.error()" />
 
   <div class="grid-scroll-area">
     @if (state.isLoading()) {
@@ -35,11 +25,11 @@
       </div>
     } @else {
       @if (!state.hasAlbums()) {
-        <div class="empty-state-card">
-          <span class="material-symbols-outlined empty-icon">library_music</span>
-          <h3>No Albums Found</h3>
-          <p>No albums match your active search query.</p>
-        </div>
+        <app-empty-state
+          icon="library_music"
+          title="No Albums Found"
+          description="No albums match your active search query."
+        />
       } @else {
         <div class="albums-responsive-grid">
           @for (album of state.albums(); track album.id) {
