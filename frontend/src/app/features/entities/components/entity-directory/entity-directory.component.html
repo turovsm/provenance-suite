@@ -29,12 +29,7 @@
     </nav>
   </header>
 
-  @if (state.error()) {
-    <div class="error-banner" role="alert">
-      <span class="material-symbols-outlined icon-alert">error</span>
-      <span>{{ state.error() }}</span>
-    </div>
-  }
+  <app-error-banner [message]="state.error()" />
 
   <div class="grid-scroll-area">
     @if (state.isLoading()) {

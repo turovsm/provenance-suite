@@ -69,12 +69,7 @@
     </div>
   </header>
 
-  @if (state.error()) {
-    <div class="error-banner" role="alert">
-      <span class="material-symbols-outlined icon-alert">error</span>
-      <span>{{ state.error() }}</span>
-    </div>
-  }
+  <app-error-banner [message]="state.error()" />
 
   <div class="glass-table-card table-scroll-container" [class.is-loading]="state.isLoading()">
     @if (state.isLoading()) {

@@ -1,10 +1,11 @@
 import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ErrorBannerComponent } from '../../../../shared/components/error-banner/error-banner.component';
 
 @Component({
   selector: 'app-login-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ErrorBannerComponent],
   styleUrls: ['./login-form.component.css'],
   templateUrl: './login-form.component.html',
 })

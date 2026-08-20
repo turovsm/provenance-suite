@@ -3,6 +3,7 @@ import { ALBUM_REPOSITORY_PORT } from '../../../../core/tokens/album.token';
 import { AlbumDetailResponse } from '../../../../domain/models/music.model';
 import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../../shared/components/error-banner/error-banner.component';
 import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
@@ -27,6 +28,7 @@ const PAGE_SIZE_OPTIONS: SelectOption[] = [
     PaginationBarComponent,
     SearchInputComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   styleUrls: ['./album-grid.component.css'],
   templateUrl: './album-grid.component.html',

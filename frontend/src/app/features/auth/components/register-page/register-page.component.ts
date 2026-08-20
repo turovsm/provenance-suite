@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ErrorBannerComponent } from '../../../../shared/components/error-banner/error-banner.component';
 import { AuthStateEngine } from '../../state/auth.state';
 
 @Component({
   selector: 'app-register-page',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, ErrorBannerComponent],
   styleUrls: ['./register-page.component.css'],
   templateUrl: './register-page.component.html',
 })
