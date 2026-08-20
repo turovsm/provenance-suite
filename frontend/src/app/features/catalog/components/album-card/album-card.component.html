@@ -6,9 +6,10 @@
   (keydown.enter)="handleCardClick()"
 >
   <div class="cover-frame">
-    @if (coverUrl() && !hasImageError) {
+    @if (coverUrl() && !hasImageError()) {
       <img
-        [src]="coverUrl()!"
+        [ngSrc]="coverUrl()!"
+        [fill]="true"
         [alt]="album().title_original"
         class="cover-image"
         (error)="onImageError()"
@@ -41,33 +42,13 @@
       }
     </div>
 
-    @if (isSuperuser()) {
-      <div class="card-admin-actions">
-        <button
-          type="button"
-          (click)="handleEdit($event)"
-          class="card-edit-btn"
-          [disabled]="isLoadingEdit()"
-          title="Edit Album"
-        >
-          @if (isLoadingEdit()) {
-            <span class="material-symbols-outlined action-icon spinning">sync</span>
-          } @else {
-            <span class="material-symbols-outlined action-icon">edit</span>
-            <span>Edit</span>
-          }
-        </button>
-        <button
-          type="button"
-          (click)="handleDelete($event)"
-          class="card-delete-btn"
-          [disabled]="isLoadingEdit()"
-          title="Delete Album"
-        >
-          <span class="material-symbols-outlined action-icon">delete</span>
-          <span>Delete</span>
-        </button>
-      </div>
-    }
+    <app-card-actions
+      [isSuperuser]="isSuperuser()"
+      [isLoadingEdit]="isLoadingEdit()"
+      editLabel="Edit"
+      deleteLabel="Delete"
+      (edit)="handleEdit()"
+      (delete)="handleDelete()"
+    />
   </div>
 </div>

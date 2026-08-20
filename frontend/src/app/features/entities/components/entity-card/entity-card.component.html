@@ -36,29 +36,12 @@
     </p>
   }
 
-  @if (isSuperuser()) {
-    <div class="card-admin-actions">
-      <button
-        type="button"
-        (click)="handleEdit($event)"
-        class="card-edit-btn"
-        [disabled]="isLoadingEdit()"
-        title="Edit Entity"
-      >
-        <span class="material-symbols-outlined action-icon">edit</span>
-        <span>Edit</span>
-      </button>
-
-      <button
-        type="button"
-        (click)="handleDelete($event)"
-        class="card-delete-btn"
-        [disabled]="isLoadingEdit()"
-        title="Delete Entity"
-      >
-        <span class="material-symbols-outlined action-icon">delete</span>
-        <span>Delete</span>
-      </button>
-    </div>
-  }
+  <app-card-actions
+    [isSuperuser]="isSuperuser()"
+    [isLoadingEdit]="isLoadingEdit()"
+    editLabel="Edit"
+    deleteLabel="Delete"
+    (edit)="handleEdit()"
+    (delete)="handleDelete()"
+  />
 </div>

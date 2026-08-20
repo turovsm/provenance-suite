@@ -1,12 +1,13 @@
 import { Component, computed, input, output } from '@angular/core';
 import { EntitySummary } from '../../../../domain/models/music.model';
+import { CardActionsComponent } from '../../../../shared/components/card-actions/card-actions.component';
 import { EntityAvatarComponent } from '../../../../shared/components/entity-avatar/entity-avatar.component';
 import { stripMarkdown } from '../../../../shared/utils/markdown-cleaner';
 
 @Component({
   selector: 'app-entity-card',
   standalone: true,
-  imports: [EntityAvatarComponent],
+  imports: [EntityAvatarComponent, CardActionsComponent],
   styleUrls: ['./entity-card.component.css'],
   templateUrl: './entity-card.component.html',
 })
@@ -28,16 +29,12 @@ export class EntityCardComponent {
     this.cardClicked.emit(this.entity());
   }
 
-  protected handleEdit(event: MouseEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
+  protected handleEdit(): void {
     if (this.isLoadingEdit()) return;
     this.editRequested.emit(this.entity());
   }
 
-  protected handleDelete(event: MouseEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
+  protected handleDelete(): void {
     if (this.isLoadingEdit()) return;
     if (confirm(`Remove "${this.entity().name_original}" from master registry?`)) {
       this.deleteRequested.emit(this.entity());

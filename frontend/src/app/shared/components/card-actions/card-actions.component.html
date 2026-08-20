@@ -1,0 +1,29 @@
+@if (isSuperuser()) {
+  <div class="card-admin-actions">
+    <button
+      type="button"
+      (click)="handleEdit($event)"
+      class="card-edit-btn"
+      [disabled]="isLoadingEdit()"
+      [title]="editLabel()"
+    >
+      @if (isLoadingEdit()) {
+        <span class="material-symbols-outlined action-icon spinning">sync</span>
+      } @else {
+        <span class="material-symbols-outlined action-icon">edit</span>
+        <span>{{ editLabel() }}</span>
+      }
+    </button>
+
+    <button
+      type="button"
+      (click)="handleDelete($event)"
+      class="card-delete-btn"
+      [disabled]="isLoadingEdit()"
+      [title]="deleteLabel()"
+    >
+      <span class="material-symbols-outlined action-icon">delete</span>
+      <span>{{ deleteLabel() }}</span>
+    </button>
+  </div>
+}

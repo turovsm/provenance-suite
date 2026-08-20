@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AlbumCardComponent } from './album-card.component';
 
 describe('AlbumCardComponent', () => {
@@ -16,7 +16,7 @@ describe('AlbumCardComponent', () => {
     label: null,
     publisher: null,
     original_folder_name: 'TH06_OST',
-    album_artist: { id: 'art1', name_original: 'ZUN', name_translated: null },
+    album_artist: { id: 'art1', name_original: 'ZUN', aliases: [] },
     total_discs: 1,
     covers: [
       {
@@ -57,11 +57,27 @@ describe('AlbumCardComponent', () => {
   });
 
   it('shows admin actions only when isSuperuser signal is true', () => {
+    expect(fixture.nativeElement.querySelector('app-card-actions')).not.toBeNull();
+
+    fixture.componentRef.setInput('isSuperuser', false);
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.card-admin-actions')).toBeNull();
 
     fixture.componentRef.setInput('isSuperuser', true);
     fixture.detectChanges();
-
     expect(fixture.nativeElement.querySelector('.card-admin-actions')).not.toBeNull();
+  });
+
+  it('renders cover image and displays fallback icon when image loading fails', () => {
+    let imgEl = fixture.nativeElement.querySelector('img') as HTMLImageElement;
+    expect(imgEl).not.toBeNull();
+    expect(imgEl.src).toContain('http://cdn/covers/a1/c1.jpg');
+
+    imgEl.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+
+    imgEl = fixture.nativeElement.querySelector('img');
+    expect(imgEl).toBeNull();
+    expect(fixture.nativeElement.querySelector('.cover-fallback-icon')).not.toBeNull();
   });
 });
