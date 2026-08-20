@@ -249,7 +249,7 @@
             </div>
 
             <div class="archives-stack">
-              @for (arch of album.archives; track arch.id; let aIdx = $index) {
+              @for (arch of album.archives; track arch.id) {
                 <div class="archive-card">
                   <div class="archive-header-row">
                     <div class="archive-name-group">
@@ -262,17 +262,7 @@
                       <div class="passphrase-box">
                         <span class="material-symbols-outlined pass-icon">key</span>
                         <code class="pass-text">{{ arch.encryption_password }}</code>
-                        <button
-                          type="button"
-                          (click)="copyToClipboard(arch.encryption_password, 'pass-' + aIdx)"
-                          class="copy-btn"
-                          title="Copy Password"
-                        >
-                          <span class="material-symbols-outlined copy-icon">content_copy</span>
-                          @if (copiedField() === 'pass-' + aIdx) {
-                            <span class="copied-tooltip">Copied</span>
-                          }
-                        </button>
+                        <app-copy-button [text]="arch.encryption_password" title="Copy Password" />
                       </div>
                     }
                   </div>
@@ -281,17 +271,7 @@
                     <div class="hash-checksum-row">
                       <span class="hash-label">SHA-256:</span>
                       <code class="hash-code">{{ arch.hash_sha256 }}</code>
-                      <button
-                        type="button"
-                        (click)="copyToClipboard(arch.hash_sha256, 'hash-' + aIdx)"
-                        class="copy-btn"
-                        title="Copy Checksum"
-                      >
-                        <span class="material-symbols-outlined copy-icon">content_copy</span>
-                        @if (copiedField() === 'hash-' + aIdx) {
-                          <span class="copied-tooltip">Copied</span>
-                        }
-                      </button>
+                      <app-copy-button [text]="arch.hash_sha256" title="Copy Checksum" />
                     </div>
                   }
 

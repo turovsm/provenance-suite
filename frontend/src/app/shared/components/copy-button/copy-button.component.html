@@ -1,0 +1,12 @@
+<button
+  type="button"
+  (click)="copy($event)"
+  class="copy-btn"
+  [title]="title()"
+  [attr.aria-label]="title()"
+>
+  <span class="material-symbols-outlined copy-icon">content_copy</span>
+  @if (isCopied()) {
+    <span class="copied-tooltip" role="status" aria-live="polite">Copied</span>
+  }
+</button>
