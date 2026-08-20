@@ -10,8 +10,8 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, timer } from 'rxjs';
+import { debounce, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-search-input',
@@ -43,7 +43,7 @@ export class SearchInputComponent implements OnInit {
   ngOnInit(): void {
     this.searchSubject$
       .pipe(
-        debounceTime(this.debounceMs()),
+        debounce((term) => timer(term ? this.debounceMs() : 0)),
         distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -61,6 +61,5 @@ export class SearchInputComponent implements OnInit {
   protected clear(): void {
     this.query.set('');
     this.searchSubject$.next('');
-    this.searchChange.emit('');
   }
 }

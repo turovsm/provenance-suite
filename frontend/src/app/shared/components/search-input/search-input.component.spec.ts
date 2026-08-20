@@ -43,7 +43,7 @@ describe('SearchInputComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith('Touhou');
   });
 
-  it('clears query and emits empty string immediately when clear button is clicked', () => {
+  it('clears query and emits empty string immediately when clear button is clicked without double emission', () => {
     const emitSpy = vi.fn();
     component.searchChange.subscribe(emitSpy);
 
@@ -56,7 +56,13 @@ describe('SearchInputComponent', () => {
     clearBtn.click();
     fixture.detectChanges();
 
+    vi.advanceTimersByTime(0);
+
+    expect(emitSpy).toHaveBeenCalledTimes(1);
     expect(emitSpy).toHaveBeenCalledWith('');
     expect(fixture.nativeElement.querySelector('input').value).toBe('');
+
+    vi.advanceTimersByTime(300);
+    expect(emitSpy).toHaveBeenCalledTimes(1);
   });
 });
