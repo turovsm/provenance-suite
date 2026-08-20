@@ -44,16 +44,14 @@ class AuthenticateUserUseCase:
         user = await self._user_repo.find_by_email(email_vo)
 
         if user is None:
-            # Burn the same Argon2 cost as a real verification so response timing
-            # does not reveal whether an email address is registered.
             self._hasher.perform_dummy_verification()
-            raise InvalidCredentialsError("Invalid email or password sequence provided.")
+            raise InvalidCredentialsError("Invalid email or password.")
 
         if not self._hasher.verify_password(user.hashed_password, request.password):
-            raise InvalidCredentialsError("Invalid email or password sequence provided.")
+            raise InvalidCredentialsError("Invalid email or password.")
 
         if not user.is_active:
-            raise UserDeactivatedError("User account handle is deactivated.")
+            raise UserDeactivatedError("This account has been deactivated.")
 
         access_token, refresh_token, family_id, jti = self._token_manager.generate_token_pair(
             subject=str(user.id),
@@ -93,19 +91,16 @@ class RefreshTokenUseCase:
 
         is_valid = await self._session_store.is_refresh_token_valid(family_id, jti)
         if not is_valid:
-            # Token reuse or stolen token detected: revoke entire token family immediately
             await self._session_store.invalidate_token_family(family_id)
-            raise TokenRevokedError("Security Alert: Token family revoked due to reuse detection.")
+            raise TokenRevokedError("Session expired for security reasons. Please log in again.")
 
-        # Consume the presented token BEFORE issuing a new one: rotation means
-        # every refresh token is single-use, and any later replay of this JTI
-        # falls into the reuse-detection branch above.
         await self._session_store.revoke_refresh_token(family_id, jti)
 
         user = await self._user_repo.find_by_id(uuid.UUID(user_id))
         if user is None or not user.is_active:
             await self._session_store.invalidate_token_family(family_id)
-            raise TokenRevokedError("Session terminated: account no longer exists or is suspended.")
+            msg = "Session expired or account is deactivated. Please log in again."
+            raise TokenRevokedError(msg)
 
         access_token, new_refresh_token, _, new_jti = self._token_manager.generate_token_pair(
             subject=user_id,

@@ -20,4 +20,4 @@ class DeleteAlbumUseCase:
     async def execute(self, request: DeleteAlbumRequest) -> None:
         deleted = await self._album_repo.delete(request.album_id)
         if not deleted:
-            raise AlbumNotFoundError(f"Album with ID '{request.album_id}' does not exist.")
+            raise AlbumNotFoundError("Album not found.")

@@ -42,7 +42,7 @@ async def register_user_endpoint(
     if db_user is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Transaction discrepancy encountered on row commit.",
+            detail="Failed to complete registration. Please try again.",
         )
 
     return UserResponseSchema(
@@ -68,7 +68,7 @@ async def get_authenticated_profile_endpoint(
     if current_user.created_at is None or current_user.updated_at is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Missing timeline metrics on loaded user profile.",
+            detail="Failed to load user profile details.",
         )
 
     return UserResponseSchema(

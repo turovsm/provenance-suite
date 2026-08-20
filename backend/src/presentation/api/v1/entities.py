@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import Any, TypeVar
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import Text, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -23,6 +23,12 @@ from src.infrastructure.db.models.music import (
 from src.infrastructure.db.session import get_async_database_session
 from src.infrastructure.storage.object_storage import MinioObjectStorageService
 from src.presentation.api.dependencies import get_current_active_user, get_current_superuser
+from src.presentation.api.helpers import (
+    fetch_albums_by_entity_fk,
+    find_existing_entity_by_name,
+    get_entity_or_404,
+    search_named_entities,
+)
 from src.presentation.schemas.entities import (
     ArtistCreateSchema,
     ArtistResponseSchema,
@@ -269,19 +275,8 @@ async def search_artists(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(ArtistModel)
-    q = query.strip()
-    if q:
-        pattern = f"%{q}%"
-        stmt = stmt.where(
-            or_(
-                ArtistModel.name_original.ilike(pattern),
-                cast(ArtistModel.aliases, Text).ilike(pattern),
-            )
-        )
-    stmt = stmt.order_by(ArtistModel.name_original).limit(limit)
-    res = await session.execute(stmt)
-    return [map_artist_response(a) for a in res.scalars().all()]
+    artists = await search_named_entities(session, ArtistModel, query=query, limit=limit)
+    return [map_artist_response(a) for a in artists]
 
 
 @router.get("/artists/{artist_id}", response_model=ArtistResponseSchema)
@@ -290,14 +285,7 @@ async def get_artist_detail(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
-    res = await session.execute(stmt)
-    artist = res.scalars().first()
-    if not artist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Artist with ID '{artist_id}' was not found.",
-        )
+    artist = await get_entity_or_404(session, ArtistModel, artist_id, "Artist")
     return map_artist_response(artist)
 
 
@@ -307,20 +295,10 @@ async def get_artist_discography(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    main_stmt = (
-        select(AlbumModel)
-        .where(AlbumModel.album_artist_id == artist_id)
-        .options(
-            selectinload(AlbumModel.covers),
-            selectinload(AlbumModel.album_artist),
-            selectinload(AlbumModel.label),
-            selectinload(AlbumModel.publisher),
-            selectinload(AlbumModel.discs),
-        )
-        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
+    main_albums_models = await fetch_albums_by_entity_fk(
+        session, AlbumModel.album_artist_id, artist_id
     )
-    main_res = await session.execute(main_stmt)
-    main_albums = [map_album_summary(a) for a in main_res.unique().scalars().all()]
+    main_albums = [map_album_summary(a) for a in main_albums_models]
 
     contrib_stmt = (
         select(AlbumModel)
@@ -358,9 +336,7 @@ async def create_artist(
     _superuser=Depends(get_current_superuser),
 ):
     clean_name = payload.name_original.strip()
-    stmt = select(ArtistModel).where(ArtistModel.name_original.ilike(clean_name)).limit(1)
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
+    existing = await find_existing_entity_by_name(session, ArtistModel, clean_name)
 
     artist_id = existing.id if existing else uuid.uuid4()
     storage_service = MinioObjectStorageService()
@@ -398,11 +374,7 @@ async def update_artist(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
-    res = await session.execute(stmt)
-    artist = res.scalars().first()
-    if not artist:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artist not found.")
+    artist = await get_entity_or_404(session, ArtistModel, artist_id, "Artist")
 
     if payload.name_original is not None:
         artist.name_original = payload.name_original.strip()
@@ -433,12 +405,7 @@ async def delete_artist(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(ArtistModel).where(ArtistModel.id == artist_id)
-    res = await session.execute(stmt)
-    artist = res.scalars().first()
-    if not artist:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artist not found.")
-
+    artist = await get_entity_or_404(session, ArtistModel, artist_id, "Artist")
     await session.delete(artist)
     await session.commit()
 
@@ -450,19 +417,8 @@ async def search_franchises(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(FranchiseModel)
-    q = query.strip()
-    if q:
-        pattern = f"%{q}%"
-        stmt = stmt.where(
-            or_(
-                FranchiseModel.name_original.ilike(pattern),
-                cast(FranchiseModel.aliases, Text).ilike(pattern),
-            )
-        )
-    stmt = stmt.order_by(FranchiseModel.name_original).limit(limit)
-    res = await session.execute(stmt)
-    return [map_franchise_response(f) for f in res.scalars().all()]
+    franchises = await search_named_entities(session, FranchiseModel, query=query, limit=limit)
+    return [map_franchise_response(f) for f in franchises]
 
 
 @router.get("/franchises/{franchise_id}", response_model=FranchiseResponseSchema)
@@ -471,12 +427,8 @@ async def get_franchise_detail(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_id)
-    res = await session.execute(stmt)
-    f = res.scalars().first()
-    if not f:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Franchise not found.")
-    return map_franchise_response(f)
+    franchise = await get_entity_or_404(session, FranchiseModel, franchise_id, "Franchise")
+    return map_franchise_response(franchise)
 
 
 @router.get("/franchises/{franchise_id}/albums", response_model=list[AlbumSummaryResponseSchema])
@@ -485,20 +437,8 @@ async def get_franchise_albums(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = (
-        select(AlbumModel)
-        .where(AlbumModel.franchise_id == franchise_id)
-        .options(
-            selectinload(AlbumModel.covers),
-            selectinload(AlbumModel.album_artist),
-            selectinload(AlbumModel.label),
-            selectinload(AlbumModel.publisher),
-            selectinload(AlbumModel.discs),
-        )
-        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
-    )
-    res = await session.execute(stmt)
-    return [map_album_summary(a) for a in res.unique().scalars().all()]
+    albums = await fetch_albums_by_entity_fk(session, AlbumModel.franchise_id, franchise_id)
+    return [map_album_summary(a) for a in albums]
 
 
 @router.post(
@@ -512,9 +452,7 @@ async def create_franchise(
     _superuser=Depends(get_current_superuser),
 ):
     clean_name = payload.name_original.strip()
-    stmt = select(FranchiseModel).where(FranchiseModel.name_original.ilike(clean_name)).limit(1)
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
+    existing = await find_existing_entity_by_name(session, FranchiseModel, clean_name)
 
     f_id = existing.id if existing else uuid.uuid4()
     storage_service = MinioObjectStorageService()
@@ -552,35 +490,31 @@ async def update_franchise(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_id)
-    res = await session.execute(stmt)
-    f = res.scalars().first()
-    if not f:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Franchise not found.")
+    franchise = await get_entity_or_404(session, FranchiseModel, franchise_id, "Franchise")
 
     if payload.name_original is not None:
-        f.name_original = payload.name_original.strip()
+        franchise.name_original = payload.name_original.strip()
     if payload.aliases is not None:
-        f.aliases = normalize_aliases(payload.aliases)
+        franchise.aliases = normalize_aliases(payload.aliases)
     if payload.franchise_type is not None:
-        f.franchise_type = payload.franchise_type
+        franchise.franchise_type = payload.franchise_type
     if payload.description is not None:
-        f.description = payload.description
+        franchise.description = payload.description
 
     if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        if f.image_path:
-            await storage_service.delete_cover(f.image_path)
+        if franchise.image_path:
+            await storage_service.delete_cover(franchise.image_path)
         if len(payload.image_data) > 0:
-            f.image_path = await storage_service.upload_entity_avatar(
+            franchise.image_path = await storage_service.upload_entity_avatar(
                 "franchise", franchise_id, payload.image_data
             )
         else:
-            f.image_path = None
+            franchise.image_path = None
 
     await session.commit()
-    await session.refresh(f)
-    return map_franchise_response(f)
+    await session.refresh(franchise)
+    return map_franchise_response(franchise)
 
 
 @router.delete("/franchises/{franchise_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -589,13 +523,8 @@ async def delete_franchise(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(FranchiseModel).where(FranchiseModel.id == franchise_id)
-    res = await session.execute(stmt)
-    f = res.scalars().first()
-    if not f:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Franchise not found.")
-
-    await session.delete(f)
+    franchise = await get_entity_or_404(session, FranchiseModel, franchise_id, "Franchise")
+    await session.delete(franchise)
     await session.commit()
 
 
@@ -606,19 +535,8 @@ async def search_labels(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(LabelModel)
-    q = query.strip()
-    if q:
-        pattern = f"%{q}%"
-        stmt = stmt.where(
-            or_(
-                LabelModel.name_original.ilike(pattern),
-                cast(LabelModel.aliases, Text).ilike(pattern),
-            )
-        )
-    stmt = stmt.order_by(LabelModel.name_original).limit(limit)
-    res = await session.execute(stmt)
-    return [map_label_response(lbl) for lbl in res.scalars().all()]
+    labels = await search_named_entities(session, LabelModel, query=query, limit=limit)
+    return [map_label_response(lbl) for lbl in labels]
 
 
 @router.get("/labels/{label_id}", response_model=LabelResponseSchema)
@@ -627,12 +545,8 @@ async def get_label_detail(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(LabelModel).where(LabelModel.id == label_id)
-    res = await session.execute(stmt)
-    lbl = res.scalars().first()
-    if not lbl:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found.")
-    return map_label_response(lbl)
+    label = await get_entity_or_404(session, LabelModel, label_id, "Label")
+    return map_label_response(label)
 
 
 @router.get("/labels/{label_id}/albums", response_model=list[AlbumSummaryResponseSchema])
@@ -641,20 +555,8 @@ async def get_label_albums(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = (
-        select(AlbumModel)
-        .where(AlbumModel.label_id == label_id)
-        .options(
-            selectinload(AlbumModel.covers),
-            selectinload(AlbumModel.album_artist),
-            selectinload(AlbumModel.label),
-            selectinload(AlbumModel.publisher),
-            selectinload(AlbumModel.discs),
-        )
-        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
-    )
-    res = await session.execute(stmt)
-    return [map_album_summary(a) for a in res.unique().scalars().all()]
+    albums = await fetch_albums_by_entity_fk(session, AlbumModel.label_id, label_id)
+    return [map_album_summary(a) for a in albums]
 
 
 @router.post("/labels", response_model=LabelResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -664,9 +566,7 @@ async def create_label(
     _superuser=Depends(get_current_superuser),
 ):
     clean_name = payload.name_original.strip()
-    stmt = select(LabelModel).where(LabelModel.name_original.ilike(clean_name)).limit(1)
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
+    existing = await find_existing_entity_by_name(session, LabelModel, clean_name)
 
     l_id = existing.id if existing else uuid.uuid4()
     storage_service = MinioObjectStorageService()
@@ -702,33 +602,29 @@ async def update_label(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(LabelModel).where(LabelModel.id == label_id)
-    res = await session.execute(stmt)
-    lbl = res.scalars().first()
-    if not lbl:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found.")
+    label = await get_entity_or_404(session, LabelModel, label_id, "Label")
 
     if payload.name_original is not None:
-        lbl.name_original = payload.name_original.strip()
+        label.name_original = payload.name_original.strip()
     if payload.aliases is not None:
-        lbl.aliases = normalize_aliases(payload.aliases)
+        label.aliases = normalize_aliases(payload.aliases)
     if payload.description is not None:
-        lbl.description = payload.description
+        label.description = payload.description
 
     if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        if lbl.image_path:
-            await storage_service.delete_cover(lbl.image_path)
+        if label.image_path:
+            await storage_service.delete_cover(label.image_path)
         if len(payload.image_data) > 0:
-            lbl.image_path = await storage_service.upload_entity_avatar(
+            label.image_path = await storage_service.upload_entity_avatar(
                 "label", label_id, payload.image_data
             )
         else:
-            lbl.image_path = None
+            label.image_path = None
 
     await session.commit()
-    await session.refresh(lbl)
-    return map_label_response(lbl)
+    await session.refresh(label)
+    return map_label_response(label)
 
 
 @router.delete("/labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -737,13 +633,8 @@ async def delete_label(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(LabelModel).where(LabelModel.id == label_id)
-    res = await session.execute(stmt)
-    lbl = res.scalars().first()
-    if not lbl:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found.")
-
-    await session.delete(lbl)
+    label = await get_entity_or_404(session, LabelModel, label_id, "Label")
+    await session.delete(label)
     await session.commit()
 
 
@@ -754,19 +645,8 @@ async def search_publishers(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(PublisherModel)
-    q = query.strip()
-    if q:
-        pattern = f"%{q}%"
-        stmt = stmt.where(
-            or_(
-                PublisherModel.name_original.ilike(pattern),
-                cast(PublisherModel.aliases, Text).ilike(pattern),
-            )
-        )
-    stmt = stmt.order_by(PublisherModel.name_original).limit(limit)
-    res = await session.execute(stmt)
-    return [map_publisher_response(p) for p in res.scalars().all()]
+    publishers = await search_named_entities(session, PublisherModel, query=query, limit=limit)
+    return [map_publisher_response(p) for p in publishers]
 
 
 @router.get("/publishers/{publisher_id}", response_model=PublisherResponseSchema)
@@ -775,12 +655,8 @@ async def get_publisher_detail(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(PublisherModel).where(PublisherModel.id == publisher_id)
-    res = await session.execute(stmt)
-    p = res.scalars().first()
-    if not p:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publisher not found.")
-    return map_publisher_response(p)
+    publisher = await get_entity_or_404(session, PublisherModel, publisher_id, "Publisher")
+    return map_publisher_response(publisher)
 
 
 @router.get("/publishers/{publisher_id}/albums", response_model=list[AlbumSummaryResponseSchema])
@@ -789,20 +665,8 @@ async def get_publisher_albums(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = (
-        select(AlbumModel)
-        .where(AlbumModel.publisher_id == publisher_id)
-        .options(
-            selectinload(AlbumModel.covers),
-            selectinload(AlbumModel.album_artist),
-            selectinload(AlbumModel.label),
-            selectinload(AlbumModel.publisher),
-            selectinload(AlbumModel.discs),
-        )
-        .order_by(AlbumModel.release_date_sort.desc().nulls_last())
-    )
-    res = await session.execute(stmt)
-    return [map_album_summary(a) for a in res.unique().scalars().all()]
+    albums = await fetch_albums_by_entity_fk(session, AlbumModel.publisher_id, publisher_id)
+    return [map_album_summary(a) for a in albums]
 
 
 @router.post(
@@ -816,9 +680,7 @@ async def create_publisher(
     _superuser=Depends(get_current_superuser),
 ):
     clean_name = payload.name_original.strip()
-    stmt = select(PublisherModel).where(PublisherModel.name_original.ilike(clean_name)).limit(1)
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
+    existing = await find_existing_entity_by_name(session, PublisherModel, clean_name)
 
     p_id = existing.id if existing else uuid.uuid4()
     storage_service = MinioObjectStorageService()
@@ -854,33 +716,29 @@ async def update_publisher(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(PublisherModel).where(PublisherModel.id == publisher_id)
-    res = await session.execute(stmt)
-    p = res.scalars().first()
-    if not p:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publisher not found.")
+    publisher = await get_entity_or_404(session, PublisherModel, publisher_id, "Publisher")
 
     if payload.name_original is not None:
-        p.name_original = payload.name_original.strip()
+        publisher.name_original = payload.name_original.strip()
     if payload.aliases is not None:
-        p.aliases = normalize_aliases(payload.aliases)
+        publisher.aliases = normalize_aliases(payload.aliases)
     if payload.description is not None:
-        p.description = payload.description
+        publisher.description = payload.description
 
     if payload.image_data is not None:
         storage_service = MinioObjectStorageService()
-        if p.image_path:
-            await storage_service.delete_cover(p.image_path)
+        if publisher.image_path:
+            await storage_service.delete_cover(publisher.image_path)
         if len(payload.image_data) > 0:
-            p.image_path = await storage_service.upload_entity_avatar(
+            publisher.image_path = await storage_service.upload_entity_avatar(
                 "publisher", publisher_id, payload.image_data
             )
         else:
-            p.image_path = None
+            publisher.image_path = None
 
     await session.commit()
-    await session.refresh(p)
-    return map_publisher_response(p)
+    await session.refresh(publisher)
+    return map_publisher_response(publisher)
 
 
 @router.delete("/publishers/{publisher_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -889,13 +747,8 @@ async def delete_publisher(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(PublisherModel).where(PublisherModel.id == publisher_id)
-    res = await session.execute(stmt)
-    p = res.scalars().first()
-    if not p:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publisher not found.")
-
-    await session.delete(p)
+    publisher = await get_entity_or_404(session, PublisherModel, publisher_id, "Publisher")
+    await session.delete(publisher)
     await session.commit()
 
 
@@ -1029,15 +882,7 @@ async def get_event_detail(
     session: AsyncSession = Depends(get_async_database_session),
     _user=Depends(get_current_active_user),
 ):
-    stmt = select(EventModel).where(EventModel.id == event_id)
-    res = await session.execute(stmt)
-    event = res.scalars().first()
-    if not event:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Event with ID '{event_id}' was not found.",
-        )
-    return event
+    return await get_entity_or_404(session, EventModel, event_id, "Event")
 
 
 @router.post("/events", response_model=EventResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -1046,11 +891,9 @@ async def create_event(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = (
-        select(EventModel).where(EventModel.short_name.ilike(payload.short_name.strip())).limit(1)
+    existing = await find_existing_entity_by_name(
+        session, EventModel, payload.short_name, name_attr="short_name"
     )
-    res = await session.execute(stmt)
-    existing = res.scalars().first()
     if existing:
         return existing
 
@@ -1086,14 +929,7 @@ async def update_event(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(EventModel).where(EventModel.id == event_id)
-    res = await session.execute(stmt)
-    event = res.scalars().first()
-    if not event:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Event with ID '{event_id}' was not found.",
-        )
+    event = await get_entity_or_404(session, EventModel, event_id, "Event")
 
     if payload.short_name is not None:
         event.short_name = payload.short_name.strip()
@@ -1126,14 +962,6 @@ async def delete_event(
     session: AsyncSession = Depends(get_async_database_session),
     _superuser=Depends(get_current_superuser),
 ):
-    stmt = select(EventModel).where(EventModel.id == event_id)
-    res = await session.execute(stmt)
-    event = res.scalars().first()
-    if not event:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Event with ID '{event_id}' was not found.",
-        )
-
+    event = await get_entity_or_404(session, EventModel, event_id, "Event")
     await session.delete(event)
     await session.commit()

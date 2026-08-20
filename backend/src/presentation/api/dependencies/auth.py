@@ -37,14 +37,14 @@ async def get_current_user(
         if await session_store.is_access_token_blacklisted(jti):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Access token has been revoked.",
+                detail="Session has expired. Please log in again.",
             )
 
         subject = claims.get("sub")
         if not subject:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token validation failure: Missing identity subject claim.",
+                detail="Invalid session token. Please log in again.",
             )
 
         user_id = uuid.UUID(subject)
@@ -52,19 +52,19 @@ async def get_current_user(
     except TokenVerificationError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Cryptographic payload verification rejected: {str(exc)}",
+            detail="Session has expired. Please log in again.",
         ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token identity format violates system UUID tracking layout.",
+            detail="Invalid session identifier. Please log in again.",
         ) from exc
 
     user = await user_repository.find_by_id(user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Target identity record no longer exists.",
+            detail="Account not found. Please log in again.",
         )
 
     return user
@@ -74,7 +74,7 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: User account is suspended.",
+            detail="This account has been deactivated.",
         )
     return current_user
 
@@ -83,6 +83,6 @@ def get_current_superuser(current_user: User = Depends(get_current_active_user))
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: Administrative permissions required.",
+            detail="Administrator permissions required.",
         )
     return current_user
