@@ -12,19 +12,12 @@
     </div>
   } @else if (currentEntity(); as hero) {
     <section class="hero-entity-card">
-      <div
-        class="hero-avatar-frame"
-        [class.artist-avatar]="hero.type === 'artist'"
-        [class.logo-avatar]="hero.type !== 'artist'"
-      >
-        @if (hero.image_url) {
-          <img [src]="hero.image_url" [alt]="hero.name_original" class="hero-avatar-img" />
-        } @else {
-          <span class="material-symbols-outlined fallback-icon">
-            {{ getFallbackIcon(hero.type) }}
-          </span>
-        }
-      </div>
+      <app-entity-avatar
+        [imageUrl]="hero.image_url"
+        [name]="hero.name_original"
+        [entityType]="hero.type"
+        size="lg"
+      />
 
       <div class="hero-meta-cluster">
         <div class="hero-title-row">

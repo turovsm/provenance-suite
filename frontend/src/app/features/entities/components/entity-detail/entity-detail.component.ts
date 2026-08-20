@@ -6,6 +6,7 @@ import {
   EntitySummary,
   EntityTypeTag,
 } from '../../../../domain/models/music.model';
+import { EntityAvatarComponent } from '../../../../shared/components/entity-avatar/entity-avatar.component';
 import { MarkdownRendererComponent } from '../../../../shared/components/markdown-renderer/markdown-renderer.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumCardComponent } from '../../../catalog/components/album-card/album-card.component';
@@ -23,6 +24,7 @@ import { EntityFormModalComponent } from '../entity-form-modal/entity-form-modal
     AlbumDetailDrawerComponent,
     AlbumFormModalComponent,
     EntityFormModalComponent,
+    EntityAvatarComponent,
     MarkdownRendererComponent,
   ],
   styleUrls: ['./entity-detail.component.css'],
@@ -133,21 +135,6 @@ export class EntityDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.state.clearDetailState();
-  }
-
-  protected getFallbackIcon(type: string): string {
-    switch (type) {
-      case 'artist':
-        return 'person';
-      case 'franchise':
-        return 'sports_esports';
-      case 'label':
-        return 'album';
-      case 'publisher':
-        return 'domain';
-      default:
-        return 'folder_shared';
-    }
   }
 
   protected goBack(): void {

@@ -27,37 +27,6 @@
   margin-bottom: 0.75rem;
 }
 
-.avatar-frame {
-  width: 54px;
-  height: 54px;
-  flex-shrink: 0;
-  overflow: hidden;
-  background-color: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-fine-glass);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.artist-avatar {
-  border-radius: 50% !important;
-}
-
-.logo-avatar {
-  border-radius: 6px !important;
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.fallback-icon {
-  font-size: 26px;
-  color: rgba(255, 255, 255, 0.25);
-}
-
 .card-header-meta {
   display: flex;
   flex-direction: column;

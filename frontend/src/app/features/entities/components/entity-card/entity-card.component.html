@@ -6,24 +6,12 @@
   (keydown.enter)="handleCardClick()"
 >
   <div class="card-top-row">
-    <div
-      class="avatar-frame"
-      [class.artist-avatar]="entity().entity_type === 'artist'"
-      [class.logo-avatar]="entity().entity_type !== 'artist'"
-    >
-      @if (entity().image_url && !hasImageError) {
-        <img
-          [src]="entity().image_url!"
-          [alt]="entity().name_original"
-          class="avatar-img"
-          (error)="onImageError()"
-        />
-      } @else {
-        <span class="material-symbols-outlined fallback-icon">
-          {{ getFallbackIcon() }}
-        </span>
-      }
-    </div>
+    <app-entity-avatar
+      [imageUrl]="entity().image_url"
+      [name]="entity().name_original"
+      [entityType]="entity().entity_type"
+      size="sm"
+    />
 
     <div class="card-header-meta">
       <span [class]="'type-badge badge-' + entity().entity_type">
