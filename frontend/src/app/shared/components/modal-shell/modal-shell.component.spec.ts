@@ -71,4 +71,14 @@ describe('ModalShellComponent', () => {
     backdropEl.click();
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('prevents default wheel event when scrolling directly on backdrop', () => {
+    const backdropEl = fixture.nativeElement.querySelector('.modal-backdrop') as HTMLElement;
+    const wheelEvent = new WheelEvent('wheel', { bubbles: true, cancelable: true });
+    const preventSpy = vi.spyOn(wheelEvent, 'preventDefault');
+
+    backdropEl.dispatchEvent(wheelEvent);
+
+    expect(preventSpy).toHaveBeenCalled();
+  });
 });

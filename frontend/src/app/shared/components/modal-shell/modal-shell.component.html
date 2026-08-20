@@ -1,9 +1,11 @@
 <div
   class="modal-backdrop"
-  role="button"
-  tabindex="0"
+  [class.clickable-backdrop]="closeOnBackdrop()"
+  [attr.role]="closeOnBackdrop() ? 'button' : undefined"
+  [attr.tabindex]="closeOnBackdrop() ? 0 : undefined"
   (click)="handleBackdropClick($event)"
   (keydown.enter)="handleBackdropClick($event)"
+  (wheel)="handleBackdropWheel($event)"
 >
   <div
     class="glass-modal-panel"

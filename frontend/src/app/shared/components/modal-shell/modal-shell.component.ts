@@ -30,6 +30,12 @@ export class ModalShellComponent {
     }
   }
 
+  protected handleBackdropWheel(event: WheelEvent): void {
+    if (event.target === event.currentTarget) {
+      event.preventDefault();
+    }
+  }
+
   protected close(): void {
     this.closed.emit();
   }

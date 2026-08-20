@@ -122,6 +122,7 @@ button:disabled * {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overscroll-behavior: contain;
 }
 
 .form-scroll-area::-webkit-scrollbar {
