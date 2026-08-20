@@ -82,11 +82,12 @@
     }
 
     @if (!state.isLoading() && state.events().length === 0) {
-      <div class="empty-state-card">
-        <span class="material-symbols-outlined empty-icon">event_busy</span>
-        <h3>No Events Found</h3>
-        <p>No master convention or event records match your active query and filters.</p>
-      </div>
+      <app-empty-state
+        icon="event_busy"
+        title="No Events Found"
+        description="No master convention or event records match your active query and filters."
+        [bordered]="false"
+      />
     } @else if (state.events().length > 0) {
       <table class="events-data-table">
         <thead>

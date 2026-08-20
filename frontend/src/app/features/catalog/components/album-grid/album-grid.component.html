@@ -30,11 +30,11 @@
       </div>
     } @else {
       @if (!state.hasAlbums()) {
-        <div class="empty-state-card">
-          <span class="material-symbols-outlined empty-icon">library_music</span>
-          <h3>No Albums Found</h3>
-          <p>No albums match your active search query.</p>
-        </div>
+        <app-empty-state
+          icon="library_music"
+          title="No Albums Found"
+          description="No albums match your active search query."
+        />
       } @else {
         <div class="albums-responsive-grid">
           @for (album of state.albums(); track album.id) {

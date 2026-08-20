@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { EntitySummary } from '../../../../domain/models/music.model';
 import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
@@ -31,6 +32,7 @@ const PAGE_SIZE_OPTIONS: SelectOption[] = [
     EntityFormModalComponent,
     PaginationBarComponent,
     SearchInputComponent,
+    EmptyStateComponent,
   ],
   styleUrls: ['./entity-directory.component.css'],
   templateUrl: './entity-directory.component.html',

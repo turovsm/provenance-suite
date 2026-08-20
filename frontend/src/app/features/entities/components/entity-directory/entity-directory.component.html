@@ -43,11 +43,11 @@
       </div>
     } @else {
       @if (!state.hasEntities()) {
-        <div class="empty-state-card">
-          <span class="material-symbols-outlined empty-icon">folder_off</span>
-          <h3>No Entities Found</h3>
-          <p>No master entity records match your active type and search criteria.</p>
-        </div>
+        <app-empty-state
+          icon="folder_off"
+          title="No Entities Found"
+          description="No master entity records match your active type and search criteria."
+        />
       } @else {
         <div class="entities-responsive-grid">
           @for (entity of state.entities(); track entity.id) {

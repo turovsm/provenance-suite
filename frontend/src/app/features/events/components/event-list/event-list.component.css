@@ -369,21 +369,6 @@
   font-size: 16px;
 }
 
-.empty-state-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 5rem 2rem;
-  flex: 1;
-}
-
-.empty-icon {
-  font-size: 48px;
-  color: rgba(255, 255, 255, 0.15);
-  margin-bottom: 0.75rem;
-}
-
 .error-banner {
   display: flex;
   align-items: center;

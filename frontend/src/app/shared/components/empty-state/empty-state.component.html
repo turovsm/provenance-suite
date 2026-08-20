@@ -1,0 +1,9 @@
+<div class="empty-state-card" [class.bordered]="bordered()">
+  @if (icon()) {
+    <span class="material-symbols-outlined empty-icon">{{ icon() }}</span>
+  }
+  <h3>{{ title() }}</h3>
+  @if (description()) {
+    <p>{{ description() }}</p>
+  }
+</div>

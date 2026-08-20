@@ -1,0 +1,44 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  min-height: 300px;
+}
+
+.empty-state-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 5rem 2rem;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.empty-state-card.bordered {
+  background-color: var(--bg-surface-glass);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 6px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: rgba(255, 255, 255, 0.15);
+  margin-bottom: 0.75rem;
+  user-select: none;
+}
+
+h3 {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

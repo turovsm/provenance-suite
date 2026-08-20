@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EventDateRange, MasterEvent } from '../../../../domain/models/music.model';
 import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
@@ -19,7 +20,13 @@ const PAGE_SIZE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-event-list',
   standalone: true,
-  imports: [EventFormModalComponent, FormsModule, PaginationBarComponent, SearchInputComponent],
+  imports: [
+    EventFormModalComponent,
+    FormsModule,
+    PaginationBarComponent,
+    SearchInputComponent,
+    EmptyStateComponent,
+  ],
   styleUrls: ['./event-list.component.css'],
   templateUrl: './event-list.component.html',
 })
