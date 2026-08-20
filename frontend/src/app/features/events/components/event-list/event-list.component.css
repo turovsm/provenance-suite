@@ -35,38 +35,6 @@
   width: 100%;
 }
 
-.search-input-wrapper {
-  position: relative;
-  flex: 1;
-  max-width: 480px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-  color: var(--text-muted);
-}
-
-.telemetry-search-input {
-  width: 100%;
-  padding: 0.7rem 1rem 0.7rem 2.5rem;
-  background-color: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-fine-glass);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 0.82rem;
-  transition: all 0.2s ease;
-}
-
-.telemetry-search-input:focus {
-  outline: none;
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px var(--border-focus-glow);
-}
-
 .filter-toolbar {
   display: flex;
   flex-wrap: wrap;

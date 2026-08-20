@@ -1,10 +1,9 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { EntitySummary } from '../../../../domain/models/music.model';
 import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
 import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
+import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { EntityStateEngine } from '../../state/entity.state';
 import { EntityCardComponent } from '../entity-card/entity-card.component';
@@ -27,11 +26,16 @@ const PAGE_SIZE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-entity-directory',
   standalone: true,
-  imports: [EntityCardComponent, EntityFormModalComponent, PaginationBarComponent],
+  imports: [
+    EntityCardComponent,
+    EntityFormModalComponent,
+    PaginationBarComponent,
+    SearchInputComponent,
+  ],
   styleUrls: ['./entity-directory.component.css'],
   templateUrl: './entity-directory.component.html',
 })
-export class EntityDirectoryComponent implements OnInit, OnDestroy {
+export class EntityDirectoryComponent implements OnInit {
   protected readonly state = inject(EntityStateEngine);
   protected readonly authState = inject(AuthStateEngine);
   private readonly router = inject(Router);
@@ -41,26 +45,12 @@ export class EntityDirectoryComponent implements OnInit, OnDestroy {
   protected isAddModalOpen = false;
   protected readonly entityToEdit = signal<EntitySummary | null>(null);
 
-  private readonly searchInput$ = new Subject<string>();
-  private searchSubscription?: Subscription;
-
   ngOnInit(): void {
-    this.searchSubscription = this.searchInput$
-      .pipe(debounceTime(300), distinctUntilChanged())
-      .subscribe((term) => {
-        this.state.setSearchQuery(term);
-      });
-
     this.state.queryDirectory();
   }
 
-  ngOnDestroy(): void {
-    this.searchSubscription?.unsubscribe();
-  }
-
-  protected handleSearchInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.searchInput$.next(value);
+  protected handleSearchChange(term: string): void {
+    this.state.setSearchQuery(term);
   }
 
   protected handleTypeChange(type: string): void {

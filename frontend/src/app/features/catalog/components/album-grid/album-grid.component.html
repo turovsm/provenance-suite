@@ -1,15 +1,10 @@
 <div class="catalog-grid-layout">
   <header class="grid-control-bar">
-    <div class="search-input-wrapper">
-      <span class="material-symbols-outlined search-icon">search</span>
-      <input
-        type="text"
-        [value]="state.searchQuery()"
-        (input)="handleSearchInput($event)"
-        placeholder="Search by title, artist, or folder..."
-        class="telemetry-search-input"
-      />
-    </div>
+    <app-search-input
+      [value]="state.searchQuery()"
+      placeholder="Search by title, artist, or folder..."
+      (searchChange)="handleSearchChange($event)"
+    />
 
     <div class="header-right-cluster">
       @if (authState.identity()?.is_superuser) {

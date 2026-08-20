@@ -1,16 +1,11 @@
 <div class="directory-layout">
   <header class="directory-control-bar">
     <div class="top-control-row">
-      <div class="search-input-wrapper">
-        <span class="material-symbols-outlined search-icon">search</span>
-        <input
-          type="text"
-          [value]="state.searchQuery()"
-          (input)="handleSearchInput($event)"
-          placeholder="Search entities by name or aliases..."
-          class="telemetry-search-input"
-        />
-      </div>
+      <app-search-input
+        [value]="state.searchQuery()"
+        placeholder="Search entities by name or aliases..."
+        (searchChange)="handleSearchChange($event)"
+      />
 
       @if (authState.identity()?.is_superuser) {
         <button (click)="openAddModal()" class="admin-add-btn" title="Create Master Entity">

@@ -1,16 +1,11 @@
 <div class="events-layout">
   <header class="grid-control-bar">
     <div class="control-row">
-      <div class="search-input-wrapper">
-        <span class="material-symbols-outlined search-icon">search</span>
-        <input
-          type="text"
-          [value]="state.searchQuery()"
-          (input)="handleSearchInput($event)"
-          placeholder="Search master events by short name or full name..."
-          class="telemetry-search-input"
-        />
-      </div>
+      <app-search-input
+        [value]="state.searchQuery()"
+        placeholder="Search master events by short name or full name..."
+        (searchChange)="handleSearchChange($event)"
+      />
 
       <div class="header-right-cluster">
         @if (authState.identity()?.is_superuser) {
