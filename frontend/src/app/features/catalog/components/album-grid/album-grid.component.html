@@ -7,7 +7,7 @@
     />
 
     <div class="header-right-cluster">
-      @if (authState.identity()?.is_superuser) {
+      @if (authState.isAdmin()) {
         <button (click)="openAddModal()" class="admin-add-btn" title="Add New Album">
           <span class="material-symbols-outlined btn-icon">add</span>
           <span>Add Album</span>
@@ -35,7 +35,7 @@
           @for (album of state.albums(); track album.id) {
             <app-album-card
               [album]="album"
-              [isSuperuser]="authState.identity()?.is_superuser ?? false"
+              [isAdmin]="authState.isAdmin()"
               [isLoadingEdit]="loadingEditId() === album.id"
               (cardClicked)="handleSelectAlbum($event)"
               (editRequested)="handleEditAlbum($event)"

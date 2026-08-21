@@ -15,15 +15,15 @@ describe('CardActionsComponent', () => {
     component = fixture.componentInstance;
   });
 
-  it('renders nothing when isSuperuser is false', () => {
-    fixture.componentRef.setInput('isSuperuser', false);
+  it('renders nothing when isAdmin is false', () => {
+    fixture.componentRef.setInput('isAdmin', false);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.card-admin-actions')).toBeNull();
   });
 
-  it('renders edit and delete buttons when isSuperuser is true', () => {
-    fixture.componentRef.setInput('isSuperuser', true);
+  it('renders edit and delete buttons when isAdmin is true', () => {
+    fixture.componentRef.setInput('isAdmin', true);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.card-edit-btn')).not.toBeNull();
@@ -34,7 +34,7 @@ describe('CardActionsComponent', () => {
     const editSpy = vi.fn();
     component.edit.subscribe(editSpy);
 
-    fixture.componentRef.setInput('isSuperuser', true);
+    fixture.componentRef.setInput('isAdmin', true);
     fixture.detectChanges();
 
     const editBtn = fixture.nativeElement.querySelector('.card-edit-btn') as HTMLButtonElement;
@@ -53,7 +53,7 @@ describe('CardActionsComponent', () => {
     const deleteSpy = vi.fn();
     component.delete.subscribe(deleteSpy);
 
-    fixture.componentRef.setInput('isSuperuser', true);
+    fixture.componentRef.setInput('isAdmin', true);
     fixture.detectChanges();
 
     const deleteBtn = fixture.nativeElement.querySelector('.card-delete-btn') as HTMLButtonElement;
@@ -69,7 +69,7 @@ describe('CardActionsComponent', () => {
   });
 
   it('shows spinning sync loader and disables buttons when isLoadingEdit is true', () => {
-    fixture.componentRef.setInput('isSuperuser', true);
+    fixture.componentRef.setInput('isAdmin', true);
     fixture.componentRef.setInput('isLoadingEdit', true);
     fixture.detectChanges();
 

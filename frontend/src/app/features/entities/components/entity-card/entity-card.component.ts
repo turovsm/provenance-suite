@@ -13,7 +13,7 @@ import { stripMarkdown } from '../../../../shared/utils/markdown-cleaner';
 })
 export class EntityCardComponent {
   readonly entity = input.required<EntitySummary>();
-  readonly isSuperuser = input<boolean>(false);
+  readonly isAdmin = input<boolean>(false);
   readonly isLoadingEdit = input<boolean>(false);
 
   readonly cardClicked = output<EntitySummary>();

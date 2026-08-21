@@ -3,6 +3,7 @@ import pytest
 from src.application.exceptions import UserAlreadyExistsError
 from src.application.use_cases.register_user import RegisterUserRequest, RegisterUserUseCase
 from src.domain.exceptions import InvalidEmailError
+from src.domain.value_objects.user_role import UserRole
 from tests.unit.fakes import FakePasswordHasher, InMemoryUserRepository, make_user
 
 
@@ -26,7 +27,7 @@ async def test_register_success_persists_user_with_defaults() -> None:
     assert stored.username == "new_collector"
     assert str(stored.email) == "new@vault.io"
     assert stored.is_active is True
-    assert stored.is_superuser is False
+    assert stored.role == UserRole.USER
 
 
 async def test_register_stores_hash_never_plaintext() -> None:

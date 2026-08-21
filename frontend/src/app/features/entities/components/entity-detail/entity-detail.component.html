@@ -28,7 +28,7 @@
             <h1 class="hero-name">{{ hero.name_original }}</h1>
           </div>
 
-          @if (authState.identity()?.is_superuser) {
+          @if (authState.isAdmin()) {
             <div class="action-btn-group">
               <button (click)="openEditModal()" class="admin-action-btn btn-edit">
                 <span class="material-symbols-outlined">edit</span>
@@ -70,7 +70,7 @@
               @for (album of disco.main_albums; track album.id) {
                 <app-album-card
                   [album]="album"
-                  [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                  [isAdmin]="authState.isAdmin()"
                   [isLoadingEdit]="loadingAlbumEditId() === album.id"
                   (cardClicked)="handleSelectAlbum($event)"
                   (editRequested)="handleEditAlbum($event)"
@@ -93,7 +93,7 @@
               @for (album of disco.contribution_albums; track album.id) {
                 <app-album-card
                   [album]="album"
-                  [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                  [isAdmin]="authState.isAdmin()"
                   [isLoadingEdit]="loadingAlbumEditId() === album.id"
                   (cardClicked)="handleSelectAlbum($event)"
                   (editRequested)="handleEditAlbum($event)"
@@ -115,7 +115,7 @@
             @for (album of state.entityAlbums(); track album.id) {
               <app-album-card
                 [album]="album"
-                [isSuperuser]="authState.identity()?.is_superuser ?? false"
+                [isAdmin]="authState.isAdmin()"
                 [isLoadingEdit]="loadingAlbumEditId() === album.id"
                 (cardClicked)="handleSelectAlbum($event)"
                 (editRequested)="handleEditAlbum($event)"

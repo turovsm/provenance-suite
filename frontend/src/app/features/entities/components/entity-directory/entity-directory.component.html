@@ -7,7 +7,7 @@
         (searchChange)="handleSearchChange($event)"
       />
 
-      @if (authState.identity()?.is_superuser) {
+      @if (authState.isAdmin()) {
         <button (click)="openAddModal()" class="admin-add-btn" title="Create Master Entity">
           <span class="material-symbols-outlined btn-icon">add</span>
           <span>Add Entity</span>
@@ -48,7 +48,7 @@
           @for (entity of state.entities(); track entity.id) {
             <app-entity-card
               [entity]="entity"
-              [isSuperuser]="authState.identity()?.is_superuser ?? false"
+              [isAdmin]="authState.isAdmin()"
               (cardClicked)="handleSelectEntity($event)"
               (editRequested)="handleEditEntity($event)"
               (deleteRequested)="handleDeleteEntity($event)"

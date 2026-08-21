@@ -55,7 +55,7 @@ class AuthenticateUserUseCase:
 
         access_token, refresh_token, family_id, jti = self._token_manager.generate_token_pair(
             subject=str(user.id),
-            extra_claims={"is_superuser": user.is_superuser, "username": user.username},
+            extra_claims={"role": user.role.value, "username": user.username},
         )
 
         await self._session_store.register_refresh_token(
@@ -105,7 +105,7 @@ class RefreshTokenUseCase:
         access_token, new_refresh_token, _, new_jti = self._token_manager.generate_token_pair(
             subject=user_id,
             family_id=family_id,
-            extra_claims={"is_superuser": user.is_superuser, "username": user.username},
+            extra_claims={"role": user.role.value, "username": user.username},
         )
 
         await self._session_store.register_refresh_token(

@@ -3,9 +3,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { vi } from 'vitest';
-import { authInterceptor } from './auth.interceptor';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AUTH_REPOSITORY_PORT } from '../tokens/auth.token';
+import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
@@ -72,7 +72,7 @@ describe('authInterceptor', () => {
     retriedReq.flush({ items: [] });
   });
 
-  it('redirects to /login and clears storage when refresh token is missing or fails', () => {
+  it('redirects to / and clears storage when refresh token is missing or fails', () => {
     localStorage.setItem('access_token', 'expired-access-token');
     authRepoSpy.refresh.mockReturnValue(throwError(() => new Error('Revoked')));
 
@@ -83,7 +83,7 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne('/api/v1/albums');
     req.flush({}, { status: 401, statusText: 'Unauthorized' });
 
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
     expect(localStorage.getItem('access_token')).toBeNull();
   });
 });

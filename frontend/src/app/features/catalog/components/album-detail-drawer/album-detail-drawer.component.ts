@@ -9,6 +9,7 @@ import {
   TrackDetailResponse,
 } from '../../../../domain/models/music.model';
 import { CopyButtonComponent } from '../../../../shared/components/copy-button/copy-button.component';
+import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { AlbumStateEngine } from '../../state/album.state';
 
 export interface TrackCreditGroup {
@@ -35,6 +36,7 @@ const ROLE_CLASS_MAP: Record<string, string> = {
 })
 export class AlbumDetailDrawerComponent {
   protected readonly state = inject(AlbumStateEngine);
+  protected readonly authState = inject(AuthStateEngine);
 
   protected readonly activeDiscIndex = signal<number>(0);
   protected readonly activeInspectorTab = signal<

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.application.repositories.user import UserRepository
 from src.domain.entities.user import User
 from src.domain.value_objects.email import EmailAddress
+from src.domain.value_objects.user_role import UserRole
 from src.infrastructure.db.models.user import UserModel
 
 
@@ -18,22 +19,26 @@ class SqlAlchemyUserRepository(UserRepository):
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
+        role_val = (
+            user.role if isinstance(user.role, UserRole) else UserRole.from_string(str(user.role))
+        )
+
         if model is None:
             model = UserModel(
                 id=user.id,
                 username=user.username,
                 email=str(user.email),
                 hashed_password=user.hashed_password,
+                role=role_val,
                 is_active=user.is_active,
-                is_superuser=user.is_superuser,
             )
             self._session.add(model)
         else:
             model.username = user.username
             model.email = str(user.email)
             model.hashed_password = user.hashed_password
+            model.role = role_val
             model.is_active = user.is_active
-            model.is_superuser = user.is_superuser
 
     async def find_by_id(self, user_id: uuid.UUID) -> User | None:
         stmt = select(UserModel).where(UserModel.id == user_id)
@@ -55,13 +60,18 @@ class SqlAlchemyUserRepository(UserRepository):
 
     @staticmethod
     def _to_domain(model: UserModel) -> User:
+        role_val = (
+            model.role
+            if isinstance(model.role, UserRole)
+            else UserRole.from_string(str(model.role))
+        )
         return User(
             id=model.id,
             username=model.username,
             email=EmailAddress(model.email),
             hashed_password=model.hashed_password,
+            role=role_val,
             is_active=model.is_active,
-            is_superuser=model.is_superuser,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )

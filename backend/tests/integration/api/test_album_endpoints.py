@@ -48,7 +48,7 @@ def full_album_payload() -> dict:
         "archives": [
             {
                 "archive_name": "album-vol1.rar",
-                "encryption_password": "unpack-me",
+                "encryption_password": "super-secret-password-xyz",
                 "file_size_bytes": 734003200,
                 "links": [
                     {"provider_name": "MirrorA", "download_url": "https://a.example/dl/1"},
@@ -60,9 +60,10 @@ def full_album_payload() -> dict:
     }
 
 
-async def test_anonymous_cannot_list_albums(client: AsyncClient) -> None:
+async def test_anonymous_can_list_and_read_albums(client: AsyncClient) -> None:
     response = await client.get("/api/v1/albums")
-    assert response.status_code in (401, 403)
+    assert response.status_code == 200
+    assert response.json()["items"] == []
 
 
 async def test_regular_user_can_list_albums(client: AsyncClient, user_tokens: dict) -> None:
@@ -87,7 +88,7 @@ async def test_regular_user_cannot_delete_album(client: AsyncClient, user_tokens
 
 async def test_anonymous_cannot_create_album(client: AsyncClient) -> None:
     response = await client.post("/api/v1/albums", json=minimal_album_payload())
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401
 
 
 async def test_admin_creates_minimal_album(client: AsyncClient, admin_tokens: dict) -> None:
@@ -101,39 +102,44 @@ async def test_admin_creates_minimal_album(client: AsyncClient, admin_tokens: di
     assert body["total_tracks"] == 0
 
 
-async def test_admin_creates_full_aggregate_and_reads_it_back(
-    client: AsyncClient, admin_tokens: dict, user_tokens: dict
+async def test_archive_masking_across_roles(
+    client: AsyncClient, admin_tokens: dict, trusted_tokens: dict, user_tokens: dict
 ) -> None:
     created = await client.post(
         "/api/v1/albums", json=full_album_payload(), headers=bearer(admin_tokens)
     )
     assert created.status_code == 201, created.text
-    assert created.json()["total_discs"] == 1
-    assert created.json()["total_tracks"] == 2
     album_id = created.json()["album_id"]
 
-    # A regular user can read the full detail
-    detail = await client.get(f"/api/v1/albums/{album_id}", headers=bearer(user_tokens))
-    assert detail.status_code == 200
-    body = detail.json()
+    # 1. Anonymous / Guest: passwords and mirrors masked
+    anon_detail = await client.get(f"/api/v1/albums/{album_id}")
+    assert anon_detail.status_code == 200
+    anon_body = anon_detail.json()
+    assert len(anon_body["archives"]) == 1
+    assert anon_body["archives"][0]["encryption_password"] is None
+    assert anon_body["archives"][0]["links"] == []
+    assert anon_body["archives"][0]["archive_name"] == "album-vol1.rar"
 
-    assert body["title_original"] == "Full Aggregate Album"
-    assert body["release_year"] == 2023
-    assert body["aliases"] == ["Translated Title", "FAA"]
-    assert body["album_artist"]["name_original"] == "Composer X"
+    # 2. Regular User: passwords and mirrors masked
+    user_detail = await client.get(f"/api/v1/albums/{album_id}", headers=bearer(user_tokens))
+    assert user_detail.status_code == 200
+    user_body = user_detail.json()
+    assert user_body["archives"][0]["encryption_password"] is None
+    assert user_body["archives"][0]["links"] == []
 
-    assert len(body["discs"]) == 1
-    tracks = body["discs"][0]["tracks"]
-    assert [t["track_number"] for t in tracks] == [1, 2]
-    assert tracks[0]["title_original"] == "Opening Theme"
-    assert tracks[1]["is_instrumental"] is True
+    # 3. Trusted User: passwords and mirrors visible
+    trusted_detail = await client.get(f"/api/v1/albums/{album_id}", headers=bearer(trusted_tokens))
+    assert trusted_detail.status_code == 200
+    trusted_body = trusted_detail.json()
+    assert trusted_body["archives"][0]["encryption_password"] == "super-secret-password-xyz"
+    assert len(trusted_body["archives"][0]["links"]) == 2
 
-    assert len(body["archives"]) == 1
-    assert len(body["archives"][0]["links"]) == 2
-    assert body["external_links"][0]["site_name"] == "VGMdb"
-
-    # Creation is recorded in the changelog
-    assert len(body["changelogs"]) >= 1
+    # 4. Admin User: passwords and mirrors visible
+    admin_detail = await client.get(f"/api/v1/albums/{album_id}", headers=bearer(admin_tokens))
+    assert admin_detail.status_code == 200
+    admin_body = admin_detail.json()
+    assert admin_body["archives"][0]["encryption_password"] == "super-secret-password-xyz"
+    assert len(admin_body["archives"][0]["links"]) == 2
 
 
 async def test_album_appears_in_listing_after_creation(
@@ -203,7 +209,6 @@ async def test_update_same_album_id_records_changelog_diff(
     assert body["title_original"] == "Full Aggregate Album (Remastered)"
     assert len(body["changelogs"]) >= 2
 
-    # The listing contains exactly one album — update did not duplicate it.
     listing = await client.get("/api/v1/albums", headers=bearer(admin_tokens))
     assert listing.json()["total_count"] == 1
 

@@ -40,7 +40,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
         clearSessionStorage();
-        void router.navigate(['/login']);
+        void router.navigate(['/']);
         return throwError(() => error);
       }
 
@@ -63,7 +63,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           refreshInProgress = null;
 
           clearSessionStorage();
-          void router.navigate(['/login']);
+          void router.navigate(['/']);
           return throwError(() => refreshErr);
         }),
       );

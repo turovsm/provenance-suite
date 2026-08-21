@@ -26,11 +26,12 @@ from src.application.use_cases.list_albums import (
     ListAlbumsUseCase,
 )
 from src.domain.entities.user import User
+from src.domain.value_objects.user_role import UserRole
 from src.infrastructure.db.repositories.album import SqlAlchemyAlbumRepository
 from src.infrastructure.db.session import get_async_database_session
 from src.infrastructure.redis.client import get_redis
 from src.infrastructure.storage.object_storage import MinioObjectStorageService
-from src.presentation.api.dependencies import get_current_active_user, get_current_superuser
+from src.presentation.api.dependencies import get_optional_current_user, require_admin
 from src.presentation.schemas.music import (
     AlbumChangelogResponseSchema,
     AlbumDetailResponseSchema,
@@ -62,7 +63,7 @@ async def ingest_album_endpoint(
     payload: AlbumIngestRequestSchema,
     session: AsyncSession = Depends(get_async_database_session),
     redis: aioredis.Redis = Depends(get_redis),
-    superuser: User = Depends(get_current_superuser),
+    admin_user: User = Depends(require_admin),
 ) -> AlbumIngestResponseSchema:
     album_repository = SqlAlchemyAlbumRepository(session, redis=redis)
     storage_service = MinioObjectStorageService()
@@ -141,7 +142,7 @@ async def ingest_album_endpoint(
 
     use_case_request = IngestAlbumRequest(
         album_id=payload.album_id,
-        user_id=superuser.id,
+        user_id=admin_user.id,
         title_original=payload.title_original,
         original_folder_name=payload.original_folder_name,
         aliases=list(payload.aliases),
@@ -179,7 +180,7 @@ async def ingest_album_endpoint(
     "",
     response_model=PaginatedAlbumsResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="[User/Admin] Search and paginate catalog albums.",
+    summary="[Public] Search and paginate catalog albums.",
 )
 async def list_albums_endpoint(
     query: str | None = Query(default=None, description="Search term for title or folder name."),
@@ -187,7 +188,7 @@ async def list_albums_endpoint(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_database_session),
     redis: aioredis.Redis = Depends(get_redis),
-    _user=Depends(get_current_active_user),
+    _user=Depends(get_optional_current_user),
 ) -> PaginatedAlbumsResponseSchema:
     album_repository = SqlAlchemyAlbumRepository(session, redis=redis)
     use_case = ListAlbumsUseCase(album_repository)
@@ -237,18 +238,20 @@ async def list_albums_endpoint(
     "/{album_id}",
     response_model=AlbumDetailResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="[User/Admin] Retrieve full aggregate detail for an album by ID.",
+    summary="[Public/RBAC] Retrieve album detail with role-masked archives.",
 )
 async def get_album_detail_endpoint(
     album_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
     redis: aioredis.Redis = Depends(get_redis),
-    _user=Depends(get_current_active_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> AlbumDetailResponseSchema:
     album_repository = SqlAlchemyAlbumRepository(session, redis=redis)
     use_case = GetAlbumDetailUseCase(album_repository)
 
     album = await use_case.execute(GetAlbumDetailRequest(album_id=album_id))
+
+    is_trusted = current_user is not None and current_user.role.has_permission(UserRole.TRUSTED)
 
     discs_dto = [
         DiscResponseSchema(
@@ -300,14 +303,10 @@ async def get_album_detail_endpoint(
         for c in album.covers
     ]
 
-    archives_dto = [
-        ArchiveResponseSchema(
-            id=a.id,
-            archive_name=a.archive_name,
-            encryption_password=a.encryption_password,
-            file_size_bytes=a.file_size_bytes,
-            hash_sha256=a.hash_sha256,
-            links=[
+    archives_dto = []
+    for a in album.archives:
+        links_dto = (
+            [
                 ArchiveLinkResponseSchema(
                     id=lnk.id,
                     provider_name=lnk.provider_name,
@@ -315,10 +314,20 @@ async def get_album_detail_endpoint(
                     is_active=lnk.is_active,
                 )
                 for lnk in a.links
-            ],
+            ]
+            if is_trusted
+            else []
         )
-        for a in album.archives
-    ]
+        archives_dto.append(
+            ArchiveResponseSchema(
+                id=a.id,
+                archive_name=a.archive_name,
+                encryption_password=a.encryption_password if is_trusted else None,
+                file_size_bytes=a.file_size_bytes,
+                hash_sha256=a.hash_sha256,
+                links=links_dto,
+            )
+        )
 
     external_links_dto = [
         ExternalLinkResponseSchema(
@@ -372,7 +381,7 @@ async def delete_album_endpoint(
     album_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
     redis: aioredis.Redis = Depends(get_redis),
-    _superuser: User = Depends(get_current_superuser),
+    _admin: User = Depends(require_admin),
 ) -> None:
     album_repository = SqlAlchemyAlbumRepository(session, redis=redis)
     use_case = DeleteAlbumUseCase(album_repository)

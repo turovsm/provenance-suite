@@ -1,14 +1,3 @@
-"""API-level integration fixtures.
-
-Drives the real FastAPI app over ASGI with:
-  * a real PostgreSQL test database (schema managed by the root conftest),
-  * fakeredis substituted for the Redis dependency,
-  * per-test table truncation so each test starts from a clean slate.
-
-Requires the docker-compose Postgres to be running locally (``make db-up``);
-in CI the service containers provide it.
-"""
-
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -66,7 +55,6 @@ async def client(fake_redis: FakeAsyncRedis) -> AsyncGenerator[AsyncClient, None
 
     app.dependency_overrides.clear()
 
-    # Wipe all rows so the next test starts clean (schema itself stays).
     table_names = ", ".join(
         f'"{table.name}"' for table in BaseInfrastructureModel.metadata.sorted_tables
     )
@@ -92,10 +80,11 @@ async def login_account(client: AsyncClient, email: str) -> dict:
     return response.json()
 
 
-async def promote_to_superuser(username: str) -> None:
+async def set_user_role(username: str, role: str) -> None:
     async with test_engine.begin() as conn:
         await conn.execute(
-            text("UPDATE users SET is_superuser = true WHERE username = :u"), {"u": username}
+            text("UPDATE users SET role = CAST(:role AS user_role) WHERE username = :u"),
+            {"role": role, "u": username},
         )
 
 
@@ -110,7 +99,14 @@ async def user_tokens(client: AsyncClient) -> dict:
 
 
 @pytest.fixture()
+async def trusted_tokens(client: AsyncClient) -> dict:
+    await register_account(client, "trusted_user", "trusted@vault.io")
+    await set_user_role("trusted_user", "trusted")
+    return await login_account(client, "trusted@vault.io")
+
+
+@pytest.fixture()
 async def admin_tokens(client: AsyncClient) -> dict:
     await register_account(client, "admin_user", "admin@vault.io")
-    await promote_to_superuser("admin_user")
+    await set_user_role("admin_user", "admin")
     return await login_account(client, "admin@vault.io")

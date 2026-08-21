@@ -16,7 +16,7 @@ async def test_register_returns_created_profile_without_secrets(client: AsyncCli
     assert body["username"] == "fresh_user"
     assert body["email"] == "fresh@vault.io"
     assert body["is_active"] is True
-    assert body["is_superuser"] is False
+    assert body["role"] == "user"
     assert uuid.UUID(body["id"])
     assert "password" not in body
     assert "hashed_password" not in body
@@ -100,7 +100,7 @@ async def test_me_returns_own_profile(client: AsyncClient, user_tokens: dict) ->
     assert response.status_code == 200
     body = response.json()
     assert body["username"] == "regular_user"
-    assert body["is_superuser"] is False
+    assert body["role"] == "user"
 
 
 async def test_refresh_rotates_and_old_token_is_dead(client: AsyncClient) -> None:

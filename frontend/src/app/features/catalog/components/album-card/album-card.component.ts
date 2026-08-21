@@ -12,7 +12,7 @@ import { CardActionsComponent } from '../../../../shared/components/card-actions
 })
 export class AlbumCardComponent {
   readonly album = input.required<AlbumSummary>();
-  readonly isSuperuser = input<boolean>(false);
+  readonly isAdmin = input<boolean>(false);
   readonly isLoadingEdit = input<boolean>(false);
 
   readonly deleteRequested = output<string>();

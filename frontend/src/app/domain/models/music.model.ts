@@ -336,7 +336,7 @@ export interface ArchiveLinkDetailResponse {
 export interface ArchiveDetailResponse {
   id: string;
   archive_name: string;
-  encryption_password: string;
+  encryption_password: string | null;
   file_size_bytes: number | null;
   hash_sha256: string | null;
   links: ArchiveLinkDetailResponse[];

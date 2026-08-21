@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { AUTH_REPOSITORY_PORT } from '../../../core/tokens/auth.token';
-import { UserProfile } from '../../../domain/models/auth.model';
+import { ROLE_LEVELS, UserProfile, UserRole } from '../../../domain/models/auth.model';
 import { extractErrorMessage } from '../../../shared/utils/error-extractor';
 
 @Injectable({
@@ -20,6 +20,16 @@ export class AuthStateEngine {
   readonly authenticationError = computed(() => this.activeErrorSignal());
   readonly isProcessing = computed(() => this.processingSignal());
   readonly isAuthenticated = computed(() => this.currentProfileSignal() !== null);
+
+  readonly role = computed<UserRole>(() => this.currentProfileSignal()?.role ?? 'guest');
+  readonly isAdmin = computed(() => this.role() === 'admin');
+  readonly isModerator = computed(() => this.hasMinRole('moderator'));
+  readonly isTrusted = computed(() => this.hasMinRole('trusted'));
+
+  hasMinRole(minRole: UserRole): boolean {
+    const currentRole = this.role();
+    return ROLE_LEVELS[currentRole] >= ROLE_LEVELS[minRole];
+  }
 
   executeLoginSequence(email: string, password: string): void {
     this.processingSignal.set(true);
@@ -65,6 +75,13 @@ export class AuthStateEngine {
   }
 
   synchronizeProfileState(): void {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      this.currentProfileSignal.set(null);
+      this.processingSignal.set(false);
+      return;
+    }
+
     this.repo
       .fetchIdentityProfile()
       .pipe(
@@ -98,6 +115,6 @@ export class AuthStateEngine {
     localStorage.removeItem('refresh_token');
     this.currentProfileSignal.set(null);
     this.processingSignal.set(false);
-    void this.router.navigate(['/login']);
+    void this.router.navigate(['/']);
   }
 }
