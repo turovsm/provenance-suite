@@ -19,6 +19,9 @@ from src.infrastructure.redis.client import get_redis
 
 
 security_scheme = HTTPBearer(scheme_name="Bearer JWT Token Authorization", auto_error=True)
+optional_security_scheme = HTTPBearer(
+    scheme_name="Bearer JWT Token Authorization", auto_error=False
+)
 
 
 async def get_current_user(
@@ -70,6 +73,39 @@ async def get_current_user(
         )
 
     return user
+
+
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security_scheme),
+    session: AsyncSession = Depends(get_async_database_session),
+    redis: aioredis.Redis = Depends(get_redis),
+) -> User | None:
+    if not credentials:
+        return None
+
+    token_manager = JwtTokenManager()
+    session_store = RedisTokenSessionStore(redis)
+    user_repository = SqlAlchemyUserRepository(session)
+
+    try:
+        claims = token_manager.decode_and_verify_token(
+            credentials.credentials, expected_type="access"
+        )
+        jti = claims.get("jti")
+        if not jti or await session_store.is_access_token_blacklisted(jti):
+            return None
+
+        subject = claims.get("sub")
+        if not subject:
+            return None
+
+        user_id = uuid.UUID(subject)
+        user = await user_repository.find_by_id(user_id)
+        if user and user.is_active:
+            return user
+        return None
+    except Exception:
+        return None
 
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:

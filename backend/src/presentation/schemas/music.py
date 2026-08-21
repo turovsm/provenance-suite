@@ -221,10 +221,10 @@ class ArchiveResponseSchema(BaseModel):
 
     id: uuid.UUID
     archive_name: str
-    encryption_password: str
+    encryption_password: str | None = None
     file_size_bytes: int | None
     hash_sha256: str | None
-    links: list[ArchiveLinkResponseSchema]
+    links: list[ArchiveLinkResponseSchema] = Field(default_factory=list)
 
 
 class ExternalLinkResponseSchema(BaseModel):
