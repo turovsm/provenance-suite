@@ -97,9 +97,9 @@
                 @for (disc of album.discs; track disc.id; let idx = $index) {
                   <button
                     type="button"
-                    (click)="selectDisc(idx)"
                     class="disc-tab-btn"
                     [class.tab-active]="activeDiscIndex() === idx"
+                    (click)="selectDisc(idx)"
                   >
                     <span>Disc {{ disc.disc_number }}</span>
                     <span class="disc-media-tag">({{ disc.media_type }})</span>
@@ -264,6 +264,11 @@
                         <code class="pass-text">{{ arch.encryption_password }}</code>
                         <app-copy-button [text]="arch.encryption_password" title="Copy Password" />
                       </div>
+                    } @else if (!authState.isTrusted()) {
+                      <div class="passphrase-restricted-badge" title="Restricted to Trusted Users">
+                        <span class="material-symbols-outlined pass-icon">lock</span>
+                        <span>Password Protected (Trusted)</span>
+                      </div>
                     }
                   </div>
 
@@ -292,6 +297,11 @@
                           }
                         </a>
                       }
+                    </div>
+                  } @else if (!authState.isTrusted()) {
+                    <div class="mirrors-restricted-notice">
+                      <span class="material-symbols-outlined icon-lock-sm">lock</span>
+                      <span>Download links are restricted to Trusted users.</span>
                     </div>
                   }
                 </div>

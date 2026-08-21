@@ -8,7 +8,7 @@
       />
 
       <div class="header-right-cluster">
-        @if (authState.identity()?.is_superuser) {
+        @if (authState.isAdmin()) {
           <button (click)="openAddModal()" class="admin-add-btn" title="Create Event">
             <span class="material-symbols-outlined btn-icon">event_available</span>
             <span>Add Event</span>
@@ -112,7 +112,7 @@
                 </span>
               }
             </th>
-            @if (authState.identity()?.is_superuser) {
+            @if (authState.isAdmin()) {
               <th class="col-actions">Actions</th>
             }
           </tr>
@@ -134,7 +134,7 @@
                   {{ ev.status }}
                 </span>
               </td>
-              @if (authState.identity()?.is_superuser) {
+              @if (authState.isAdmin()) {
                 <td class="col-actions">
                   <div class="table-actions-cluster">
                     <button

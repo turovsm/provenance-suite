@@ -56,14 +56,14 @@ describe('AlbumCardComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith('a1');
   });
 
-  it('shows admin actions only when isSuperuser signal is true', () => {
+  it('shows admin actions only when isAdmin signal is true', () => {
     expect(fixture.nativeElement.querySelector('app-card-actions')).not.toBeNull();
 
-    fixture.componentRef.setInput('isSuperuser', false);
+    fixture.componentRef.setInput('isAdmin', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.card-admin-actions')).toBeNull();
 
-    fixture.componentRef.setInput('isSuperuser', true);
+    fixture.componentRef.setInput('isAdmin', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.card-admin-actions')).not.toBeNull();
   });

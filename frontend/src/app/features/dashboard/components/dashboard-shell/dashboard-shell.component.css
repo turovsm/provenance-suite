@@ -168,3 +168,52 @@
 .nav-icon {
   font-size: 18px;
 }
+
+.role-badge {
+  font-weight: 700;
+  margin-left: 0.25rem;
+  font-size: 0.68rem;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.05em;
+}
+
+.role-badge.role-admin {
+  color: var(--accent-blue);
+}
+
+.role-badge.role-moderator {
+  color: #c084fc;
+}
+
+.role-badge.role-trusted {
+  color: #34d399;
+}
+
+.role-badge.role-user {
+  color: #facc15;
+}
+
+.role-badge.role-guest {
+  color: var(--text-muted);
+}
+
+.signin-trigger-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  color: var(--accent-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.signin-trigger-btn:hover {
+  background-color: rgba(56, 189, 248, 0.2);
+  border-color: var(--accent-blue);
+}

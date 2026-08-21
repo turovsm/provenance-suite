@@ -7,7 +7,7 @@ import { Component, input, output } from '@angular/core';
   templateUrl: './card-actions.component.html',
 })
 export class CardActionsComponent {
-  readonly isSuperuser = input<boolean>(false);
+  readonly isAdmin = input<boolean>(false);
   readonly isLoadingEdit = input<boolean>(false);
   readonly editLabel = input<string>('Edit');
   readonly deleteLabel = input<string>('Delete');

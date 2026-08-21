@@ -1,11 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { UpperCasePipe } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 
 @Component({
   selector: 'app-dashboard-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, UpperCasePipe],
   styleUrls: ['./dashboard-shell.component.css'],
   templateUrl: './dashboard-shell.component.html',
 })

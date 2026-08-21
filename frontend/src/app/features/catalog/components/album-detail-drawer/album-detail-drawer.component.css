@@ -854,3 +854,33 @@
   border-color: rgba(252, 165, 165, 0.4);
   background: rgba(252, 165, 165, 0.08);
 }
+
+.passphrase-restricted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-family: var(--font-mono), monospace;
+}
+
+.mirrors-restricted-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.icon-lock-sm {
+  font-size: 15px;
+  color: var(--text-muted);
+}

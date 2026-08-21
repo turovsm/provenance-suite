@@ -57,6 +57,7 @@ describe('HttpAuthAdapter', () => {
   it('registers user profile via HTTP POST', () => {
     adapter.register('archivist', 'archivist@vault.io', 'strongpassword').subscribe((user) => {
       expect(user.username).toBe('archivist');
+      expect(user.role).toBe('user');
     });
 
     const req = httpMock.expectOne((r) => r.url.endsWith('/users'));
@@ -65,8 +66,8 @@ describe('HttpAuthAdapter', () => {
       id: 'u1',
       username: 'archivist',
       email: 'archivist@vault.io',
+      role: 'user',
       is_active: true,
-      is_superuser: false,
       created_at: '',
       updated_at: '',
     });
@@ -75,6 +76,7 @@ describe('HttpAuthAdapter', () => {
   it('fetches current identity profile via HTTP GET', () => {
     adapter.fetchIdentityProfile().subscribe((user) => {
       expect(user.id).toBe('current-user-uuid');
+      expect(user.role).toBe('admin');
     });
 
     const req = httpMock.expectOne((r) => r.url.endsWith('/users/me'));
@@ -83,8 +85,8 @@ describe('HttpAuthAdapter', () => {
       id: 'current-user-uuid',
       username: 'admin',
       email: 'admin@vault.io',
+      role: 'admin',
       is_active: true,
-      is_superuser: true,
       created_at: '',
       updated_at: '',
     });
