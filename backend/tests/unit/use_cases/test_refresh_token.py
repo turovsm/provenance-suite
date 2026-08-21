@@ -8,6 +8,7 @@ from src.application.use_cases.authenticate_user import (
     RefreshTokenUseCase,
     TokenPairResponse,
 )
+from src.domain.value_objects.user_role import UserRole
 from src.infrastructure.crypto.token_manager import (
     JwtTokenManager,
     TokenRevokedError,
@@ -96,7 +97,7 @@ async def test_refresh_keeps_family_id_across_rotations() -> None:
 
 async def test_refresh_restores_identity_claims_on_new_access_token() -> None:
     repo, store = InMemoryUserRepository(), InMemorySessionStore()
-    user = make_user(password=PASSWORD, is_superuser=True)
+    user = make_user(password=PASSWORD, role=UserRole.ADMIN)
     await repo.save(user)
     tokens = await login(repo, store, user)
 
@@ -105,7 +106,7 @@ async def test_refresh_restores_identity_claims_on_new_access_token() -> None:
     )
 
     claims = JwtTokenManager().decode_and_verify_token(result.access_token, expected_type="access")
-    assert claims["is_superuser"] is True
+    assert claims["role"] == "admin"
     assert claims["username"] == user.username
 
 

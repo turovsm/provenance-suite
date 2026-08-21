@@ -22,7 +22,7 @@ from src.infrastructure.db.models.music import (
 )
 from src.infrastructure.db.session import get_async_database_session
 from src.infrastructure.storage.object_storage import MinioObjectStorageService
-from src.presentation.api.dependencies import get_current_active_user, get_current_superuser
+from src.presentation.api.dependencies import get_current_active_user, require_admin
 from src.presentation.api.helpers import (
     fetch_albums_by_entity_fk,
     find_existing_entity_by_name,
@@ -333,7 +333,7 @@ async def get_artist_discography(
 async def create_artist(
     payload: ArtistCreateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     clean_name = payload.name_original.strip()
     existing = await find_existing_entity_by_name(session, ArtistModel, clean_name)
@@ -372,7 +372,7 @@ async def update_artist(
     artist_id: uuid.UUID,
     payload: ArtistUpdateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     artist = await get_entity_or_404(session, ArtistModel, artist_id, "Artist")
 
@@ -403,7 +403,7 @@ async def update_artist(
 async def delete_artist(
     artist_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     artist = await get_entity_or_404(session, ArtistModel, artist_id, "Artist")
     await session.delete(artist)
@@ -449,7 +449,7 @@ async def get_franchise_albums(
 async def create_franchise(
     payload: FranchiseCreateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     clean_name = payload.name_original.strip()
     existing = await find_existing_entity_by_name(session, FranchiseModel, clean_name)
@@ -488,7 +488,7 @@ async def update_franchise(
     franchise_id: uuid.UUID,
     payload: FranchiseUpdateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     franchise = await get_entity_or_404(session, FranchiseModel, franchise_id, "Franchise")
 
@@ -521,7 +521,7 @@ async def update_franchise(
 async def delete_franchise(
     franchise_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     franchise = await get_entity_or_404(session, FranchiseModel, franchise_id, "Franchise")
     await session.delete(franchise)
@@ -563,7 +563,7 @@ async def get_label_albums(
 async def create_label(
     payload: LabelCreateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     clean_name = payload.name_original.strip()
     existing = await find_existing_entity_by_name(session, LabelModel, clean_name)
@@ -600,7 +600,7 @@ async def update_label(
     label_id: uuid.UUID,
     payload: LabelUpdateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     label = await get_entity_or_404(session, LabelModel, label_id, "Label")
 
@@ -631,7 +631,7 @@ async def update_label(
 async def delete_label(
     label_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     label = await get_entity_or_404(session, LabelModel, label_id, "Label")
     await session.delete(label)
@@ -677,7 +677,7 @@ async def get_publisher_albums(
 async def create_publisher(
     payload: PublisherCreateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     clean_name = payload.name_original.strip()
     existing = await find_existing_entity_by_name(session, PublisherModel, clean_name)
@@ -714,7 +714,7 @@ async def update_publisher(
     publisher_id: uuid.UUID,
     payload: PublisherUpdateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     publisher = await get_entity_or_404(session, PublisherModel, publisher_id, "Publisher")
 
@@ -745,7 +745,7 @@ async def update_publisher(
 async def delete_publisher(
     publisher_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     publisher = await get_entity_or_404(session, PublisherModel, publisher_id, "Publisher")
     await session.delete(publisher)
@@ -889,7 +889,7 @@ async def get_event_detail(
 async def create_event(
     payload: EventCreateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     existing = await find_existing_entity_by_name(
         session, EventModel, payload.short_name, name_attr="short_name"
@@ -927,7 +927,7 @@ async def update_event(
     event_id: uuid.UUID,
     payload: EventUpdateSchema,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     event = await get_entity_or_404(session, EventModel, event_id, "Event")
 
@@ -960,7 +960,7 @@ async def update_event(
 async def delete_event(
     event_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_database_session),
-    _superuser=Depends(get_current_superuser),
+    _admin=Depends(require_admin),
 ):
     event = await get_entity_or_404(session, EventModel, event_id, "Event")
     await session.delete(event)

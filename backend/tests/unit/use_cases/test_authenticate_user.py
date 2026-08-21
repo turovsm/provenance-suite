@@ -5,6 +5,8 @@ from src.application.use_cases.authenticate_user import (
     AuthenticateUserRequest,
     AuthenticateUserUseCase,
 )
+from src.domain.exceptions import InvalidEmailError
+from src.domain.value_objects.user_role import UserRole
 from src.infrastructure.crypto.token_manager import JwtTokenManager
 from tests.unit.fakes import (
     FakePasswordHasher,
@@ -51,7 +53,7 @@ async def test_login_success_returns_token_pair_and_registers_refresh_session() 
 
 async def test_login_success_embeds_identity_claims_in_access_token() -> None:
     use_case, repo, _, _ = build_use_case()
-    user = make_user(password=PASSWORD, is_superuser=True)
+    user = make_user(password=PASSWORD, role=UserRole.ADMIN)
     await repo.save(user)
 
     result = await use_case.execute(
@@ -60,7 +62,7 @@ async def test_login_success_embeds_identity_claims_in_access_token() -> None:
 
     claims = JwtTokenManager().decode_and_verify_token(result.access_token, expected_type="access")
     assert claims["sub"] == str(user.id)
-    assert claims["is_superuser"] is True
+    assert claims["role"] == "admin"
     assert claims["username"] == user.username
 
 
@@ -128,8 +130,6 @@ async def test_login_deactivated_account_still_requires_correct_password() -> No
 
 
 async def test_login_malformed_email_raises_domain_error() -> None:
-    from src.domain.exceptions import InvalidEmailError
-
     use_case, _, _, _ = build_use_case()
     with pytest.raises(InvalidEmailError):
         await use_case.execute(AuthenticateUserRequest(email="not-an-email", password=PASSWORD))

@@ -49,8 +49,8 @@ async def register_user_endpoint(
         id=db_user.id,
         username=db_user.username,
         email=str(db_user.email),
+        role=db_user.role,
         is_active=db_user.is_active,
-        is_superuser=db_user.is_superuser,
         created_at=db_user.created_at,
         updated_at=db_user.updated_at,
     )
@@ -75,8 +75,8 @@ async def get_authenticated_profile_endpoint(
         id=current_user.id,
         username=current_user.username,
         email=str(current_user.email),
+        role=current_user.role,
         is_active=current_user.is_active,
-        is_superuser=current_user.is_superuser,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
     )

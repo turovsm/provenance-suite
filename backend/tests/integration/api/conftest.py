@@ -1,14 +1,3 @@
-"""API-level integration fixtures.
-
-Drives the real FastAPI app over ASGI with:
-  * a real PostgreSQL test database (schema managed by the root conftest),
-  * fakeredis substituted for the Redis dependency,
-  * per-test table truncation so each test starts from a clean slate.
-
-Requires the docker-compose Postgres to be running locally (``make db-up``);
-in CI the service containers provide it.
-"""
-
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -109,8 +98,15 @@ async def user_tokens(client: AsyncClient) -> dict:
     return await login_account(client, "regular@vault.io")
 
 
+async def promote_to_admin(username: str) -> None:
+    async with test_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE users SET role = 'admin' WHERE username = :u"), {"u": username}
+        )
+
+
 @pytest.fixture()
 async def admin_tokens(client: AsyncClient) -> dict:
     await register_account(client, "admin_user", "admin@vault.io")
-    await promote_to_superuser("admin_user")
+    await promote_to_admin("admin_user")
     return await login_account(client, "admin@vault.io")

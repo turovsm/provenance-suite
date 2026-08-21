@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.domain.entities.user import User
 from src.domain.value_objects.email import EmailAddress
+from src.domain.value_objects.user_role import UserRole
 from src.infrastructure.crypto.hasher import PasswordHasherEngine
 from src.infrastructure.db.repositories.user import SqlAlchemyUserRepository
 from src.infrastructure.db.session import async_session_factory
@@ -28,7 +29,7 @@ def generate_password(length: int = 20) -> str:
             return password
 
 
-async def create_superuser(username: str, email_str: str) -> None:
+async def create_admin(username: str, email_str: str) -> None:
     async with async_session_factory() as session:
         user_repo = SqlAlchemyUserRepository(session)
         hasher = PasswordHasherEngine()
@@ -48,36 +49,35 @@ async def create_superuser(username: str, email_str: str) -> None:
         password = generate_password(24)
         hashed_password = hasher.hash_password(password)
 
-        superuser = User.create_new(
+        admin = User.create_new(
             username=username,
             email=email,
             hashed_password=hashed_password,
+            role=UserRole.ADMIN,
         )
-        superuser.is_superuser = True
 
-        await user_repo.save(superuser)
+        await user_repo.save(admin)
         await session.commit()
 
-        print("=== SUPERUSER ACCOUNT CREATED SUCCESSFULLY ===")
+        print("=== ADMINISTRATIVE ACCOUNT CREATED SUCCESSFULLY ===")
         print(f" Username : {username}")
         print(f" Email    : {email_str}")
+        print(f" Role     : {admin.role.value}")
         print(f" Password : {password}")
         print(" IMPORTANT: Store these credentials securely.")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Create a initial administrative superuser account."
-    )
-    parser.add_argument("--username", default="admin", help="Superuser username (default: admin)")
+    parser = argparse.ArgumentParser(description="Create an initial administrative account.")
+    parser.add_argument("--username", default="admin", help="Admin username (default: admin)")
     parser.add_argument(
         "--email",
         default="admin@provenance.vault",
-        help="Superuser email (default: admin@provenance.vault)",
+        help="Admin email (default: admin@provenance.vault)",
     )
     args = parser.parse_args()
 
-    asyncio.run(create_superuser(args.username, args.email))
+    asyncio.run(create_admin(args.username, args.email))
 
 
 if __name__ == "__main__":

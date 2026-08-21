@@ -27,10 +27,12 @@ from src.domain.value_objects.music_types import (
     MediaType,
     VideoCodec,
 )
+from src.domain.value_objects.user_role import UserRole
 
 
 __all__ = [
     "User",
+    "UserRole",
     "EmailAddress",
     "DomainError",
     "InvalidEmailError",

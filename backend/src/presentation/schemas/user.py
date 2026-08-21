@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.domain.value_objects.user_role import UserRole
+
 
 class UserRegisterRequestSchema(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -33,7 +35,7 @@ class UserResponseSchema(BaseModel):
     id: uuid.UUID
     username: str
     email: str
+    role: UserRole
     is_active: bool
-    is_superuser: bool
     created_at: datetime
     updated_at: datetime

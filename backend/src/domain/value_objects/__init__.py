@@ -4,6 +4,13 @@ from src.domain.value_objects.aliases import (
     normalize_aliases,
 )
 from src.domain.value_objects.email import EmailAddress
+from src.domain.value_objects.user_role import UserRole
 
 
-__all__ = ["EmailAddress", "MAX_ALIASES_PER_ENTITY", "MAX_ALIAS_LENGTH", "normalize_aliases"]
+__all__ = [
+    "EmailAddress",
+    "UserRole",
+    "MAX_ALIASES_PER_ENTITY",
+    "MAX_ALIAS_LENGTH",
+    "normalize_aliases",
+]

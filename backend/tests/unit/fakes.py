@@ -2,6 +2,7 @@ import uuid
 
 from src.domain.entities.user import User
 from src.domain.value_objects.email import EmailAddress
+from src.domain.value_objects.user_role import UserRole
 
 
 class FakePasswordHasher:
@@ -76,14 +77,14 @@ def make_user(
     username: str = "collector",
     email: str = "collector@vault.io",
     password: str = "correct-horse-battery",
+    role: UserRole = UserRole.USER,
     is_active: bool = True,
-    is_superuser: bool = False,
 ) -> User:
     return User(
         id=uuid.uuid4(),
         username=username,
         email=EmailAddress(email),
         hashed_password=FakePasswordHasher().hash_password(password),
+        role=role,
         is_active=is_active,
-        is_superuser=is_superuser,
     )
