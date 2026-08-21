@@ -51,5 +51,5 @@ class GetAlbumDetailUseCase:
     async def execute(self, request: GetAlbumDetailRequest) -> Album:
         album = await self._album_repo.find_by_id(request.album_id)
         if album is None:
-            raise AlbumNotFoundError(f"Album record with ID '{request.album_id}' was not found.")
+            raise AlbumNotFoundError("Album not found.")
         return album

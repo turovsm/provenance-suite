@@ -27,37 +27,6 @@
   margin-bottom: 0.75rem;
 }
 
-.avatar-frame {
-  width: 54px;
-  height: 54px;
-  flex-shrink: 0;
-  overflow: hidden;
-  background-color: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-fine-glass);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.artist-avatar {
-  border-radius: 50% !important;
-}
-
-.logo-avatar {
-  border-radius: 6px !important;
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.fallback-icon {
-  font-size: 26px;
-  color: rgba(255, 255, 255, 0.25);
-}
-
 .card-header-meta {
   display: flex;
   flex-direction: column;
@@ -130,54 +99,4 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 0.5rem;
-}
-
-.card-admin-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: auto;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.card-edit-btn,
-.card-delete-btn {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  flex: 1;
-  height: 26px;
-  border-radius: 3px;
-  font-size: 0.68rem;
-  font-weight: 500;
-  transition: all 0.15s ease;
-}
-
-.card-edit-btn {
-  background-color: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  color: var(--accent-blue);
-}
-
-.card-edit-btn:hover:not(:disabled) {
-  background-color: rgba(56, 189, 248, 0.18);
-  border-color: var(--accent-blue);
-}
-
-.card-delete-btn {
-  background-color: rgba(248, 113, 113, 0.06);
-  border: 1px solid rgba(248, 113, 113, 0.2);
-  color: var(--accent-error);
-}
-
-.card-delete-btn:hover:not(:disabled) {
-  background-color: rgba(248, 113, 113, 0.18);
-  border-color: var(--accent-error);
-}
-
-.action-icon {
-  font-size: 14px;
 }

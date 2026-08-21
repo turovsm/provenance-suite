@@ -27,12 +27,7 @@
     />
   </div>
 
-  @if (errorMessage()) {
-    <div class="error-banner" role="alert">
-      <span class="material-symbols-outlined icon-alert">error</span>
-      <span>{{ errorMessage() }}</span>
-    </div>
-  }
+  <app-error-banner [message]="errorMessage()" />
 
   <button type="submit" [disabled]="isDisabled() || !emailCredentials || !passwordCredentials">
     @if (isDisabled()) {

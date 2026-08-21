@@ -30,7 +30,7 @@ class User:
 
     def deactivate(self) -> None:
         if self.is_superuser:
-            raise DomainInvariantError("Superuser administrative accounts cannot be deactivated.")
+            raise DomainInvariantError("Admin accounts cannot be deactivated.")
         self.is_active = False
 
     def activate(self) -> None:

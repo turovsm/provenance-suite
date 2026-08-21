@@ -13,8 +13,7 @@ class EmailAddress:
     def __post_init__(self) -> None:
         normalized = self.value.strip().lower()
         if not self._PATTERN.match(normalized):
-            msg = f"Provided value sequence '{self.value}' violates email specification layout."
-            raise InvalidEmailError(msg)
+            raise InvalidEmailError("Invalid email address format.")
 
         object.__setattr__(self, "value", normalized)
 

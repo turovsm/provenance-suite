@@ -1,20 +1,15 @@
 <div class="directory-layout">
   <header class="directory-control-bar">
     <div class="top-control-row">
-      <div class="search-input-wrapper">
-        <span class="material-symbols-outlined search-icon">search</span>
-        <input
-          type="text"
-          [value]="state.searchQuery()"
-          (input)="handleSearchInput($event)"
-          placeholder="Search entities by name or aliases..."
-          class="telemetry-search-input"
-        />
-      </div>
+      <app-search-input
+        [value]="state.searchQuery()"
+        placeholder="Search entities by name or aliases..."
+        (searchChange)="handleSearchChange($event)"
+      />
 
       @if (authState.identity()?.is_superuser) {
         <button (click)="openAddModal()" class="admin-add-btn" title="Create Master Entity">
-          <span class="material-symbols-outlined">add</span>
+          <span class="material-symbols-outlined btn-icon">add</span>
           <span>Add Entity</span>
         </button>
       }
@@ -34,62 +29,48 @@
     </nav>
   </header>
 
-  @if (state.error()) {
-    <div class="error-banner" role="alert">
-      <span class="material-symbols-outlined icon-alert">error</span>
-      <span>{{ state.error() }}</span>
-    </div>
-  }
+  <app-error-banner [message]="state.error()" />
 
-  @if (state.isLoading()) {
-    <div class="loading-state-overlay">
-      <span class="pulse-indicator">Loading master entity directory...</span>
-    </div>
-  } @else {
-    @if (!state.hasEntities()) {
-      <div class="empty-state-card">
-        <span class="material-symbols-outlined empty-icon">folder_off</span>
-        <h3>No Entities Found</h3>
-        <p>No master entity records match your active type and search criteria.</p>
+  <div class="grid-scroll-area">
+    @if (state.isLoading()) {
+      <div class="loading-state-overlay">
+        <span class="pulse-indicator">Loading master entity directory...</span>
       </div>
     } @else {
-      <div class="entities-responsive-grid">
-        @for (entity of state.entities(); track entity.id) {
-          <app-entity-card
-            [entity]="entity"
-            [isSuperuser]="authState.identity()?.is_superuser ?? false"
-            (cardClicked)="handleSelectEntity($event)"
-            (editRequested)="handleEditEntity($event)"
-            (deleteRequested)="handleDeleteEntity($event)"
-          />
-        }
-      </div>
-
-      <footer class="pagination-control-bar">
-        <button
-          (click)="handlePageChange(state.currentPage() - 1)"
-          [disabled]="state.currentPage() <= 1"
-          class="page-nav-btn"
-        >
-          <span class="material-symbols-outlined">arrow_back</span>
-          <span>Previous</span>
-        </button>
-
-        <span class="page-telemetry-status">
-          Page {{ state.currentPage() }} of {{ state.totalPages() }} ({{ state.totalCount() }}
-          {{ state.totalCount() === 1 ? 'entry' : 'entries' }})
-        </span>
-
-        <button
-          (click)="handlePageChange(state.currentPage() + 1)"
-          [disabled]="state.currentPage() >= state.totalPages()"
-          class="page-nav-btn"
-        >
-          <span>Next</span>
-          <span class="material-symbols-outlined">arrow_forward</span>
-        </button>
-      </footer>
+      @if (!state.hasEntities()) {
+        <app-empty-state
+          icon="folder_off"
+          title="No Entities Found"
+          description="No master entity records match your active type and search criteria."
+        />
+      } @else {
+        <div class="entities-responsive-grid">
+          @for (entity of state.entities(); track entity.id) {
+            <app-entity-card
+              [entity]="entity"
+              [isSuperuser]="authState.identity()?.is_superuser ?? false"
+              (cardClicked)="handleSelectEntity($event)"
+              (editRequested)="handleEditEntity($event)"
+              (deleteRequested)="handleDeleteEntity($event)"
+            />
+          }
+        </div>
+      }
     }
+  </div>
+
+  @if (!state.isLoading() && state.hasEntities()) {
+    <app-pagination-bar
+      [currentPage]="state.currentPage()"
+      [totalPages]="state.totalPages()"
+      [totalCount]="state.totalCount()"
+      [pageSize]="state.pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      itemLabel="entry"
+      itemPluralLabel="entries"
+      (pageChange)="handlePageChange($event)"
+      (pageSizeChange)="handlePageSizeChange($event)"
+    />
   }
 
   @if (isAddModalOpen) {

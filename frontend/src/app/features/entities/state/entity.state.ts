@@ -84,6 +84,12 @@ export class EntityStateEngine {
     this.queryDirectory();
   }
 
+  setPageSize(size: number): void {
+    this.pageSizeSignal.set(size);
+    this.pageSignal.set(1);
+    this.queryDirectory();
+  }
+
   queryDirectory(): void {
     this.loadingSignal.set(true);
     this.errorSignal.set(null);

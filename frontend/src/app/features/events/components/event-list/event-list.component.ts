@@ -1,12 +1,11 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { EventDateRange, MasterEvent } from '../../../../domain/models/music.model';
-import {
-  CustomSelectComponent,
-  SelectOption,
-} from '../../../../shared/components/custom-select/custom-select.component';
+import { SelectOption } from '../../../../shared/components/custom-select/custom-select.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../../shared/components/error-banner/error-banner.component';
+import { PaginationBarComponent } from '../../../../shared/components/pagination-bar/pagination-bar.component';
+import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { AuthStateEngine } from '../../../auth/state/auth.state';
 import { EventStateEngine } from '../../state/event.state';
 import { EventFormModalComponent } from '../event-form-modal/event-form-modal.component';
@@ -22,11 +21,18 @@ const PAGE_SIZE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-event-list',
   standalone: true,
-  imports: [EventFormModalComponent, FormsModule, CustomSelectComponent],
+  imports: [
+    EventFormModalComponent,
+    FormsModule,
+    PaginationBarComponent,
+    SearchInputComponent,
+    EmptyStateComponent,
+    ErrorBannerComponent,
+  ],
   styleUrls: ['./event-list.component.css'],
   templateUrl: './event-list.component.html',
 })
-export class EventListComponent implements OnInit, OnDestroy {
+export class EventListComponent implements OnInit {
   protected readonly state = inject(EventStateEngine);
   protected readonly authState = inject(AuthStateEngine);
 
@@ -36,26 +42,12 @@ export class EventListComponent implements OnInit, OnDestroy {
   protected readonly availableStatuses = ALL_STATUSES;
   protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
 
-  private readonly searchInput$ = new Subject<string>();
-  private searchSubscription?: Subscription;
-
   ngOnInit(): void {
-    this.searchSubscription = this.searchInput$
-      .pipe(debounceTime(300), distinctUntilChanged())
-      .subscribe((term) => {
-        this.state.setSearchQuery(term);
-      });
-
     this.state.queryEvents();
   }
 
-  ngOnDestroy(): void {
-    this.searchSubscription?.unsubscribe();
-  }
-
-  protected handleSearchInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.searchInput$.next(value);
+  protected handleSearchChange(term: string): void {
+    this.state.setSearchQuery(term);
   }
 
   protected toggleSort(field: string): void {
@@ -87,10 +79,8 @@ export class EventListComponent implements OnInit, OnDestroy {
     this.state.setDateRange(this.state.dateFrom(), value);
   }
 
-  protected handlePageSizeChange(value: string | null): void {
-    if (value) {
-      this.state.setPageSize(Number(value));
-    }
+  protected handlePageSizeChange(size: number): void {
+    this.state.setPageSize(size);
   }
 
   protected resetFilters(): void {

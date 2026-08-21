@@ -1,0 +1,20 @@
+<div
+  class="avatar-frame size-{{ size() }}"
+  [class.artist-avatar]="isArtist()"
+  [class.logo-avatar]="!isArtist()"
+>
+  @if (imageUrl() && !hasImageError()) {
+    <img
+      [ngSrc]="imageUrl()!"
+      [width]="dimension()"
+      [height]="dimension()"
+      [alt]="name()"
+      class="avatar-img"
+      (error)="onImageError()"
+    />
+  } @else {
+    <span class="material-symbols-outlined fallback-icon">
+      {{ fallbackIcon() }}
+    </span>
+  }
+</div>

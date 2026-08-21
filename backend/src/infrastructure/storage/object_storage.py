@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +57,7 @@ class MinioObjectStorageService:
     @staticmethod
     def _verify_magic_bytes(data: bytes) -> str:
         if len(data) < 12:
-            raise InvalidImageFormatError("File buffer payload is too small.")
+            raise InvalidImageFormatError("Image file is too small or corrupted.")
 
         if data.startswith(b"\xff\xd8\xff"):
             return "image/jpeg"
@@ -65,7 +66,8 @@ class MinioObjectStorageService:
         if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
             return "image/webp"
 
-        raise InvalidImageFormatError("Unsupported image format. Allowed formats: JPEG, PNG, WEBP.")
+        msg = "Unsupported image format. Please upload a JPEG, PNG, or WebP image."
+        raise InvalidImageFormatError(msg)
 
     @staticmethod
     def _generate_thumbhash(img_rgba: Image.Image) -> str:
@@ -130,7 +132,7 @@ class MinioObjectStorageService:
         def _upload() -> str:
             self.ensure_bucket_and_policy()
             processed_data = self._normalize_entity_image(data)
-            object_key = f"entities/{entity_type}/{entity_id}.jpg"
+            object_key = f"entities/{entity_type}/{entity_id}_{uuid.uuid4().hex[:8]}.jpg"
             data_stream = io.BytesIO(processed_data)
 
             self._client.put_object(

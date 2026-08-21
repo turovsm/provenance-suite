@@ -3,6 +3,7 @@ import {
   EventEmitter,
   Input,
   OnChanges,
+  OnDestroy,
   Output,
   SimpleChanges,
   inject,
@@ -15,6 +16,8 @@ import {
   CustomSelectComponent,
   SelectOption,
 } from '../../../../shared/components/custom-select/custom-select.component';
+import { EntityAvatarComponent } from '../../../../shared/components/entity-avatar/entity-avatar.component';
+import { ModalShellComponent } from '../../../../shared/components/modal-shell/modal-shell.component';
 import { EntityStateEngine } from '../../state/entity.state';
 
 const ENTITY_TYPE_OPTIONS: SelectOption[] = [
@@ -27,11 +30,17 @@ const ENTITY_TYPE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-entity-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, CustomSelectComponent, AliasesChipInputComponent],
+  imports: [
+    ReactiveFormsModule,
+    CustomSelectComponent,
+    AliasesChipInputComponent,
+    ModalShellComponent,
+    EntityAvatarComponent,
+  ],
   styleUrls: ['./entity-form-modal.component.css'],
   templateUrl: './entity-form-modal.component.html',
 })
-export class EntityFormModalComponent implements OnChanges {
+export class EntityFormModalComponent implements OnChanges, OnDestroy {
   @Input() entityToEdit?: EntitySummary | null = null;
   @Input() defaultType = 'artist';
   @Output() closed = new EventEmitter<void>();
@@ -41,6 +50,7 @@ export class EntityFormModalComponent implements OnChanges {
 
   protected readonly entityTypeOptions = ENTITY_TYPE_OPTIONS;
   protected readonly imagePreviewUrl = signal<string | null>(null);
+  protected readonly isDraggingOver = signal<boolean>(false);
   protected base64ImageData: string | null = null;
 
   protected readonly form: FormGroup = this.fb.group({
@@ -57,7 +67,21 @@ export class EntityFormModalComponent implements OnChanges {
     }
   }
 
+  ngOnDestroy(): void {
+    this.revokeBlobUrlIfPresent();
+  }
+
+  private revokeBlobUrlIfPresent(): void {
+    const curr = this.imagePreviewUrl();
+    if (curr?.startsWith('blob:')) {
+      URL.revokeObjectURL(curr);
+    }
+  }
+
   private populateForm(): void {
+    this.revokeBlobUrlIfPresent();
+    this.isDraggingOver.set(false);
+
     if (this.entityToEdit) {
       this.form.patchValue({
         entity_type: this.entityToEdit.entity_type,
@@ -80,11 +104,43 @@ export class EntityFormModalComponent implements OnChanges {
     this.base64ImageData = null;
   }
 
+  protected onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver.set(true);
+  }
+
+  protected onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver.set(false);
+  }
+
+  protected onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver.set(false);
+    const files = event.dataTransfer?.files;
+    if (files?.length) {
+      this.processFile(files[0]);
+    }
+  }
+
   protected handleFileSelected(event: Event): void {
-    const files = (event.target as HTMLInputElement).files;
-    if (!files?.length) return;
-    const file = files[0];
-    this.imagePreviewUrl.set(URL.createObjectURL(file));
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (files?.length) {
+      this.processFile(files[0]);
+    }
+    input.value = '';
+  }
+
+  private processFile(file: File): void {
+    if (!file.type.startsWith('image/')) return;
+
+    this.revokeBlobUrlIfPresent();
+    const blobUrl = URL.createObjectURL(file);
+    this.imagePreviewUrl.set(blobUrl);
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -92,6 +148,12 @@ export class EntityFormModalComponent implements OnChanges {
       this.base64ImageData = resStr.includes(',') ? resStr.split(',')[1] : resStr;
     };
     reader.readAsDataURL(file);
+  }
+
+  protected removeImage(): void {
+    this.revokeBlobUrlIfPresent();
+    this.imagePreviewUrl.set(null);
+    this.base64ImageData = '';
   }
 
   protected closeModal(): void {
@@ -105,7 +167,7 @@ export class EntityFormModalComponent implements OnChanges {
     }
 
     const raw = this.form.getRawValue();
-    const entityType = raw.entity_type;
+    const entityType = this.entityToEdit ? this.entityToEdit.entity_type : raw.entity_type;
 
     if (this.entityToEdit) {
       const id = this.entityToEdit.id;
@@ -156,13 +218,14 @@ export class EntityFormModalComponent implements OnChanges {
         );
       }
     } else {
+      const imgData = this.base64ImageData || null;
       if (entityType === 'artist') {
         this.state.createArtist(
           {
             name_original: raw.name_original,
             aliases: raw.aliases,
             description: raw.description,
-            image_data: this.base64ImageData,
+            image_data: imgData,
           },
           () => this.closeModal(),
         );
@@ -173,7 +236,7 @@ export class EntityFormModalComponent implements OnChanges {
             aliases: raw.aliases,
             franchise_type: raw.franchise_type,
             description: raw.description,
-            image_data: this.base64ImageData,
+            image_data: imgData,
           },
           () => this.closeModal(),
         );
@@ -183,7 +246,7 @@ export class EntityFormModalComponent implements OnChanges {
             name_original: raw.name_original,
             aliases: raw.aliases,
             description: raw.description,
-            image_data: this.base64ImageData,
+            image_data: imgData,
           },
           () => this.closeModal(),
         );
@@ -193,7 +256,7 @@ export class EntityFormModalComponent implements OnChanges {
             name_original: raw.name_original,
             aliases: raw.aliases,
             description: raw.description,
-            image_data: this.base64ImageData,
+            image_data: imgData,
           },
           () => this.closeModal(),
         );

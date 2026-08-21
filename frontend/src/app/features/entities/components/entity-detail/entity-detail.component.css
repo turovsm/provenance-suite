@@ -1,9 +1,24 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .entity-detail-viewport {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  flex: 1;
   width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.35rem;
   padding-bottom: 3.5rem;
+  gap: 2rem;
 }
 
 .back-nav-bar {
@@ -37,38 +52,6 @@
   border-radius: 8px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-}
-
-.hero-avatar-frame {
-  width: 140px;
-  height: 140px;
-  flex-shrink: 0;
-  overflow: hidden;
-  background-color: #000;
-  border: 1px solid var(--border-fine-glass);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.artist-avatar {
-  border-radius: 50% !important;
-}
-
-.logo-avatar {
-  border-radius: 8px !important;
-}
-
-.hero-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Added fallback icon sizing for 140px hero frames */
-.fallback-icon {
-  font-size: 64px;
-  color: rgba(255, 255, 255, 0.22);
 }
 
 .hero-meta-cluster {
@@ -177,4 +160,21 @@
 
 .btn-delete:hover {
   background-color: rgba(248, 113, 113, 0.22);
+}
+
+.loading-state-overlay {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 5rem 2rem;
+  background-color: var(--bg-surface-glass);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 6px;
+  min-height: 300px;
+}
+
+.pulse-indicator {
+  font-size: 0.82rem;
+  color: var(--accent-blue);
 }

@@ -1,0 +1,46 @@
+:host {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.copy-btn {
+  position: relative;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  transition: color 0.15s ease;
+}
+
+.copy-btn:hover {
+  color: var(--accent-blue);
+}
+
+.copy-icon {
+  font-size: 14px;
+}
+
+.copied-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.4rem;
+  background-color: var(--accent-blue);
+  color: var(--bg-oled-black);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

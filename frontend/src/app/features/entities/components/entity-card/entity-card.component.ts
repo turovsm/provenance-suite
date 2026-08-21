@@ -1,10 +1,13 @@
 import { Component, computed, input, output } from '@angular/core';
 import { EntitySummary } from '../../../../domain/models/music.model';
+import { CardActionsComponent } from '../../../../shared/components/card-actions/card-actions.component';
+import { EntityAvatarComponent } from '../../../../shared/components/entity-avatar/entity-avatar.component';
 import { stripMarkdown } from '../../../../shared/utils/markdown-cleaner';
 
 @Component({
   selector: 'app-entity-card',
   standalone: true,
+  imports: [EntityAvatarComponent, CardActionsComponent],
   styleUrls: ['./entity-card.component.css'],
   templateUrl: './entity-card.component.html',
 })
@@ -17,46 +20,21 @@ export class EntityCardComponent {
   readonly editRequested = output<EntitySummary>();
   readonly deleteRequested = output<EntitySummary>();
 
-  protected hasImageError = false;
-
   protected readonly cleanDescription = computed(() => {
     return stripMarkdown(this.entity().description);
   });
-
-  protected onImageError(): void {
-    this.hasImageError = true;
-  }
-
-  protected getFallbackIcon(): string {
-    switch (this.entity().entity_type) {
-      case 'artist':
-        return 'person';
-      case 'franchise':
-        return 'sports_esports';
-      case 'label':
-        return 'album';
-      case 'publisher':
-        return 'domain';
-      default:
-        return 'folder_shared';
-    }
-  }
 
   protected handleCardClick(): void {
     if (this.isLoadingEdit()) return;
     this.cardClicked.emit(this.entity());
   }
 
-  protected handleEdit(event: MouseEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
+  protected handleEdit(): void {
     if (this.isLoadingEdit()) return;
     this.editRequested.emit(this.entity());
   }
 
-  protected handleDelete(event: MouseEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
+  protected handleDelete(): void {
     if (this.isLoadingEdit()) return;
     if (confirm(`Remove "${this.entity().name_original}" from master registry?`)) {
       this.deleteRequested.emit(this.entity());

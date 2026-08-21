@@ -3,6 +3,7 @@
   class="select-trigger"
   [class.dense]="dense"
   [class.open]="isOpen()"
+  [disabled]="isDisabled()"
   (click)="toggleOpen()"
 >
   <span class="selected-text" [class.placeholder-text]="!selectedLabel()">
@@ -11,7 +12,7 @@
   <span class="material-symbols-outlined arrow-icon" [class.open]="isOpen()"> expand_more </span>
 </button>
 
-@if (isOpen()) {
+@if (isOpen() && !isDisabled()) {
   <div class="options-overlay" [class.open-up]="isOpeningUp">
     @for (opt of normalizedOptions(); track opt.label + '_' + opt.value) {
       <div

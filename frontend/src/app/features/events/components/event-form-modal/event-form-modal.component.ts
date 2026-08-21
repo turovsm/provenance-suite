@@ -13,6 +13,7 @@ import {
   CustomSelectComponent,
   SelectOption,
 } from '../../../../shared/components/custom-select/custom-select.component';
+import { ModalShellComponent } from '../../../../shared/components/modal-shell/modal-shell.component';
 import { fuzzyDateValidator } from '../../../../shared/validators/fuzzy-date.validator';
 import { EventStateEngine } from '../../state/event.state';
 
@@ -27,7 +28,7 @@ const EVENT_STATUS_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-event-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, CustomSelectComponent],
+  imports: [ReactiveFormsModule, CustomSelectComponent, ModalShellComponent],
   styleUrls: ['./event-form-modal.component.css'],
   templateUrl: './event-form-modal.component.html',
 })

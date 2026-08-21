@@ -1,0 +1,58 @@
+:host {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.pagination-control-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-fine-glass);
+}
+
+.page-meta-cluster {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.page-size-selector {
+  width: 120px;
+}
+
+.page-nav-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  min-width: 105px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-fine-glass);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.nav-arrow-icon {
+  font-size: 16px;
+}
+
+.page-nav-btn:hover:not(:disabled) {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.page-nav-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.page-telemetry-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

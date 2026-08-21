@@ -58,7 +58,7 @@ class RedisSlidingWindowRateLimiter(BaseHTTPMiddleware):
             return _error_response(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 code="RATE_LIMIT_EXCEEDED",
-                message="Rate limit exceeded. Throttling active request bursts.",
+                message="Too many requests. Please wait a moment and try again.",
             )
 
         return await call_next(request)
@@ -72,6 +72,6 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             return _error_response(
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 code="PAYLOAD_TOO_LARGE",
-                message=f"Payload exceeds maximum size cap of {max_mb} MB.",
+                message=f"File is too large (maximum size is {max_mb} MB).",
             )
         return await call_next(request)

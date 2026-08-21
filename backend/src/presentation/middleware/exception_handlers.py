@@ -101,14 +101,27 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def validation_error_handler(
         _request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        formatted_errors = [
-            {"field": " -> ".join(str(loc) for loc in err["loc"]), "msg": err["msg"]}
-            for err in exc.errors()
-        ]
+        formatted_errors = []
+        for err in exc.errors():
+            loc = [str(part) for part in err["loc"] if part not in ("body", "query", "path")]
+            field_name = " -> ".join(loc) if loc else "field"
+            msg = err["msg"]
+            if "pattern" in msg.lower() or "string_pattern_mismatch" in msg.lower():
+                msg = "invalid format"
+            elif "missing" in msg.lower():
+                msg = "field is required"
+            formatted_errors.append({"field": field_name, "msg": msg})
+
+        if formatted_errors:
+            first_err = formatted_errors[0]
+            summary_message = f"Invalid {first_err['field']}: {first_err['msg']}."
+        else:
+            summary_message = "Invalid input data. Please check your submitted fields."
+
         return create_error_response(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             code="VALIDATION_FAILED",
-            message="Inbound request payload failed structural schema validation.",
+            message=summary_message,
             details=formatted_errors,
         )
 
@@ -130,5 +143,5 @@ def register_exception_handlers(app: FastAPI) -> None:
         return create_error_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             code="INTERNAL_SERVER_ERROR",
-            message="An unexpected infrastructure or system error occurred.",
+            message="An unexpected error occurred. Please try again later.",
         )

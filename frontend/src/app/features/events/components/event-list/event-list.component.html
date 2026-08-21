@@ -1,16 +1,11 @@
-<div class="catalog-grid-layout">
+<div class="events-layout">
   <header class="grid-control-bar">
     <div class="control-row">
-      <div class="search-input-wrapper">
-        <span class="material-symbols-outlined search-icon">search</span>
-        <input
-          type="text"
-          [value]="state.searchQuery()"
-          (input)="handleSearchInput($event)"
-          placeholder="Search master events by short name or full name..."
-          class="telemetry-search-input"
-        />
-      </div>
+      <app-search-input
+        [value]="state.searchQuery()"
+        placeholder="Search master events by short name or full name..."
+        (searchChange)="handleSearchChange($event)"
+      />
 
       <div class="header-right-cluster">
         @if (authState.identity()?.is_superuser) {
@@ -74,12 +69,7 @@
     </div>
   </header>
 
-  @if (state.error()) {
-    <div class="error-banner" role="alert">
-      <span class="material-symbols-outlined icon-alert">error</span>
-      <span>{{ state.error() }}</span>
-    </div>
-  }
+  <app-error-banner [message]="state.error()" />
 
   <div class="glass-table-card table-scroll-container" [class.is-loading]="state.isLoading()">
     @if (state.isLoading()) {
@@ -87,11 +77,12 @@
     }
 
     @if (!state.isLoading() && state.events().length === 0) {
-      <div class="empty-state-card">
-        <span class="material-symbols-outlined empty-icon">event_busy</span>
-        <h3>No Events Found</h3>
-        <p>No master convention or event records match your active query and filters.</p>
-      </div>
+      <app-empty-state
+        icon="event_busy"
+        title="No Events Found"
+        description="No master convention or event records match your active query and filters."
+        [bordered]="false"
+      />
     } @else if (state.events().length > 0) {
       <table class="events-data-table">
         <thead>
@@ -170,42 +161,17 @@
     }
   </div>
 
-  <footer class="pagination-control-bar">
-    <button
-      (click)="state.setPage(state.currentPage() - 1)"
-      [disabled]="state.currentPage() <= 1"
-      class="page-nav-btn"
-    >
-      <span class="material-symbols-outlined nav-arrow-icon">arrow_back</span>
-      <span>Previous</span>
-    </button>
-
-    <div class="page-meta-cluster">
-      <span class="page-telemetry-status">
-        Page {{ state.currentPage() }} of {{ state.totalPages() }} ({{ state.totalCount() }}
-        {{ state.totalCount() === 1 ? 'event' : 'events' }})
-      </span>
-
-      <div class="page-size-selector">
-        <app-custom-select
-          [options]="pageSizeOptions"
-          [ngModel]="state.pageSize().toString()"
-          (ngModelChange)="handlePageSizeChange($event)"
-          [dense]="true"
-          [openUp]="true"
-        />
-      </div>
-    </div>
-
-    <button
-      (click)="state.setPage(state.currentPage() + 1)"
-      [disabled]="state.currentPage() >= state.totalPages()"
-      class="page-nav-btn"
-    >
-      <span>Next</span>
-      <span class="material-symbols-outlined nav-arrow-icon">arrow_forward</span>
-    </button>
-  </footer>
+  <app-pagination-bar
+    [currentPage]="state.currentPage()"
+    [totalPages]="state.totalPages()"
+    [totalCount]="state.totalCount()"
+    [pageSize]="state.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    itemLabel="event"
+    itemPluralLabel="events"
+    (pageChange)="state.setPage($event)"
+    (pageSizeChange)="handlePageSizeChange($event)"
+  />
 
   @if (isAddModalOpen) {
     <app-event-form-modal [eventToEdit]="eventToEdit()" (closed)="closeAddModal()" />
